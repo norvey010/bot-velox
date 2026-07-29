@@ -52,6 +52,7 @@ app.get('/webhook', (req, res) => {
 
 // 2. Ruta para recibir los mensajes de WhatsApp
 app.post('/webhook', async (req, res) => {
+    res.sendStatus(200);
     try {
         const body = req.body;
 
@@ -93,13 +94,13 @@ app.post('/webhook', async (req, res) => {
         });
             }
 
-            res.sendStatus(200);
-        } else {
-            res.sendStatus(404);
+        
         }
+        
+    
     } catch (error) {
         console.error("Error en el webhook:", error);
-        res.sendStatus(500);
+    
     }
 });
 
