@@ -1,3 +1,4 @@
+const axios = require('axios');
 require('dotenv').config();
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
@@ -76,6 +77,20 @@ app.post('/webhook', async (req, res) => {
 
     const aiResponse = completion.choices[0].message.content;
     console.log(`🤖 Respuesta IA: ${aiResponse}`);
+    // Enviar respuesta a WhatsApp
+        await axios({
+            method: 'POST',
+            url: `https://graph.facebook.com/v20.0/${process.env.PHONE_NUMBER_ID}/messages`,
+            data: {
+                messaging_product: 'whatsapp',
+                to: numeroRemitente,
+                text: { body: aiResponse }
+            },
+            headers: {
+                'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        });
             }
 
             res.sendStatus(200);
