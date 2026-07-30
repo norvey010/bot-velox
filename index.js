@@ -4,8 +4,10 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const supabaseUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+const supabaseKey = (process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
 
+const supabase = createClient(supabaseUrl, supabaseKey);
 const app = express();
 app.use(express.json());
 const historiales = {};
