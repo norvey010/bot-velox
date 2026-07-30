@@ -93,6 +93,10 @@ app.post('/webhook', async (req, res) => {
                 const numeroRemitente = message.from;
                 const textoUsuario = message.text?.body;
 
+                if (!textoUsuario) {
+                    console.log("⚠️ Mensaje no contiene texto. Se ignora.");
+                    return;
+                }
                 console.log(`Mensaje recibido de ${numeroRemitente}: ${textoUsuario}`);
                 if (!historiales[numeroRemitente]) {
   historiales[numeroRemitente] = [];
