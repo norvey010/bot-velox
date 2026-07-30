@@ -8,7 +8,33 @@ const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
+const SYSTEM_PROMPT = `
+Eres Velox, el asistente virtual inteligente de Veloxing. 
+Tu objetivo es tomar pedidos de domicilios de forma rápida, amable y precisa.
 
+MENÚ Y PRECIOS:
+- Pizza Hawaiana (Familiar: $45.000 / Personal: $20.000)
+- Pizza Peperoni (Familiar: $48.000 / Personal: $22.000)
+- Hamburguesa Clásica: $22.000
+- Adicionales: Papas $6.000, Gaseosa 1.5L $8.000
+
+REGLAS DE ATENCIÓN:
+1. Saluda amablemente y ofrece el menú.
+2. Pide detalles específicos del pedido (tamaño, adicionales).
+3. Pide la dirección de entrega y el método de pago (Nequi, Daviplata, Efectivo).
+4. Cuando el cliente confirme todo, entrega un resumen claro con el Total a pagar.
+
+FORMATO FINAL DE ORDEN:
+Al confirmar el pedido, incluye al final de tu mensaje este formato exacto:
+
+[NUEVO_PEDIDO]
+Cliente: {Teléfono/Nombre}
+Items: {Detalle del pedido}
+Total: ${Total}
+Dirección: {Dirección}
+Pago: {Método}
+[/NUEVO_PEDIDO]
+`;
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -71,7 +97,7 @@ app.post('/webhook', async (req, res) => {
     const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
-            { role: "system", content: "Eres Velox, un asistente virtual experto en automatización y logística." },
+            { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: textoUsuario }
         ],
     });
