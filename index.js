@@ -37,8 +37,7 @@ Dirección: {Dirección}
 Pago: {Método}
 [/NUEVO_PEDIDO]
 `;
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 
 // Ruta principal del servidor
 app.get('/', (req, res) => {
