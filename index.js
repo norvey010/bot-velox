@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 const app = express();
 app.use(express.json());
@@ -109,6 +110,25 @@ historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
     const aiResponse = completion.choices[0].message.content;
     console.log(`🤖 Respuesta IA: ${aiResponse}`);
     historiales[numeroRemitente].push({ role: "assistant", content: aiResponse });
+    // Detectar y guardar el pedido en Supabase si se confirmó
+  if (aiResponse.includes('[NUEVO_PEDIDO]')) {
+    try {
+      const matchTotal = aiResponse.match(/Total:\s*\$?([\d\.]+)/i);
+      const totalLimpio = matchTotal ? parseFloat(matchTotal[1].replace(/\./g, '')) : 0;
+
+      await supabase.from('pedidos').insert([
+        {
+          cliente_telefono: numeroRemitente,
+          items: aiResponse,
+          total: totalLimpio,
+          estado: 'pendiente'
+        }
+      ]);
+      console.log('✅ Pedido guardado exitosamente en Supabase');
+    } catch (errSupabase) {
+      console.error('❌ Error al guardar en Supabase:', errSupabase);
+    }
+  }
     // Enviar respuesta a WhatsApp
         await axios({
             method: 'POST',
