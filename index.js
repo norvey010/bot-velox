@@ -30,7 +30,7 @@ Al confirmar el pedido, incluye al final de tu mensaje este formato exacto:
 [NUEVO_PEDIDO]
 Cliente: {Teléfono/Nombre}
 Items: {Detalle del pedido}
-Total: ${Total}
+Total: $MontoTotal
 Dirección: {Dirección}
 Pago: {Método}
 [/NUEVO_PEDIDO]
