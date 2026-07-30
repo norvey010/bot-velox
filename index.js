@@ -6,7 +6,7 @@ const OpenAI = require('openai');
 
 const app = express();
 app.use(express.json());
-
+const historiales = {};
 const PORT = process.env.PORT || 3000;
 const SYSTEM_PROMPT = `
 Eres Velox, el asistente virtual inteligente de Veloxing. 
@@ -93,17 +93,22 @@ app.post('/webhook', async (req, res) => {
                 const textoUsuario = message.text?.body;
 
                 console.log(`Mensaje recibido de ${numeroRemitente}: ${textoUsuario}`);
+                if (!historiales[numeroRemitente]) {
+  historiales[numeroRemitente] = [];
+}
+historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
                 // Consultamos a OpenAI con el mensaje recibido
     const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
             { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: textoUsuario }
+            ...historiales[numeroRemitente]
         ],
     });
 
     const aiResponse = completion.choices[0].message.content;
     console.log(`🤖 Respuesta IA: ${aiResponse}`);
+    historiales[numeroRemitente].push({ role: "assistant", content: aiResponse });
     // Enviar respuesta a WhatsApp
         await axios({
             method: 'POST',
