@@ -116,7 +116,7 @@ historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
       const matchTotal = aiResponse.match(/Total:\s*\$?([\d\.]+)/i);
       const totalLimpio = matchTotal ? parseFloat(matchTotal[1].replace(/\./g, '')) : 0;
 
-      await supabase.from('pedidos').insert([
+      const { data, error } = await supabase.from('pedidos').insert([
         {
           cliente_telefono: numeroRemitente,
           items: aiResponse,
@@ -124,7 +124,12 @@ historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
           estado: 'pendiente'
         }
       ]);
-      console.log('✅ Pedido guardado exitosamente en Supabase');
+
+      if (error) {
+        console.error('❌ Error devuelto por Supabase:', error.message);
+      } else {
+        console.log('✅ Pedido guardado exitosamente en Supabase');
+      }
     } catch (errSupabase) {
       console.error('❌ Error al guardar en Supabase:', errSupabase);
     }
