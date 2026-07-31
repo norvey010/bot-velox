@@ -122,6 +122,7 @@ historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
       const matchPedido = aiResponse.match(/\[NUEVO_PEDIDO\]([\s\S]*?)\[\/NUEVO_PEDIDO\]/);
 
       if (matchPedido) {
+        try{
         const contenidoBloque = matchPedido[1];
 
         // Extraer cada campo de forma limpia
@@ -151,11 +152,13 @@ historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
             direccion: direccionCliente,
             estado: 'pendiente'
           }
-        ]); {
-        console.error('❌ Error devuelto por Supabase:', error.message);
-      } else {
-        console.log('✅ Pedido guardado exitosamente en Supabase');
-      }
+        ]);
+
+        if (error) {
+          console.error('❌ Error devuelto por Supabase:', error.message);
+        } else {
+          console.log('✅ Pedido guardado exitosamente en Supabase');
+        }
     } catch (errSupabase) {
       console.error('❌ Error al guardar en Supabase:', errSupabase);
     }
