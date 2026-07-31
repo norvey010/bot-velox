@@ -171,18 +171,19 @@ historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
   }
     // Enviar respuesta a WhatsApp
         await axios({
-            method: 'POST',
-            url: `https://graph.facebook.com/v20.0/${process.env.PHONE_NUMBER_ID}/messages`,
-            data: {
-                messaging_product: 'whatsapp',
-                to: numeroRemitente,
-                text: { body: aiResponse }
-            },
-            headers: {
-                'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`,
-                'Content-Type': 'application/json'
-            }
-        });
+  method: 'POST',
+  url: `https://graph.facebook.com/v20.0/${process.env.PHONE_NUMBER_ID}/messages`,
+  data: {
+    messaging_product: 'whatsapp',
+    to: numeroRemitente,
+    type: 'text',
+    text: { body: aiResponse }
+  },
+  headers: {
+    'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`,
+    'Content-Type': 'application/json'
+  }
+});
             }
 
         
