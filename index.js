@@ -117,22 +117,41 @@ historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
     const aiResponse = completion.choices[0].message.content;
     console.log(`🤖 Respuesta IA: ${aiResponse}`);
     historiales[numeroRemitente].push({ role: "assistant", content: aiResponse });
-    // Detectar y guardar el pedido en Supabase si se confirmó
-  if (aiResponse.includes('[NUEVO_PEDIDO]')) {
-    try {
-      const matchTotal = aiResponse.match(/Total:\s*\$?([\d\.]+)/i);
-      const totalLimpio = matchTotal ? parseFloat(matchTotal[1].replace(/\./g, '')) : 0;
+    
+ // Detectar y guardar el pedido en Supabase si se confirmó
+      const matchPedido = aiResponse.match(/\[NUEVO_PEDIDO\]([\s\S]*?)\[\/NUEVO_PEDIDO\]/);
 
-      const { data, error } = await supabase.from('pedidos').insert([
-        {
-          cliente_telefono: numeroRemitente,
-          items: aiResponse,
-          total: totalLimpio,
-          estado: 'pendiente'
+      if (matchPedido) {
+        const contenidoBloque = matchPedido[1];
+
+        // Extraer cada campo de forma limpia
+        const clienteMatch = contenidoBloque.match(/Cliente:\s*(.+)/i);
+        const itemsMatch = contenidoBloque.match(/Items:\s*(.+)/i);
+        const totalMatch = contenidoBloque.match(/Total:\s*\$?([\d\.\,]+)/i);
+        const direccionMatch = contenidoBloque.match(/Dirección:\s*(.+)/i);
+
+        // Variables organizadas
+        const clienteNombre = clienteMatch ? clienteMatch[1].trim() : 'Cliente WhatsApp';
+        const itemsDetalle = itemsMatch ? itemsMatch[1].trim() : 'Sin detalle';
+        const direccionCliente = direccionMatch ? direccionMatch[1].trim() : 'Sin dirección';
+
+        let totalLimpio = 0;
+        if (totalMatch) {
+          const rawTotal = totalMatch[1].replace(/\./g, '').replace(',', '.');
+          totalLimpio = parseFloat(rawTotal) || 0;
         }
-      ]);
 
-      if (error) {
+        // Insertar en Supabase con los campos separados
+        const { data, error } = await supabase.from('pedidos').insert([
+          {
+            cliente_telefono: numeroRemitente,
+            cliente_nombre: clienteNombre,
+            items: itemsDetalle,
+            total: totalLimpio,
+            direccion: direccionCliente,
+            estado: 'pendiente'
+          }
+        ]); {
         console.error('❌ Error devuelto por Supabase:', error.message);
       } else {
         console.log('✅ Pedido guardado exitosamente en Supabase');
