@@ -94,138 +94,124 @@
   </main>
 
   <script>
-    // Variables globales
-    const SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co/rest/v1/';
-    const SUPABASE_KEY = 'sb_publishable_xs9Uwz_2H0HPv6lqsTXdCw_xCz5ERnt';
-    let supabaseClient = null;
-    let paginaActual = 0;
-    const porPagina = 15;
+  const SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_xs9Uwz_2H0HPV61qsTXdCw_xCz5ERnt';
 
-    if (SUPABASE_URL !== '=https://ozailviyimrjmebrilbp.supabase.co/rest/v1/') {
-      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  let paginaActual = 0;
+  const porPagina = 15;
+
+  async function cargarPedidos() {
+    const estado = document.getElementById('select-estado').value;
+    const busqueda = document.getElementById('input-search').value.trim();
+
+    let query = supabaseClient
+      .from('pedidos')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
+
+    if (estado !== 'todos') {
+      query = query.eq('estado', estado);
     }
 
-    async function cargarPedidos() {
-      if (!supabaseClient) return;
-
-      const estado = document.getElementById('select-estado').value;
-      const busqueda = document.getElementById('input-search').value.trim();
-
-      let query = supabaseClient
-        .from('pedidos')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
-
-      if (estado !== 'todos') {
-        query = query.eq('estado', estado);
-      }
-
-      if (busqueda) {
-        query = query.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
-      }
-
-      const { data, count, error } = await query;
-
-      if (error) {
-        console.error('Error cargando pedidos:', error);
-        return;
-      }
-
-      renderTabla(data);
-      actualizarPaginacion(count);
-      calcularMetricas();
+    if (busqueda) {
+      query = query.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
     }
 
-    function renderTabla(pedidos) {
-      const tbody = document.getElementById('pedidos-body');
-      tbody.innerHTML = '';
+    const { data, count, error } = await query;
 
-      if (!pedidos || pedidos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">No se encontraron pedidos.</td></tr>`;
-        return;
-      }
-
-      pedidos.forEach(p => {
-        const fecha = new Date(p.created_at).toLocaleString('es-CO');
-        const badgeColor = getBadgeColor(p.estado || 'pendiente');
-
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-750 transition">
-            <td class="p-4 text-xs text-slate-400 whitespace-nowrap">${fecha}</td>
-            <td class="p-4">
-              <div class="font-medium text-white">${p.cliente_nombre || 'Cliente'}</div>
-              <div class="text-xs text-slate-400">${p.cliente_telefono || ''}</div>
-            </td>
-            <td class="p-4 max-w-xs truncate text-slate-300" title="${p.items}">${p.items || 'Sin detalle'}</td>
-            <td class="p-4 max-w-xs truncate text-slate-300" title="${p.direccion}">${p.direccion || 'Sin dirección'}</td>
-            <td class="p-4 font-bold text-emerald-400">$${(p.total || 0).toLocaleString()}</td>
-            <td class="p-4 text-center">
-              <select onchange="actualizarEstado('${p.id}', this.value)" class="text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeColor} bg-slate-900 cursor-pointer focus:outline-none">
-                <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>🟡 Pendiente</option>
-                <option value="preparando" ${p.estado === 'preparando' ? 'selected' : ''}>🟠 Preparando</option>
-                <option value="en_camino" ${p.estado === 'en_camino' ? 'selected' : ''}>🔵 En Camino</option>
-                <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>🟢 Entregado</option>
-                <option value="cancelado" ${p.estado === 'cancelado' ? 'selected' : ''}>🔴 Cancelado</option>
-              </select>
-            </td>
-          </tr>
-        `;
-      });
+    if (error) {
+      console.error('Error cargando pedidos:', error);
+      document.getElementById('pedidos-body').innerHTML = `<tr><td colspan="6" class="text-center p-8 text-rose-400">Error: ${error.message}</td></tr>`;
+      return;
     }
 
-    async function actualizarEstado(id, nuevoEstado) {
-      if (!supabaseClient) return;
-      await supabaseClient.from('pedidos').update({ estado: nuevoEstado }).eq('id', id);
-      cargarPedidos();
+    renderTabla(data);
+    actualizarPaginacion(count);
+    calcularMetricas();
+  }
+
+  function renderTabla(pedidos) {
+    const tbody = document.getElementById('pedidos-body');
+    tbody.innerHTML = '';
+
+    if (!pedidos || pedidos.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">No hay pedidos registrados aún.</td></tr>`;
+      return;
     }
 
-    function getBadgeColor(estado) {
-      switch (estado) {
-        case 'pendiente': return 'text-amber-400 border-amber-800';
-        case 'preparando': return 'text-orange-400 border-orange-800';
-        case 'en_camino': return 'text-blue-400 border-blue-800';
-        case 'entregado': return 'text-emerald-400 border-emerald-800';
-        case 'cancelado': return 'text-rose-400 border-rose-800';
-        default: return 'text-slate-400 border-slate-700';
-      }
-    }
+    pedidos.forEach(p => {
+      const fecha = new Date(p.created_at).toLocaleString('es-CO');
+      const badgeColor = getBadgeColor(p.estado || 'pendiente');
 
-    async function calcularMetricas() {
-      if (!supabaseClient) return;
-      const { data } = await supabaseClient.from('pedidos').select('total, estado');
-      if (data) {
-        document.getElementById('total-pedidos-count').innerText = data.length;
-        const totalVentas = data.reduce((sum, p) => sum + (p.total || 0), 0);
-        document.getElementById('total-ventas-sum').innerText = `$${totalVentas.toLocaleString()}`;
-        const pendientes = data.filter(p => p.estado === 'pendiente').length;
-        document.getElementById('total-pendientes-count').innerText = pendientes;
-      }
-    }
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-750 transition">
+          <td class="p-4 text-xs text-slate-400 whitespace-nowrap">${fecha}</td>
+          <td class="p-4">
+            <div class="font-medium text-white">${p.cliente_nombre || 'Cliente'}</div>
+            <div class="text-xs text-slate-400">${p.cliente_telefono || ''}</div>
+          </td>
+          <td class="p-4 max-w-xs truncate text-slate-300" title="${p.items}">${p.items || 'Sin detalle'}</td>
+          <td class="p-4 max-w-xs truncate text-slate-300" title="${p.direccion}">${p.direccion || 'Sin dirección'}</td>
+          <td class="p-4 font-bold text-emerald-400">$${(p.total || 0).toLocaleString()}</td>
+          <td class="p-4 text-center">
+            <select onchange="actualizarEstado('${p.id}', this.value)" class="text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeColor} bg-slate-900 cursor-pointer focus:outline-none">
+              <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>🟡 Pendiente</option>
+              <option value="preparando" ${p.estado === 'preparando' ? 'selected' : ''}>🟠 Preparando</option>
+              <option value="en_camino" ${p.estado === 'en_camino' ? 'selected' : ''}>🔵 En Camino</option>
+              <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>🟢 Entregado</option>
+              <option value="cancelado" ${p.estado === 'cancelado' ? 'selected' : ''}>🔴 Cancelado</option>
+            </select>
+          </td>
+        </tr>
+      `;
+    });
+  }
 
-    function cambiarPagina(delta) {
-      paginaActual += delta;
-      if (paginaActual < 0) paginaActual = 0;
-      cargarPedidos();
-    }
+  async function actualizarEstado(id, nuevoEstado) {
+    await supabaseClient.from('pedidos').update({ estado: nuevoEstado }).eq('id', id);
+    cargarPedidos();
+  }
 
-    function actualizarPaginacion(totalCount) {
-      document.getElementById('page-info').innerText = `Página ${paginaActual + 1} de ${Math.ceil(totalCount / porPagina) || 1}`;
-      document.getElementById('btn-prev').disabled = paginaActual === 0;
-      document.getElementById('btn-next').disabled = (paginaActual + 1) * porPagina >= totalCount;
+  function getBadgeColor(estado) {
+    switch (estado) {
+      case 'pendiente': return 'text-amber-400 border-amber-800';
+      case 'preparando': return 'text-orange-400 border-orange-800';
+      case 'en_camino': return 'text-blue-400 border-blue-800';
+      case 'entregado': return 'text-emerald-400 border-emerald-800';
+      case 'cancelado': return 'text-rose-400 border-rose-800';
+      default: return 'text-slate-400 border-slate-700';
     }
+  }
 
-    document.getElementById('input-search').addEventListener('input', () => { paginaActual = 0; cargarPedidos(); });
-    document.getElementById('select-estado').addEventListener('change', () => { paginaActual = 0; cargarPedidos(); });
-
-    // Escucha en Realtime para actualizar automáticamente cuando entre un pedido nuevo
-    if (supabaseClient) {
-      cargarPedidos();
-      supabaseClient
-        .channel('schema-db-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => cargarPedidos())
-        .subscribe();
+  async function calcularMetricas() {
+    const { data } = await supabaseClient.from('pedidos').select('total, estado');
+    if (data) {
+      document.getElementById('total-pedidos-count').innerText = data.length;
+      const totalVentas = data.reduce((sum, p) => sum + (p.total || 0), 0);
+      document.getElementById('total-ventas-sum').innerText = `$${totalVentas.toLocaleString()}`;
+      const pendientes = data.filter(p => p.estado === 'pendiente').length;
+      document.getElementById('total-pendientes-count').innerText = pendientes;
     }
-  </script>
+  }
+
+  function cambiarPagina(delta) {
+    paginaActual += delta;
+    if (paginaActual < 0) paginaActual = 0;
+    cargarPedidos();
+  }
+
+  function actualizarPaginacion(totalCount) {
+    document.getElementById('page-info').innerText = `Página ${paginaActual + 1} de ${Math.ceil(totalCount / porPagina) || 1}`;
+    document.getElementById('btn-prev').disabled = paginaActual === 0;
+    document.getElementById('btn-next').disabled = (paginaActual + 1) * porPagina >= totalCount;
+  }
+
+  document.getElementById('input-search').addEventListener('input', () => { paginaActual = 0; cargarPedidos(); });
+  document.getElementById('select-estado').addEventListener('change', () => { paginaActual = 0; cargarPedidos(); });
+
+  cargarPedidos();
+</script>
 </body>
 </html>
