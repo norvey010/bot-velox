@@ -1,5 +1,6 @@
 const axios = require('axios');
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
@@ -43,6 +44,11 @@ Pago: {Método}
 
 
 // Ruta principal del servidor
+
+// Ruta para servir el Panel de Control
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
 app.get('/', (req, res) => {
     res.send('¡El bot de Velox está activo y funcionando!');
 });
