@@ -191,7 +191,7 @@ historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
         
     
     } catch (error) {
-        console.error("Error en el webhook:", error);
+        console.error("Error en el webhook:", JSON.stringify(error.response?.data || error.message, null, 2));
     
     }
 });
