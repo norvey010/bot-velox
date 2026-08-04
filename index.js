@@ -87,6 +87,24 @@ app.get('/webhook', (req, res) => {
 });
 
 // 2. Ruta para recibir los mensajes de WhatsApp
+// Funciones para soporte Multi-Restaurante
+async function obtenerRestaurante(phoneNumberId) {
+    const { data: restaurante } = await supabase
+        .from('restaurantes')
+        .select('*')
+        .eq('phone_number_id', phoneNumberId)
+        .single();
+    return restaurante;
+}
+
+async function obtenerMenu(restauranteId) {
+    const { data: productos } = await supabase
+        .from('productos')
+        .select('nombre, descripcion, precio')
+        .eq('restaurante_id', restauranteId)
+        .eq('disponible', true);
+    return productos || [];
+}
 app.post('/webhook', async (req, res) => {
     res.sendStatus(200);
     try {
@@ -96,6 +114,7 @@ app.post('/webhook', async (req, res) => {
             const entry = body.entry?.[0];
             const changes = entry?.changes?.[0];
             const value = changes?.value;
+            const phoneNumberId = value?.metadata?.phone_number_id;
             const message = value?.messages?.[0];
 
             if (message) {
