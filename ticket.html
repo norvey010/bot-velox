@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comanda de Cocina - Velox</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            width: 280px; /* Ancho estándar de tira de papel de 58mm/80mm */
+            margin: 0 auto;
+            padding: 10px;
+            color: #000;
+            background: #fff;
+        }
+        .text-center { text-align: center; }
+        .bold { font-weight: bold; }
+        .line { border-bottom: 1px dashed #000; margin: 8px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        td, th { text-align: left; vertical-align: top; padding: 2px 0; }
+        .total { font-size: 16px; margin-top: 10px; }
+        .btn-print {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #25D366;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        @media print {
+            .btn-print { display: none; } /* Ocultar el botón al imprimir */
+            body { width: 100%; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR COMANDA</button>
+
+    <div class="text-center">
+        <h2 style="margin:0;">VELOX ORDERS</h2>
+        <p style="margin:2px 0; font-size: 12px;">Comanda de Cocina</p>
+    </div>
+
+    <div class="line"></div>
+
+    <div style="font-size: 12px;">
+        <p style="margin: 2px 0;"><strong>FECHA:</strong> <span id="ticket-fecha">--/--/----</span></p>
+        <p style="margin: 2px 0;"><strong>CLIENTE:</strong> <span id="ticket-cliente">Cargando...</span></p>
+        <p style="margin: 2px 0;"><strong>TEL:</strong> <span id="ticket-tel">--</span></p>
+        <p style="margin: 2px 0;"><strong>DIR:</strong> <span id="ticket-dir">--</span></p>
+    </div>
+
+    <div class="line"></div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>CANT/PRODUCTO</th>
+                <th style="text-align: right;">VALOR</th>
+            </tr>
+        </thead>
+        <tbody id="ticket-items">
+            <!-- Productos dinámicos -->
+        </tbody>
+    </table>
+
+    <div class="line"></div>
+
+    <div class="total bold text-center">
+        TOTAL: $<span id="ticket-total">0</span>
+    </div>
+    <div style="font-size: 11px; text-align: center; margin-top: 4px;">
+        PAGO: <span id="ticket-pago">Nequi / Efectivo</span>
+    </div>
+
+    <div class="line"></div>
+    <p class="text-center" style="font-size: 10px; margin: 0;">-- Sistema Velox Automations --</p>
+
+    <script>
+        // Cargar datos de la URL o LocalStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        document.getElementById('ticket-fecha').innerText = new Date().toLocaleString('es-CO');
+        document.getElementById('ticket-cliente').innerText = urlParams.get('cliente') || 'Cliente General';
+        document.getElementById('ticket-tel').innerText = urlParams.get('telefono') || 'N/A';
+        document.getElementById('ticket-dir').innerText = urlParams.get('direccion') || 'Recoge en Local';
+        document.getElementById('ticket-total').innerText = urlParams.get('total') || '0';
+        document.getElementById('ticket-pago').innerText = urlParams.get('pago') || 'Pendiente';
+
+        // Lanzar la ventana de impresión automáticamente al abrir en celular/PC
+        window.onload = () => {
+            setTimeout(() => {
+                // window.print(); // Descomentar si quieres disparo de impresión 100% automático
+            }, 500);
+        };
+    </script>
+</body>
+</html>
