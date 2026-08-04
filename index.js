@@ -26,7 +26,7 @@ REGLAS DE ATENCIÓN:
 
 2. SI PREGUNTA POR EL MENÚ O QUIERE PEDIR:
    - Salúdalo con amabilidad y dale nuestro link del Menú Digital interactivo:
-     👉 https://bot-velox-production.uprailway.app/menu.html
+     👉 https://bot-velox-production.up.railway.app/menu.html
    - Si insiste en pedir por texto, toma su orden con gusto.
 
 FORMATO FINAL DE ORDEN:
