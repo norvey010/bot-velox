@@ -11,6 +11,7 @@ const supabaseKey = (process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY |
 const supabase = createClient(supabaseUrl, supabaseKey);
 const app = express();
 app.use(express.json());
+app.use(express.static(__dirname));
 const historiales = {};
 const PORT = process.env.PORT || 3000;
 const SYSTEM_PROMPT = `
