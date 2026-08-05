@@ -102,6 +102,24 @@
   let paginaActual = 0;
   const porPagina = 15;
 
+  function imprimirTicketAutomatico(pedido) {
+    let iframe = document.getElementById('iframe-impresora');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'iframe-impresora';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+    }
+    
+    // Manda los datos exactos del pedido a ticket.html
+    const url = `ticket.html?cliente=${encodeURIComponent(pedido.cliente_nombre || '')}` +
+                `&tel=${encodeURIComponent(pedido.cliente_telefono || '')}` +
+                `&dir=${encodeURIComponent(pedido.cliente_direccion || '')}` +
+                `&total=${pedido.total || 0}` +
+                `&pago=${encodeURIComponent(pedido.metodo_pago || '')}`;
+
+    iframe.src = url;
+}
   async function cargarPedidos() {
     const estado = document.getElementById('select-estado').value;
     const busqueda = document.getElementById('input-search').value.trim();
@@ -164,6 +182,9 @@
               <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>🟢 Entregado</option>
               <option value="cancelado" ${p.estado === 'cancelado' ? 'selected' : ''}>🔴 Cancelado</option>
             </select>
+            <button onclick="imprimirTicketAutomatico(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="ml-2 bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-xs">
+    🖨️ Imprimir
+</button>
           </td>
         </tr>
       `;
@@ -202,6 +223,35 @@
     if (paginaActual < 0) paginaActual = 0;
     cargarPedidos();
   }
+
+  // Función para disparar la impresión mediante un iframe invisible
+function imprimirTicketAutomatico(p) {
+    let iframe = document.getElementById('iframe-impresora');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'iframe-impresora';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+    }
+    
+    // Manda los datos del pedido a ticket.html
+    const url = `ticket.html?cliente=${encodeURIComponent(p.cliente_nombre || '')}` +
+                `&tel=${encodeURIComponent(p.cliente_telefono || '')}` +
+                `&dir=${encodeURIComponent(p.cliente_direccion || '')}` +
+                `&total=${p.total || 0}` +
+                `&pago=${encodeURIComponent(p.metodo_pago || '')}`;
+
+    iframe.src = url;
+}
+
+// Escuchar nuevos pedidos en tiempo real con Supabase
+supabaseClient
+    .channel('pedidos-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, payload => {
+        cargarPedidos(); // Recarga la tabla en pantalla
+        imprimirTicketAutomatico(payload.new); // Dispara la impresión automática
+    })
+    .subscribe();
 
   function actualizarPaginacion(totalCount) {
     document.getElementById('page-info').innerText = `Página ${paginaActual + 1} de ${Math.ceil(totalCount / porPagina) || 1}`;
