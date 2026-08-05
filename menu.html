@@ -22,7 +22,7 @@
 
   <!-- CATÁLOGOS Y PRODUCTOS -->
   <main class="max-w-md mx-auto p-4 space-y-4" id="contenedor-productos">
-    <!-- Se genera dinámicamente desde Supabase -->
+    <p class="text-center text-slate-500 py-8 text-sm">Cargando catálogo...</p>
   </main>
 
   <!-- BARRA DE CARRITO FLOTANTE -->
@@ -32,7 +32,7 @@
         <span id="cantidad-items" class="bg-emerald-500 text-slate-950 font-bold text-xs px-2.5 py-1 rounded-full">0</span>
         <span id="total-precio" class="text-white font-bold text-lg ml-2">$0</span>
       </div>
-      <button onclick="enviarPedidoWhatsApp()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-5 py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20 text-sm">
+      <button class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-5 py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20 text-sm">
         Enviar Pedido ➔
       </button>
     </div>
@@ -40,7 +40,7 @@
 
   <script>
     const SUPABASE_URL = 'https://ozailviyimrjmeprilbp.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96YWlsdml5aW1yam1lcHJpbGJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg1Mjc3NDMsImV4cCI6MjA1NDEwMzc0M30.40c4JtVb3E2Q3_L7Xh7p0Jq3M1B2K9L3N1P2Q3R4S5T'; // Tu anon key existente
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96YWlsdml5aW1yam1lcHJpbGJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg1Mjc3NDMsImV4cCI6MjA1NDEwMzc0M30.40c4JtVb3E2Q3_L7Xh7p0Jq3M1B2K9L3N1P2Q3R4S5T';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -49,30 +49,42 @@
     let carrito = [];
 
     async function cargarMenu() {
-      // 1. Cargar restaurante
-      const { data: rest } = await supabaseClient
-        .from('restaurantes')
-        .select('*')
-        .eq('slug', restauranteSlug)
-        .single();
+      try {
+        // 1. Cargar restaurante por slug
+        const { data: rest, error: errRest } = await supabaseClient
+          .from('restaurantes')
+          .select('*')
+          .eq('slug', restauranteSlug)
+          .maybeSingle();
 
-      if (rest) {
-        document.getElementById('nombre-restaurante').innerText = rest.nombre;
-        if(rest.logo_url) document.getElementById('logo-restaurante').src = rest.logo_url;
-      } else {
-        document.getElementById('nombre-restaurante').innerText = "Restaurante Velox";
+        if (rest) {
+          document.getElementById('nombre-restaurante').innerText = rest.nombre;
+          if (rest.logo_url) document.getElementById('logo-restaurante').src = rest.logo_url;
+        } else {
+          document.getElementById('nombre-restaurante').innerText = "Velox Burger";
+        }
+
+        // 2. Cargar productos (por restaurante_id si existe, o todos si es prueba)
+        let query = supabaseClient.from('productos').select('*');
+        if (rest && rest.id) {
+          query = query.eq('restaurante_id', rest.id);
+        }
+
+        const { data: productos, error: errProd } = await query;
+
+        if (errProd) {
+          console.error("Error cargando productos:", errProd);
+        }
+
+        renderizarProductos(productos || []);
+      } catch (err) {
+        console.error("Error general:", err);
       }
-
-      // 2. Cargar productos
-      const query = rest ? supabaseClient.from('productos').select('*').eq('restaurante_id', rest.id) : supabaseClient.from('productos').select('*');
-      const { data: productos } = await query;
-
-      renderizarProductos(productos || []);
     }
 
     function renderizarProductos(productos) {
       const contenedor = document.getElementById('contenedor-productos');
-      if (productos.length === 0) {
+      if (!productos || productos.length === 0) {
         contenedor.innerHTML = `<p class="text-center text-slate-500 py-8 text-sm">No hay productos disponibles por ahora.</p>`;
         return;
       }
