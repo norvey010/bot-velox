@@ -49,38 +49,38 @@
     let carrito = [];
 
     async function cargarMenu() {
-      try {
-        // 1. Cargar restaurante por slug
+    try {
+        // 1. Cargar restaurante por ID
         const { data: rest, error: errRest } = await supabaseClient
-          .from('restaurantes')
-          .select('*')
-          .eq('slug', restauranteSlug)
-          .maybeSingle();
+            .from('restaurantes')
+            .select('*')
+            .eq('id', 1)
+            .maybeSingle();
 
         if (rest) {
-          document.getElementById('nombre-restaurante').innerText = rest.nombre;
-          if (rest.logo_url) document.getElementById('logo-restaurante').src = rest.logo_url;
-        } else {
-          document.getElementById('nombre-restaurante').innerText = "Velox Burger";
+            document.getElementById('nombre-restaurante').innerText = rest.nombre;
+            if (rest.logo_url) {
+                document.getElementById('logo-restaurante').src = rest.logo_url;
+            }
         }
 
-        // 2. Cargar productos (por restaurante_id si existe, o todos si es prueba)
-        let query = supabaseClient.from('productos').select('*');
-        if (rest && rest.id) {
-          query = query.eq('restaurante_id', rest.id);
-        }
-
-        const { data: productos, error: errProd } = await query;
+        // 2. Cargar productos del restaurante 1
+        const { data: productos, error: errProd } = await supabaseClient
+            .from('productos')
+            .select('*')
+            .eq('restaurante_id', 1);
 
         if (errProd) {
-          console.error("Error cargando productos:", errProd);
+            console.error("Error cargando productos:", errProd);
+            return;
         }
 
         renderizarProductos(productos || []);
-      } catch (err) {
+
+    } catch (err) {
         console.error("Error general:", err);
-      }
     }
+}
 
     function renderizarProductos(productos) {
       const contenedor = document.getElementById('contenedor-productos');
