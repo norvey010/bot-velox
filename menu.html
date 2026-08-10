@@ -109,10 +109,10 @@
     try {
         // 1. Traer el teléfono del restaurante desde Supabase usando el slug
         const { data: restData } = await supabaseApp
-            .from('restaurantes')
-            .select('id, phone_number_id')
-            .eq('slug', clienteSlug)
-            .single();
+    .from('restaurantes')
+    .select('id, phone_number_id')
+    .eq('slug', clienteSlug)
+    .single();
 
         if (restData && restData.phone_number_id) {
             numeroWhatsAppRestaurante = restData.phone_number_id;
