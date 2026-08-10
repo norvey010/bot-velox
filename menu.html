@@ -98,22 +98,29 @@
         const clienteSlug = urlParams.get('r') || 'demo';
         let cart = [];
 
-        async function cargarMenu() {
+       async function cargarMenu() {
             const contenedor = document.getElementById('contenedor-menu');
             
             if (!supabaseApp) {
-                contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">Conectando con la base de datos...</p>';
+                contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">Conectando...</p>';
                 return;
             }
 
             try {
+                // CAMBIAMOS EL FILTRO AQUÍ:
                 const { data: productos, error } = await supabaseApp
                     .from('productos')
                     .select('*')
-                    .eq('restaurante_slug', clienteSlug);
+                    .eq('restaurante_id', 1); // <--- CAMBIA ESTO
 
-                if (error || !productos || productos.length === 0) {
-                    contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">No hay productos disponibles por ahora.</p>';
+                if (error) {
+                    console.error('Error de Supabase:', error);
+                    contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error en la base de datos.</p>';
+                    return;
+                }
+                
+                if (!productos || productos.length === 0) {
+                    contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">No hay productos.</p>';
                     return;
                 }
 
@@ -133,8 +140,7 @@
                     </div>
                 `).join('');
             } catch (err) {
-                console.error('Error al cargar productos:', err);
-                contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">Error al cargar el menú. Intenta recargar.</p>';
+                console.error('Error al cargar:', err);
             }
         }
 
