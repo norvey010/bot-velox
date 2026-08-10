@@ -116,9 +116,9 @@
             <input type="number" id="prod-precio" required placeholder="Ej: 22000" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">URL de Imagen</label>
-            <input type="url" id="prod-imagen" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
-          </div>
+  <label class="block text-xs text-slate-400 mb-1">Imagen del Producto (Galería/Cámara)</label>
+  <input type="file" id="prod-imagen-file" accept="image/*" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-300 focus:border-emerald-500 focus:outline-none file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:bg-slate-700 file:text-white hover:file:bg-slate-600">
+</div>
           <div class="md:col-span-3">
             <label class="block text-xs text-slate-400 mb-1">Descripción</label>
             <input type="text" id="prod-descripcion" placeholder="Ej: Carne 180g, queso cheddar, tocineta y salsa especial" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
@@ -320,45 +320,58 @@
   }
 
   async function guardarProducto(event) {
-    event.preventDefault();
-    const id = document.getElementById('prod-id').value;
-    const payload = {
-      nombre: document.getElementById('prod-nombre').value,
-      precio: parseFloat(document.getElementById('prod-precio').value),
-      descripcion: document.getElementById('prod-descripcion').value,
-      imagen_url: document.getElementById('prod-imagen').value,
-      restaurante_id: RESTAURANTE_ID
-    };
+  event.preventDefault();
+  const id = document.getElementById('prod-id').value;
+  const fileInput = document.getElementById('prod-imagen-file');
+  let urlImagenFinal = '';
 
-    if (id) {
-      await supabaseClient.from('productos').update(payload).eq('id', id);
-    } else {
-      await supabaseClient.from('productos').insert([payload]);
+  // 1. Subir archivo a Supabase Storage si se seleccionó una foto
+  if (fileInput && fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `restaurante_${RESTAURANTE_ID}/${fileName}`;
+
+    const { data: uploadData, error: uploadError } = await supabaseClient
+      .storage
+      .from('productos')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      alert('Error al subir la imagen: ' + uploadError.message);
+      return;
     }
 
-    limpiarFormProducto();
-    cargarProductos();
+    const { data: urlData } = supabaseClient
+      .storage
+      .from('productos')
+      .getPublicUrl(filePath);
+
+    urlImagenFinal = urlData.publicUrl;
   }
 
-  function prepararEdicionProducto(prod) {
-    document.getElementById('prod-id').value = prod.id;
-    document.getElementById('prod-nombre').value = prod.nombre;
-    document.getElementById('prod-precio').value = prod.precio;
-    document.getElementById('prod-descripcion').value = prod.descripcion || '';
-    document.getElementById('prod-imagen').value = prod.imagen_url || '';
+  // 2. Armar objeto para la base de datos
+  const payload = {
+    nombre: document.getElementById('prod-nombre').value,
+    precio: parseFloat(document.getElementById('prod-precio').value),
+    descripcion: document.getElementById('prod-descripcion').value,
+    restaurante_id: RESTAURANTE_ID
+  };
+
+  if (urlImagenFinal) {
+    payload.imagen_url = urlImagenFinal;
   }
 
-  function limpiarFormProducto() {
-    document.getElementById('prod-id').value = '';
-    document.getElementById('form-producto').reset();
+  // 3. Guardar en Supabase
+  if (id) {
+    await supabaseClient.from('productos').update(payload).eq('id', id);
+  } else {
+    await supabaseClient.from('productos').insert([payload]);
   }
 
-  async function eliminarProducto(id) {
-    if (confirm('¿Seguro que deseas eliminar este producto del menú?')) {
-      await supabaseClient.from('productos').delete().eq('id', id);
-      cargarProductos();
-    }
-  }
+  limpiarFormProducto();
+  cargarProductos();
+}
 
   // --- MÓDULO CONFIGURACIÓN DEL NEGOCIO ---
   async function cargarConfiguracion() {
