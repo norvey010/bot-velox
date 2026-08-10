@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Velox Bot - Panel de Control</title>
-  <!-- Tailwind CSS CDN para un diseño moderno -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,8 +15,16 @@
   <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
     <div class="flex items-center gap-3">
       <div class="w-3 h-3 bg-emerald-500 rounded-full animate-ping"></div>
-      <h1 class="text-xl font-bold tracking-wide text-emerald-400">⚡ VELOX BOT <span class="text-xs font-normal text-slate-400">| Panel de Pedidos</span></h1>
+      <h1 class="text-xl font-bold tracking-wide text-emerald-400">⚡ VELOX BOT <span class="text-xs font-normal text-slate-400">| Panel de Administración</span></h1>
     </div>
+    
+    <!-- Pestañas de Navegación -->
+    <nav class="flex gap-2 bg-slate-900 p-1 rounded-lg border border-slate-700">
+      <button onclick="cambiarSeccion('pedidos')" id="tab-pedidos" class="px-4 py-1.5 rounded-md text-xs font-medium bg-emerald-600 text-white transition">📦 Pedidos</button>
+      <button onclick="cambiarSeccion('productos')" id="tab-productos" class="px-4 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition">🍔 Productos</button>
+      <button onclick="cambiarSeccion('configuracion')" id="tab-configuracion" class="px-4 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition">⚙️ Configuración</button>
+    </nav>
+
     <div class="flex items-center gap-4 text-sm text-slate-300">
       <span id="connection-status" class="bg-emerald-950 text-emerald-400 px-3 py-1 rounded-full border border-emerald-800 text-xs">● Conectado en vivo</span>
     </div>
@@ -24,73 +32,148 @@
 
   <main class="max-w-7xl mx-auto p-6 space-y-6">
 
-    <!-- Tarjetas de Métricas -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
-        <p class="text-xs text-slate-400 font-medium">Pedidos Registrados</p>
-        <h3 id="total-pedidos-count" class="text-3xl font-bold text-white mt-1">0</h3>
-      </div>
-      <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
-        <p class="text-xs text-slate-400 font-medium">Ventas Totales</p>
-        <h3 id="total-ventas-sum" class="text-3xl font-bold text-emerald-400 mt-1">$0</h3>
-      </div>
-      <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
-        <p class="text-xs text-slate-400 font-medium">Pedidos Pendientes</p>
-        <h3 id="total-pendientes-count" class="text-3xl font-bold text-amber-400 mt-1">0</h3>
-      </div>
-    </div>
-
-    <!-- Barra de Filtros y Búsqueda -->
-    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col md:flex-row gap-4 items-center justify-between">
-      <div class="w-full md:w-1/3">
-        <input type="text" id="input-search" placeholder="🔍 Buscar por teléfono o cliente..." 
-               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-      </div>
-      <div class="flex items-center gap-3 w-full md:w-auto">
-        <select id="select-estado" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-          <option value="todos">Todos los Estados</option>
-          <option value="pendiente">Pendientes 🟡</option>
-          <option value="preparando">En Preparación 🟠</option>
-          <option value="en_camino">En Camino 🔵</option>
-          <option value="entregado">Entregados 🟢</option>
-          <option value="cancelado">Cancelados 🔴</option>
-        </select>
-        <button onclick="cargarPedidos()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm text-white transition">Actualizar</button>
-      </div>
-    </div>
-
-    <!-- Tabla Estructurada para Carga Infinita / Historial -->
-    <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-slate-900/80 text-xs uppercase text-slate-400 border-b border-slate-700">
-              <th class="p-4">Fecha / Hora</th>
-              <th class="p-4">Cliente</th>
-              <th class="p-4">Detalle / Productos</th>
-              <th class="p-4">Dirección</th>
-              <th class="p-4">Total</th>
-              <th class="p-4 text-center">Acciones</th>
-              <th class="p-4 text-center">Estado</th>
-            </tr>
-          </thead>
-          <tbody id="pedidos-body" class="divide-y divide-slate-700/50 text-sm">
-            <tr>
-              <td colspan="7" class="text-center p-8 text-slate-500">...
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Paginador para Soportar Años de Datos -->
-      <div class="p-4 border-t border-slate-700 flex justify-between items-center bg-slate-800">
-        <span id="page-info" class="text-xs text-slate-400">Página 1</span>
-        <div class="flex gap-2">
-          <button id="btn-prev" onclick="cambiarPagina(-1)" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 px-3 py-1 rounded text-xs text-white">Anterior</button>
-          <button id="btn-next" onclick="cambiarPagina(1)" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 px-3 py-1 rounded text-xs text-white">Siguiente</button>
+    <!-- SECCIÓN 1: PEDIDOS -->
+    <section id="sec-pedidos" class="space-y-6">
+      <!-- Tarjetas de Métricas -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
+          <p class="text-xs text-slate-400 font-medium">Pedidos Registrados</p>
+          <h3 id="total-pedidos-count" class="text-3xl font-bold text-white mt-1">0</h3>
+        </div>
+        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
+          <p class="text-xs text-slate-400 font-medium">Ventas Totales</p>
+          <h3 id="total-ventas-sum" class="text-3xl font-bold text-emerald-400 mt-1">$0</h3>
+        </div>
+        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
+          <p class="text-xs text-slate-400 font-medium">Pedidos Pendientes</p>
+          <h3 id="total-pendientes-count" class="text-3xl font-bold text-amber-400 mt-1">0</h3>
         </div>
       </div>
-    </div>
+
+      <!-- Barra de Filtros y Búsqueda -->
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div class="w-full md:w-1/3">
+          <input type="text" id="input-search" placeholder="🔍 Buscar por teléfono o cliente..." 
+                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+        </div>
+        <div class="flex items-center gap-3 w-full md:w-auto">
+          <select id="select-estado" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
+            <option value="todos">Todos los Estados</option>
+            <option value="pendiente">Pendientes 🟡</option>
+            <option value="preparando">En Preparación 🟠</option>
+            <option value="en_camino">En Camino 🔵</option>
+            <option value="entregado">Entregados 🟢</option>
+            <option value="cancelado">Cancelados 🔴</option>
+          </select>
+          <button onclick="cargarPedidos()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm text-white transition">Actualizar</button>
+        </div>
+      </div>
+
+      <!-- Tabla de Pedidos -->
+      <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-900/80 text-xs uppercase text-slate-400 border-b border-slate-700">
+                <th class="p-4">Fecha / Hora</th>
+                <th class="p-4">Cliente</th>
+                <th class="p-4">Detalle / Productos</th>
+                <th class="p-4">Dirección</th>
+                <th class="p-4">Total</th>
+                <th class="p-4 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="pedidos-body" class="divide-y divide-slate-700/50 text-sm">
+              <tr>
+                <td colspan="6" class="text-center p-8 text-slate-500">Cargando pedidos...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="p-4 border-t border-slate-700 flex justify-between items-center bg-slate-800">
+          <span id="page-info" class="text-xs text-slate-400">Página 1</span>
+          <div class="flex gap-2">
+            <button id="btn-prev" onclick="cambiarPagina(-1)" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 px-3 py-1 rounded text-xs text-white">Anterior</button>
+            <button id="btn-next" onclick="cambiarPagina(1)" class="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 px-3 py-1 rounded text-xs text-white">Siguiente</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN 2: GESTIÓN DE PRODUCTOS -->
+    <section id="sec-productos" class="hidden space-y-6">
+      <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg space-y-4">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">➕ Agregar / Editar Producto</h2>
+        <form id="form-producto" onsubmit="guardarProducto(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input type="hidden" id="prod-id">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Nombre del Producto</label>
+            <input type="text" id="prod-nombre" required placeholder="Ej: Hamburguesa Doble" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Precio ($ COP)</label>
+            <input type="number" id="prod-precio" required placeholder="Ej: 22000" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">URL de Imagen</label>
+            <input type="url" id="prod-imagen" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div class="md:col-span-3">
+            <label class="block text-xs text-slate-400 mb-1">Descripción</label>
+            <input type="text" id="prod-descripcion" placeholder="Ej: Carne 180g, queso cheddar, tocineta y salsa especial" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div class="md:col-span-3 flex justify-end gap-2">
+            <button type="button" onclick="limpiarFormProducto()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-white">Cancelar</button>
+            <button type="submit" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-bold text-white">Guardar Producto</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Lista de Productos -->
+      <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
+        <div class="p-4 border-b border-slate-700">
+          <h3 class="font-bold text-white">Menú Actual</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-900/80 text-xs uppercase text-slate-400 border-b border-slate-700">
+                <th class="p-4">Producto</th>
+                <th class="p-4">Descripción</th>
+                <th class="p-4">Precio</th>
+                <th class="p-4 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="productos-body" class="divide-y divide-slate-700/50 text-sm">
+              <tr><td colspan="4" class="text-center p-8 text-slate-500">Cargando menú...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN 3: CONFIGURACIÓN RESTAURANTE -->
+    <section id="sec-configuracion" class="hidden max-w-2xl mx-auto">
+      <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg space-y-4">
+        <h2 class="text-lg font-bold text-white">⚙️ Configuración del Negocio</h2>
+        <form onsubmit="guardarConfiguracion(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Nombre del Restaurante</label>
+            <input type="text" id="conf-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Número de WhatsApp (con código de país sin +)</label>
+            <input type="text" id="conf-phone" required placeholder="573222027893" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Identificador Slug (Enlace)</label>
+            <input type="text" id="conf-slug" disabled class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-500 cursor-not-allowed">
+          </div>
+          <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white">Guardar Cambios</button>
+        </form>
+      </div>
+    </section>
 
   </main>
 
@@ -101,25 +184,26 @@
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   let paginaActual = 0;
   const porPagina = 15;
+  const RESTAURANTE_ID = 1; // ID base asignado al negocio
 
-  function imprimirTicketAutomatico(pedido) {
-    let iframe = document.getElementById('iframe-impresora');
-    if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'iframe-impresora';
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-    }
-    
-    // Manda los datos exactos del pedido a ticket.html
-    const url = `ticket.html?cliente=${encodeURIComponent(pedido.cliente_nombre || '')}` +
-                `&tel=${encodeURIComponent(pedido.cliente_telefono || '')}` +
-                `&dir=${encodeURIComponent(pedido.cliente_direccion || '')}` +
-                `&total=${pedido.total || 0}` +
-                `&pago=${encodeURIComponent(pedido.metodo_pago || '')}`;
+  // --- NAVEGACIÓN ENTRE PESTAÑAS ---
+  function cambiarSeccion(seccion) {
+    document.getElementById('sec-pedidos').classList.add('hidden');
+    document.getElementById('sec-productos').classList.add('hidden');
+    document.getElementById('sec-configuracion').classList.add('hidden');
 
-    iframe.src = url;
-}
+    document.getElementById('tab-pedidos').className = "px-4 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition";
+    document.getElementById('tab-productos').className = "px-4 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition";
+    document.getElementById('tab-configuracion').className = "px-4 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition";
+
+    document.getElementById(`sec-${seccion}`).classList.remove('hidden');
+    document.getElementById(`tab-${seccion}`).className = "px-4 py-1.5 rounded-md text-xs font-medium bg-emerald-600 text-white transition";
+
+    if (seccion === 'productos') cargarProductos();
+    if (seccion === 'configuracion') cargarConfiguracion();
+  }
+
+  // --- MÓDULO PEDIDOS ---
   async function cargarPedidos() {
     const estado = document.getElementById('select-estado').value;
     const busqueda = document.getElementById('input-search').value.trim();
@@ -130,33 +214,23 @@
       .order('created_at', { ascending: false })
       .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
 
-    if (estado !== 'todos') {
-      query = query.eq('estado', estado);
-    }
-
-    if (busqueda) {
-      query = query.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
-    }
+    if (estado !== 'todos') query = query.eq('estado', estado);
+    if (busqueda) query = query.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
 
     const { data, count, error } = await query;
+    if (error) return;
 
-    if (error) {
-      console.error('Error cargando pedidos:', error);
-      document.getElementById('pedidos-body').innerHTML = `<tr><td colspan="6" class="text-center p-8 text-rose-400">Error: ${error.message}</td></tr>`;
-      return;
-    }
-
-    renderTabla(data);
+    renderTablaPedidos(data);
     actualizarPaginacion(count);
     calcularMetricas();
   }
 
-  function renderTabla(pedidos) {
+  function renderTablaPedidos(pedidos) {
     const tbody = document.getElementById('pedidos-body');
     tbody.innerHTML = '';
 
     if (!pedidos || pedidos.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">No hay pedidos registrados aún.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">No hay pedidos registrados.</td></tr>`;
       return;
     }
 
@@ -174,7 +248,7 @@
           <td class="p-4 max-w-xs truncate text-slate-300" title="${p.items}">${p.items || 'Sin detalle'}</td>
           <td class="p-4 max-w-xs truncate text-slate-300" title="${p.direccion}">${p.direccion || 'Sin dirección'}</td>
           <td class="p-4 font-bold text-emerald-400">$${(p.total || 0).toLocaleString()}</td>
-          <td class="p-4 text-center">
+          <td class="p-4 text-center flex items-center justify-center gap-2">
             <select onchange="actualizarEstado('${p.id}', this.value)" class="text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeColor} bg-slate-900 cursor-pointer focus:outline-none">
               <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>🟡 Pendiente</option>
               <option value="preparando" ${p.estado === 'preparando' ? 'selected' : ''}>🟠 Preparando</option>
@@ -182,9 +256,7 @@
               <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>🟢 Entregado</option>
               <option value="cancelado" ${p.estado === 'cancelado' ? 'selected' : ''}>🔴 Cancelado</option>
             </select>
-            <button onclick="imprimirTicketAutomatico(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="ml-2 bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 rounded text-xs">
-    🖨️ Imprimir
-</button>
+            <button onclick="imprimirTicketAutomatico(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs">🖨️</button>
           </td>
         </tr>
       `;
@@ -213,45 +285,134 @@
       document.getElementById('total-pedidos-count').innerText = data.length;
       const totalVentas = data.reduce((sum, p) => sum + (p.total || 0), 0);
       document.getElementById('total-ventas-sum').innerText = `$${totalVentas.toLocaleString()}`;
-      const pendientes = data.filter(p => p.estado === 'pendiente').length;
-      document.getElementById('total-pendientes-count').innerText = pendientes;
+      document.getElementById('total-pendientes-count').innerText = data.filter(p => p.estado === 'pendiente').length;
     }
   }
+
+  // --- MÓDULO GESTIÓN DE PRODUCTOS ---
+  async function cargarProductos() {
+    const { data, error } = await supabaseClient
+      .from('productos')
+      .select('*')
+      .order('id', { ascending: true });
+
+    const tbody = document.getElementById('productos-body');
+    tbody.innerHTML = '';
+
+    if (error || !data || data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-slate-500">No hay productos registrados en la base de datos.</td></tr>`;
+      return;
+    }
+
+    data.forEach(prod => {
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-750 transition">
+          <td class="p-4 font-bold text-white">${prod.nombre}</td>
+          <td class="p-4 text-xs text-slate-400">${prod.descripcion || 'Sin descripción'}</td>
+          <td class="p-4 font-bold text-emerald-400">$${Number(prod.precio).toLocaleString()}</td>
+          <td class="p-4 text-center space-x-2">
+            <button onclick="prepararEdicionProducto(${JSON.stringify(prod).replace(/"/g, '&quot;')})" class="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded text-xs">✏️ Editar</button>
+            <button onclick="eliminarProducto(${prod.id})" class="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded text-xs">🗑️ Borrar</button>
+          </td>
+        </tr>
+      `;
+    });
+  }
+
+  async function guardarProducto(event) {
+    event.preventDefault();
+    const id = document.getElementById('prod-id').value;
+    const payload = {
+      nombre: document.getElementById('prod-nombre').value,
+      precio: parseFloat(document.getElementById('prod-precio').value),
+      descripcion: document.getElementById('prod-descripcion').value,
+      imagen_url: document.getElementById('prod-imagen').value,
+      restaurante_id: RESTAURANTE_ID
+    };
+
+    if (id) {
+      await supabaseClient.from('productos').update(payload).eq('id', id);
+    } else {
+      await supabaseClient.from('productos').insert([payload]);
+    }
+
+    limpiarFormProducto();
+    cargarProductos();
+  }
+
+  function prepararEdicionProducto(prod) {
+    document.getElementById('prod-id').value = prod.id;
+    document.getElementById('prod-nombre').value = prod.nombre;
+    document.getElementById('prod-precio').value = prod.precio;
+    document.getElementById('prod-descripcion').value = prod.descripcion || '';
+    document.getElementById('prod-imagen').value = prod.imagen_url || '';
+  }
+
+  function limpiarFormProducto() {
+    document.getElementById('prod-id').value = '';
+    document.getElementById('form-producto').reset();
+  }
+
+  async function eliminarProducto(id) {
+    if (confirm('¿Seguro que deseas eliminar este producto del menú?')) {
+      await supabaseClient.from('productos').delete().eq('id', id);
+      cargarProductos();
+    }
+  }
+
+  // --- MÓDULO CONFIGURACIÓN DEL NEGOCIO ---
+  async function cargarConfiguracion() {
+    const { data } = await supabaseClient.from('restaurantes').select('*').eq('id', RESTAURANTE_ID).single();
+    if (data) {
+      document.getElementById('conf-nombre').value = data.nombre || '';
+      document.getElementById('conf-phone').value = data.phone_number_id || '';
+      document.getElementById('conf-slug').value = data.slug || '';
+    }
+  }
+
+  async function guardarConfiguracion(event) {
+    event.preventDefault();
+    const nombre = document.getElementById('conf-nombre').value;
+    const phone = document.getElementById('conf-phone').value;
+
+    await supabaseClient.from('restaurantes').update({
+      nombre: nombre,
+      phone_number_id: phone
+    }).eq('id', RESTAURANTE_ID);
+
+    alert('Configuración actualizada correctamente');
+  }
+
+  // --- IMPRESIÓN Y REALTIME ---
+  function imprimirTicketAutomatico(p) {
+    let iframe = document.getElementById('iframe-impresora');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'iframe-impresora';
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+    }
+    const url = `ticket.html?cliente=${encodeURIComponent(p.cliente_nombre || '')}` +
+                `&tel=${encodeURIComponent(p.cliente_telefono || '')}` +
+                `&dir=${encodeURIComponent(p.cliente_direccion || '')}` +
+                `&total=${p.total || 0}` +
+                `&pago=${encodeURIComponent(p.metodo_pago || '')}`;
+    iframe.src = url;
+  }
+
+  supabaseClient
+    .channel('pedidos-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, payload => {
+      cargarPedidos();
+      imprimirTicketAutomatico(payload.new);
+    })
+    .subscribe();
 
   function cambiarPagina(delta) {
     paginaActual += delta;
     if (paginaActual < 0) paginaActual = 0;
     cargarPedidos();
   }
-
-  // Función para disparar la impresión mediante un iframe invisible
-function imprimirTicketAutomatico(p) {
-    let iframe = document.getElementById('iframe-impresora');
-    if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'iframe-impresora';
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-    }
-    
-    // Manda los datos del pedido a ticket.html
-    const url = `ticket.html?cliente=${encodeURIComponent(p.cliente_nombre || '')}` +
-                `&tel=${encodeURIComponent(p.cliente_telefono || '')}` +
-                `&dir=${encodeURIComponent(p.cliente_direccion || '')}` +
-                `&total=${p.total || 0}` +
-                `&pago=${encodeURIComponent(p.metodo_pago || '')}`;
-
-    iframe.src = url;
-}
-
-// Escuchar nuevos pedidos en tiempo real con Supabase
-supabaseClient
-    .channel('pedidos-realtime')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, payload => {
-        cargarPedidos(); // Recarga la tabla en pantalla
-        imprimirTicketAutomatico(payload.new); // Dispara la impresión automática
-    })
-    .subscribe();
 
   function actualizarPaginacion(totalCount) {
     document.getElementById('page-info').innerText = `Página ${paginaActual + 1} de ${Math.ceil(totalCount / porPagina) || 1}`;
@@ -263,6 +424,6 @@ supabaseClient
   document.getElementById('select-estado').addEventListener('change', () => { paginaActual = 0; cargarPedidos(); });
 
   cargarPedidos();
-</script>
+  </script>
 </body>
 </html>
