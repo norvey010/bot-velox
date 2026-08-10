@@ -22,12 +22,12 @@
         </div>
     </header>
 
-    <!-- CATÁLOGO -->
+    <!-- CATÁLOGO DE PRODUCTOS -->
     <main class="max-w-md mx-auto p-4 space-y-4" id="contenedor-menu">
         <p class="text-center text-slate-400 py-10" id="estado-carga">Cargando catálogo...</p>
     </main>
 
-    <!-- BARRA FLOTANTE CARRITO -->
+    <!-- BARRA FLOTANTE DEL CARRITO -->
     <div id="barra-carrito" class="fixed bottom-4 left-4 right-4 max-w-md mx-auto hidden z-40">
         <button onclick="abrirModalPedido()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 px-5 rounded-2xl shadow-xl flex items-center justify-between">
             <span class="bg-slate-950/20 px-3 py-1 rounded-lg text-sm" id="cant-items">0 ítems</span>
@@ -36,7 +36,7 @@
         </button>
     </div>
 
-    <!-- MODAL DE CONFIRMACIÓN -->
+    <!-- MODAL DE CONFIRMACIÓN DE PEDIDO -->
     <div id="modal-pedido" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100">
             <div class="flex justify-between items-center mb-5 border-b border-slate-800 pb-3">
@@ -82,27 +82,38 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN SUPABASE
         const SUPABASE_URL = 'https://rjmebrilbp.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqbWVicmlsYnAiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczODE0ODcyOSwiZXhwIjoyMDUzNzI0NzI5fQ.ey3-4_4-3-4'; // Clave anon de tu proyecto
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqbWVicmlsYnAiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczODE0ODcyOSwiZXhwIjoyMDUzNzI0NzI5fQ.ey3-4_4-3-4';
+
+        let supabaseApp;
+        try {
+            if (window.supabase && window.supabase.createClient) {
+                supabaseApp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        } catch (e) {
+            console.error('Error inicializando Supabase:', e);
+        }
 
         const urlParams = new URLSearchParams(window.location.search);
         const clienteSlug = urlParams.get('r') || 'demo';
         let cart = [];
 
         async function cargarMenu() {
+            const contenedor = document.getElementById('contenedor-menu');
+            
+            if (!supabaseApp) {
+                contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">Conectando con la base de datos...</p>';
+                return;
+            }
+
             try {
-                const { data: productos, error } = await supabase
+                const { data: productos, error } = await supabaseApp
                     .from('productos')
                     .select('*')
                     .eq('restaurante_slug', clienteSlug);
 
-                const contenedor = document.getElementById('contenedor-menu');
-
                 if (error || !productos || productos.length === 0) {
-                    contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">No se encontraron productos disponibles.</p>';
+                    contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">No hay productos disponibles por ahora.</p>';
                     return;
                 }
 
@@ -122,7 +133,8 @@
                     </div>
                 `).join('');
             } catch (err) {
-                console.error('Error cargando menú:', err);
+                console.error('Error al cargar productos:', err);
+                contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">Error al cargar el menú. Intenta recargar.</p>';
             }
         }
 
@@ -189,15 +201,17 @@
             mensajeWA += "\n💰 *TOTAL A PAGAR:* $" + total.toLocaleString('es-CO');
 
             try {
-                await supabase.from('pedidos').insert([{ 
-                    restaurante_slug: clienteSlug,
-                    direccion: direccion,
-                    metodo_pago: metodoPago,
-                    notas: notas,
-                    items: cart,
-                    total: total,
-                    estado: 'pendiente'
-                }]);
+                if (supabaseApp) {
+                    await supabaseApp.from('pedidos').insert([{ 
+                        restaurante_slug: clienteSlug,
+                        direccion: direccion,
+                        metodo_pago: metodoPago,
+                        notas: notas,
+                        items: cart,
+                        total: total,
+                        estado: 'pendiente'
+                    }]);
+                }
             } catch (err) {
                 console.error('Error insertando pedido:', err);
             }
@@ -209,7 +223,9 @@
             window.open(urlWhatsApp, '_blank');
         }
 
-        cargarMenu();
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(cargarMenu, 500);
+        });
     </script>
 </body>
 </html>
