@@ -95,54 +95,68 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const clienteSlug = urlParams.get('r') || 'demo';
+        let numeroWhatsAppRestaurante = ''; // Se llenará desde Supabase
         let cart = [];
 
        async function cargarMenu() {
-            const contenedor = document.getElementById('contenedor-menu');
-            
-            if (!supabaseApp) {
-                contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">Conectando...</p>';
-                return;
-            }
+    const contenedor = document.getElementById('contenedor-menu');
+    
+    if (!supabaseApp) {
+        contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">Conectando...</p>';
+        return;
+    }
 
-            try {
-                // CAMBIAMOS EL FILTRO AQUÍ:
-                const { data: productos, error } = await supabaseApp
-                    .from('productos')
-                    .select('*')
-                    .eq('restaurante_id', 1); // <--- CAMBIA ESTO
+    try {
+        // 1. Traer el teléfono del restaurante desde Supabase usando el slug
+        const { data: restData } = await supabaseApp
+            .from('restaurantes')
+            .select('id, phone_number_id')
+            .eq('slug', clienteSlug)
+            .single();
 
-                if (error) {
-                    console.error('Error de Supabase:', error);
-                    contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error en la base de datos.</p>';
-                    return;
-                }
-                
-                if (!productos || productos.length === 0) {
-                    contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">No hay productos.</p>';
-                    return;
-                }
-
-                contenedor.innerHTML = productos.map(prod => `
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex gap-4 items-center">
-                        <img src="${prod.imagen_url || 'https://via.placeholder.com/100'}" class="w-20 h-20 object-cover rounded-xl bg-slate-700">
-                        <div class="flex-1">
-                            <h3 class="font-bold text-white">${prod.nombre}</h3>
-                            <p class="text-xs text-slate-400">${prod.descripcion || ''}</p>
-                            <div class="mt-2 flex justify-between items-center">
-                                <span class="font-bold text-emerald-400">$${Number(prod.precio).toLocaleString('es-CO')}</span>
-                                <button onclick="agregarAlCarrito('${prod.id}', '${prod.nombre}', ${prod.precio})" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-3 py-1 rounded-lg text-sm">
-                                    + Agregar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (err) {
-                console.error('Error al cargar:', err);
-            }
+        if (restData && restData.phone_number_id) {
+            numeroWhatsAppRestaurante = restData.phone_number_id;
         }
 
+        const restaurantId = restData ? restData.id : 1;
+
+        // 2. Traer productos filtrados
+        const { data: productos, error } = await supabaseApp
+            .from('productos')
+            .select('*')
+            .eq('restaurante_id', restaurantId);
+
+        if (error) {
+            console.error('Error cargando productos:', error);
+            contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error en la base de datos.</p>';
+            return;
+        }
+        
+        if (!productos || productos.length === 0) {
+            contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">No hay productos disponibles por ahora.</p>';
+            return;
+        }
+
+        contenedor.innerHTML = productos.map(prod => `
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex gap-4 items-center">
+                <img src="${prod.imagen_url || 'https://via.placeholder.com/100'}" class="w-20 h-20 object-cover rounded-xl bg-slate-700">
+                <div class="flex-1">
+                    <h3 class="font-bold text-white">${prod.nombre}</h3>
+                    <p class="text-xs text-slate-400">${prod.descripcion || ''}</p>
+                    <div class="mt-2 flex justify-between items-center">
+                        <span class="font-bold text-emerald-400">$${Number(prod.precio).toLocaleString('es-CO')}</span>
+                        <button onclick="agregarAlCarrito('${prod.id}', '${prod.nombre}', ${prod.precio})" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-3 py-1 rounded-lg text-sm">
+                            + Agregar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (err) {
+        console.error('Error al cargar:', err);
+    }
+}
         function agregarAlCarrito(id, nombre, precio) {
             const itemExistente = cart.find(i => i.id === id);
             if (itemExistente) {
@@ -221,8 +235,8 @@
                 console.error('Error insertando pedido:', err);
             }
 
-            const numeroRestaurante = '573000000000';
-            const urlWhatsApp = "https://wa.me/" + numeroRestaurante + "?text=" + encodeURIComponent(mensajeWA);
+            
+            const urlWhatsApp = "https://wa.me/" + numeroWhatsAppRestaurante + "?text=" + encodeURIComponent(mensajeWA);
 
             cerrarModalPedido();
             window.open(urlWhatsApp, '_blank');
