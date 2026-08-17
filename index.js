@@ -29,6 +29,14 @@ REGLAS DE ATENCIÓN:
      👉 https://bot-velox-production.up.railway.app/menu.html
    - Si insiste en pedir por texto, toma su orden con gusto.
 
+3. SI EL CLIENTE HACE UNA ACLARACIÓN O NOTA SOBRE SU PEDIDO (ej: con hielo, sin cebolla):
+   - Confirma de forma amable que tomaste nota.
+   - Incluye al final de tu mensaje este bloque exacto:
+
+[ACTUALIZAR_PEDIDO]
+Notas: {Escribe aquí el detalle aclarado por el cliente}
+[/ACTUALIZAR_PEDIDO]
+
 FORMATO FINAL DE ORDEN:
 Al confirmar el pedido, incluye al final de tu mensaje este formato exacto:
 
@@ -187,6 +195,41 @@ historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
       console.error('❌ Error al guardar en Supabase:', errSupabase);
     }
   }
+  // Detectar y actualizar notas en Supabase si el cliente hizo una aclaración
+const matchActualizar = aiResponse.match(/\[ACTUALIZAR_PEDIDO\]([\s\S]*?)\[\/ACTUALIZAR_PEDIDO\]/);
+
+if (matchActualizar) {
+  try {
+    const contenidoNotas = matchActualizar[1];
+    const matchNotas = contenidoNotas.match(/Notas:\s*(.*)/i);
+    const nuevaNota = matchNotas ? matchNotas[1].trim() : contenidoNotas.trim();
+
+    // 1. Buscar el último pedido de este número de teléfono
+    const { data: ultimoPedido } = await supabase
+      .from('pedidos')
+      .select('id, notas')
+      .eq('cliente_telefono', numeroRemitente)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (ultimoPedido) {
+      const notasActualizadas = ultimoPedido.notas 
+        ? `${ultimoPedido.notas} | Nota extra: ${nuevaNota}` 
+        : `Nota extra: ${nuevaNota}`;
+
+      // 2. Actualizar en Supabase
+      await supabase
+        .from('pedidos')
+        .update({ notas: notasActualizadas })
+        .eq('id', ultimoPedido.id);
+
+      console.log(`✅ Notas del pedido #${ultimoPedido.id} actualizadas: ${nuevaNota}`);
+    }
+  } catch (errorActualizar) {
+    console.error("❌ Error al actualizar las notas:", errorActualizar);
+  }
+}
     // Enviar respuesta a WhatsApp
         await axios({
   method: 'POST',
