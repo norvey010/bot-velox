@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Velox | Registro de Comercios</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+
+  <div class="max-w-md w-full bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700">
+    <div class="text-center mb-6">
+      <h1 class="text-3xl font-bold text-amber-500">Velox</h1>
+      <p class="text-slate-400 text-sm mt-1">Registra tu restaurante y activa tu menú digital</p>
+    </div>
+
+    <!-- Formulario de Registro (Paso 1 y 2 del Manual) -->
+    <form id="form-registro" class="space-y-4">
+      <div>
+        <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Nombre del Restaurante</label>
+        <input type="text" id="nombreRestaurante" required class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500" placeholder="Ej: Hamburguesas Veloxing">
+      </div>
+
+      <div>
+        <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Nombre del Encargado</label>
+        <input type="text" id="nombreEncargado" required class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500" placeholder="Tu nombre">
+      </div>
+
+      <div>
+        <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Teléfono WhatsApp</label>
+        <input type="tel" id="telefono" required class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500" placeholder="3001234567">
+      </div>
+
+      <div>
+        <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Correo Electrónico</label>
+        <input type="email" id="email" required class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500" placeholder="correo@restaurante.com">
+      </div>
+
+      <div>
+        <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Contraseña</label>
+        <input type="password" id="password" required class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500" placeholder="••••••••">
+      </div>
+
+      <!-- Selección del Plan (Paso 3 del Manual) -->
+      <div>
+        <label class="block text-xs uppercase font-semibold text-slate-400 mb-1">Selecciona tu Plan</label>
+        <select id="plan" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
+          <option value="prueba">Prueba Gratis (7 Días)</option>
+          <option value="mensual">Plan Mensual</option>
+          <option value="anual">Plan Anual</option>
+        </select>
+      </div>
+
+      <button type="submit" id="btnRegistrar" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-3 rounded-lg transition duration-200">
+        Crear Cuenta y Continuar
+      </button>
+    </form>
+  </div>
+
+  <script src="app-registro.js"></script>
+</body>
+</html>
