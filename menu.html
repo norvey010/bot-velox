@@ -203,17 +203,15 @@
         async function confirmarYEnviarPedido(event) {
     event.preventDefault();
 
-    const direccion = document.getElementById('direccion').value;
-    const metodoPago = document.getElementById('metodoPago').value;
-    const notas = document.getElementById('notas').value;
+    const direccion = document.getElementById('direccion')?.value || '';
+    const metodoPago = document.getElementById('metodoPago')?.value || 'Efectivo';
+    const notas = document.getElementById('notas')?.value || '';
 
     if (cart.length === 0) return;
 
-    // Calcular total
     const total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
 
     try {
-        // 1. Guardar DIRECTO en Supabase
         const { data, error } = await supabase
             .from('pedidos')
             .insert([{
@@ -229,9 +227,7 @@
 
         if (error) throw error;
 
-        // 2. Armar mensaje y redirigir a WhatsApp
-        const urlWhatsApp = "https://wa.me/" + numeroWhatsAppRestaurante + "?text=" + encodeURIComponent(mensajeWA);
-        
+        const urlWhatsApp = "https://wa.me/" + numeroWhatsAppRestaurante;
         cerrarModalPedido();
         window.open(urlWhatsApp, '_blank');
 
@@ -240,6 +236,7 @@
         alert("⚠️ Error al guardar en la base de datos: " + err.message);
     }
 }
+
 window.cargarMenu = cargarMenu;
 
 window.addEventListener('DOMContentLoaded', () => {
