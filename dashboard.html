@@ -437,6 +437,29 @@
   document.getElementById('select-estado').addEventListener('change', () => { paginaActual = 0; cargarPedidos(); });
 
   cargarPedidos();
+  // Eliminar cuenta
+document.getElementById('btnEliminarCuenta')?.addEventListener('click', async () => {
+  if (!confirm("⚠️ ¿Eliminar tu cuenta? Se borrarán tus datos y productos.")) return;
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return alert("No hay sesión activa.");
+
+    await supabase.from('productos').delete().eq('id_usuario', user.id);
+    await supabase.from('restaurantes').delete().eq('id_usuario', user.id);
+    await supabase.auth.signOut();
+
+    alert("Cuenta eliminada.");
+    window.location.href = "/index.html";
+  } catch (err) {
+    alert("Error: " + err.message);
+  }
+});
   </script>
+  <div class="p-4 mt-6 border border-red-500/30 bg-red-950/20 rounded-xl">
+  <button id="btnEliminarCuenta" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
+    🗑️ Eliminar Mi Cuenta
+  </button>
+</div>
 </body>
 </html>
