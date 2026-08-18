@@ -240,6 +240,8 @@
         alert("⚠️ Error al guardar en la base de datos: " + err.message);
     }
 }
+window.cargarMenu = cargarMenu;
+
 window.addEventListener('DOMContentLoaded', () => {
     setTimeout(cargarMenu, 500);
 });
