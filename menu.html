@@ -99,9 +99,12 @@
         let cart = [];
 
        async function cargarMenu() {
+    alert("Prueba: ¡Cargar menú se ejecutó!");
     const contenedor = document.getElementById('contenedor-menu');
-    
+
     if (!supabaseApp) {
+        
+   
         contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">Conectando...</p>';
         return;
     }
