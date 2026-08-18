@@ -226,7 +226,7 @@
             const detallePedido = cart.map(i => `${i.cantidad}x ${i.nombre}`).join(', ');
 
             try {
-                // 1. Guardar de una en Supabase
+                // 1. Guardar directo en Supabase
                 const { data, error } = await supabaseApp
                     .from('pedidos')
                     .insert([{
@@ -242,11 +242,11 @@
 
                 if (error) throw error;
 
-                // 2. Notificación visual al usuario
+                // 2. Notificación al usuario
                 alert("✅ ¡Pedido recibido con éxito! En un momento lo procesaremos.");
                 cerrarModalPedido();
 
-                // 3. Opcional: Redirigir a WhatsApp con resumen
+                // 3. Redirigir a WhatsApp
                 if (numeroWhatsAppRestaurante) {
                     const mensajeWA = `*NUEVO PEDIDO*\n` +
                         `*Cliente:* ${nombre}\n` +
@@ -258,7 +258,6 @@
                     window.open(`https://wa.me/${numeroWhatsAppRestaurante}?text=${encodeURIComponent(mensajeWA)}`, '_blank');
                 }
 
-                // Limpiar carrito
                 cart = [];
                 actualizarBarraCarrito();
 
