@@ -198,54 +198,42 @@
         }
 
         async function confirmarYEnviarPedido(event) {
-            event.preventDefault();
+    event.preventDefault();
 
-            const direccion = document.getElementById('input-direccion').value.trim();
-            const metodoPago = document.getElementById('select-pago').value;
-            const notas = document.getElementById('input-notas').value.trim() || 'Ninguna';
+    const direccion = document.getElementById('direccion').value;
+    const metodoPago = document.getElementById('metodoPago').value;
+    const notas = document.getElementById('notas').value;
 
-            let mensajeWA = "🍔 *NUEVO PEDIDO - VELOX* 🍔\n\n";
-            mensajeWA += "📍 *Dirección:* " + direccion + "\n";
-            mensajeWA += "💳 *Método de Pago:* " + metodoPago + "\n";
-            if (notas !== 'Ninguna') mensajeWA += "📝 *Notas:* " + notas + "\n";
-            mensajeWA += "\n🛒 *DETALLE DEL PEDIDO:*\n";
+    if (cart.length === 0) return;
 
-            let total = 0;
-            cart.forEach(item => {
-                const subtotal = item.precio * item.cantidad;
-                total += subtotal;
-                mensajeWA += "• " + item.cantidad + "x " + item.nombre + " - $" + subtotal.toLocaleString('es-CO') + "\n";
-            });
+    // Calcular total
+    const total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
 
-            mensajeWA += "\n💰 *TOTAL A PAGAR:* $" + total.toLocaleString('es-CO');
+    try {
+        // 1. Guardar DIRECTO en Supabase
+        const { data, error } = await supabase
+            .from('pedidos')
+            .insert([{
+                cliente: document.getElementById('nombreCliente')?.value || 'Cliente Web',
+                telefono: document.getElementById('telefonoCliente')?.value || 'Sin teléfono',
+                direccion: direccion,
+                detalle: cart.map(i => `${i.cantidad}x ${i.nombre}`).join(', '),
+                total: total,
+                estado: 'Pendiente',
+                metodo_pago: metodoPago,
+                notas: notas
+            }]);
 
-            try {
-                if (supabaseApp) {
-                    await supabaseApp.from('pedidos').insert([{ 
-                        restaurante_slug: clienteSlug,
-                        direccion: direccion,
-                        metodo_pago: metodoPago,
-                        notas: notas,
-                        items: cart,
-                        total: total,
-                        estado: 'pendiente'
-                    }]);
-                }
-            } catch (err) {
-                console.error('Error insertando pedido:', err);
-alert("⚠️ Error al guardar en base de datos: " + err.message);
-            }
+        if (error) throw error;
 
-            
-            const urlWhatsApp = "https://wa.me/" + numeroWhatsAppRestaurante + "?text=" + encodeURIComponent(mensajeWA);
+        // 2. Armar mensaje y redirigir a WhatsApp
+        const urlWhatsApp = "https://wa.me/" + numeroWhatsAppRestaurante + "?text=" + encodeURIComponent(mensajeWA);
+        
+        cerrarModalPedido();
+        window.open(urlWhatsApp, '_blank');
 
-            cerrarModalPedido();
-            window.open(urlWhatsApp, '_blank');
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(cargarMenu, 500);
-        });
-    </script>
-</body>
-</html>
+    } catch (err) {
+        console.error('Error insertando pedido:', err);
+        alert("⚠️ Error al guardar en la base de datos: " + err.message);
+    }
+}
