@@ -22,12 +22,12 @@
         </div>
     </header>
 
-    <!-- CATÁLOGO DE PRODUCTOS -->
+    <!-- CATÁLOGO -->
     <main class="max-w-md mx-auto p-4 space-y-4" id="contenedor-menu">
         <p class="text-center text-slate-400 py-10" id="estado-carga">Cargando catálogo...</p>
     </main>
 
-    <!-- BARRA FLOTANTE DEL CARRITO -->
+    <!-- BARRA CARRITO -->
     <div id="barra-carrito" class="fixed bottom-4 left-4 right-4 max-w-md mx-auto hidden z-40">
         <button onclick="abrirModalPedido()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 px-5 rounded-2xl shadow-xl flex items-center justify-between">
             <span class="bg-slate-950/20 px-3 py-1 rounded-lg text-sm" id="cant-items">0 ítems</span>
@@ -36,7 +36,7 @@
         </button>
     </div>
 
-    <!-- MODAL DE CONFIRMACIÓN DE PEDIDO -->
+    <!-- MODAL -->
     <div id="modal-pedido" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100">
             <div class="flex justify-between items-center mb-5 border-b border-slate-800 pb-3">
@@ -47,147 +47,127 @@
             <form id="form-confirmar-pedido" onsubmit="confirmarYEnviarPedido(event)" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-1">Nombre Completo *</label>
-                    <input type="text" id="input-nombre" required placeholder="Ej: Juan Pérez"
-                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                    <input type="text" id="input-nombre" required placeholder="Ej: Juan Pérez" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm">
                 </div>
-
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-1">Teléfono / WhatsApp *</label>
-                    <input type="tel" id="input-telefono" required placeholder="Ej: 3001234567"
-                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                    <input type="tel" id="input-telefono" required placeholder="Ej: 3001234567" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm">
                 </div>
-
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-1">Dirección de Entrega *</label>
-                    <input type="text" id="input-direccion" required placeholder="Ej: Calle 45 # 10-20, Apt 301"
-                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                    <input type="text" id="input-direccion" required placeholder="Ej: Calle 45 # 10-20" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm">
                 </div>
-
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-1">Método de Pago *</label>
-                    <select id="select-pago" required
-                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm">
+                    <select id="select-pago" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm">
                         <option value="Efectivo">Efectivo contra entrega</option>
                         <option value="Transferencia (Nequi / Daviplata)">Transferencia (Nequi / Daviplata)</option>
                         <option value="Datáfono">Datáfono al entregar</option>
                     </select>
                 </div>
-
                 <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">Notas especiales (Opcional)</label>
-                    <textarea id="input-notas" rows="2" placeholder="Ej: Sin cebolla, timbrar en el 201..."
-                        class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm resize-none"></textarea>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Notas especiales</label>
+                    <textarea id="input-notas" rows="2" placeholder="Ej: Sin cebolla..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm resize-none"></textarea>
                 </div>
-
                 <div class="pt-3 flex gap-3">
-                    <button type="button" onclick="cerrarModalPedido()" 
-                        class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-medium transition text-sm">
-                        Cancelar
-                    </button>
-                    <button type="submit" 
-                        class="w-2/3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl transition shadow-lg text-sm flex items-center justify-center gap-2">
-                        <span>Confirmar Pedido</span> 🚀
-                    </button>
+                    <button type="button" onclick="cerrarModalPedido()" class="w-1/3 bg-slate-800 text-slate-300 py-3 rounded-xl text-sm">Cancelar</button>
+                    <button type="submit" class="w-2/3 bg-emerald-500 text-slate-950 font-bold py-3 rounded-xl text-sm">Confirmar Pedido 🚀</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_6YqFb_vPKTOFJZ9sp8AUzw_4aNLkH-l'; 
-        let supabaseApp;
-        try {
-            if (window.supabase && window.supabase.createClient) {
-                supabaseApp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            }
-        } catch (e) {
-            console.error('Error inicializando Supabase:', e);
+        var SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
+        var SUPABASE_KEY = 'sb_publishable_6YqFb_vPKTOFJZ9sp8AUzw_4aNLkH-l';
+        var supabaseApp = null;
+        var cart = [];
+        var numeroWhatsAppRestaurante = '';
+
+        if (window.supabase && window.supabase.createClient) {
+            supabaseApp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const clienteSlug = urlParams.get('r') || 'demo';
-        let numeroWhatsAppRestaurante = '';
-        let cart = [];
-
         async function cargarMenu() {
-            const contenedor = document.getElementById('contenedor-menu');
+            var contenedor = document.getElementById('contenedor-menu');
+            var urlParams = new URLSearchParams(window.location.search);
+            var clienteSlug = urlParams.get('r') || 'demo';
+
+            if (!supabaseApp && window.supabase) {
+                supabaseApp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
 
             if (!supabaseApp) {
-                contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">Conectando a base de datos...</p>';
+                contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error conectando con la librería Supabase.</p>';
                 return;
             }
 
             try {
-                // 1. Traer datos del restaurante
-                const { data: restData } = await supabaseApp
-                    .from('restaurantes')
-                    .select('id, phone_number_id, nombre')
-                    .eq('slug', clienteSlug)
-                    .single();
+                var resRest = await supabaseApp.from('restaurantes').select('id, phone_number_id, nombre').eq('slug', clienteSlug).single();
+                var restData = resRest.data;
 
                 if (restData) {
                     if (restData.phone_number_id) numeroWhatsAppRestaurante = restData.phone_number_id;
                     if (restData.nombre) document.getElementById('nombre-restaurante').innerText = restData.nombre;
                 }
 
-                const restaurantId = restData ? restData.id : 1;
+                var restaurantId = restData ? restData.id : 1;
 
-                // 2. Traer productos
-                const { data: productos, error } = await supabaseApp
-                    .from('productos')
-                    .select('*')
-                    .eq('restaurante_id', restaurantId);
+                var resProd = await supabaseApp.from('productos').select('*').eq('restaurante_id', restaurantId);
+                var productos = resProd.data;
 
-                if (error) {
-                    console.error('Error cargando productos:', error);
-                    contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error al cargar productos.</p>';
+                if (resProd.error) {
+                    contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error consultando productos: ' + resProd.error.message + '</p>';
                     return;
                 }
-                
+
                 if (!productos || productos.length === 0) {
                     contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">No hay productos disponibles por ahora.</p>';
                     return;
                 }
 
-                contenedor.innerHTML = productos.map(prod => `
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex gap-4 items-center shadow-md">
-                        <img src="${prod.imagen_url || 'https://via.placeholder.com/100'}" class="w-20 h-20 object-cover rounded-xl bg-slate-700">
-                        <div class="flex-1">
-                            <h3 class="font-bold text-white">${prod.nombre}</h3>
-                            <p class="text-xs text-slate-400 line-clamp-2">${prod.descripcion || ''}</p>
-                            <div class="mt-2 flex justify-between items-center">
-                                <span class="font-bold text-emerald-400">$${Number(prod.precio).toLocaleString('es-CO')}</span>
-                                <button onclick="agregarAlCarrito('${prod.id}', '${prod.nombre}', ${prod.precio})" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-3 py-1 rounded-lg text-sm transition">
-                                    + Agregar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
+                var html = '';
+                for (var i = 0; i < productos.length; i++) {
+                    var prod = productos[i];
+                    html += '<div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex gap-4 items-center shadow-md">' +
+                        '<img src="' + (prod.imagen_url || 'https://via.placeholder.com/100') + '" class="w-20 h-20 object-cover rounded-xl bg-slate-700">' +
+                        '<div class="flex-1">' +
+                        '<h3 class="font-bold text-white">' + prod.nombre + '</h3>' +
+                        '<p class="text-xs text-slate-400">' + (prod.descripcion || '') + '</p>' +
+                        '<div class="mt-2 flex justify-between items-center">' +
+                        '<span class="font-bold text-emerald-400">$' + Number(prod.precio).toLocaleString('es-CO') + '</span>' +
+                        '<button onclick="agregarAlCarrito(\'' + prod.id + '\', \'' + prod.nombre.replace(/'/g, "\\'") + '\', ' + prod.precio + ')" class="bg-emerald-500 text-slate-950 font-bold px-3 py-1 rounded-lg text-sm">+ Agregar</button>' +
+                        '</div></div></div>';
+                }
+                contenedor.innerHTML = html;
 
             } catch (err) {
-                console.error('Error al cargar:', err);
+                console.error(err);
+                contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error inesperado: ' + err.message + '</p>';
             }
         }
 
         function agregarAlCarrito(id, nombre, precio) {
-            const itemExistente = cart.find(i => i.id === id);
-            if (itemExistente) {
-                itemExistente.cantidad++;
+            var item = cart.find(function(i) { return i.id === id; });
+            if (item) {
+                item.cantidad++;
             } else {
-                cart.push({ id, nombre, precio, cantidad: 1 });
+                cart.push({ id: id, nombre: nombre, precio: precio, cantidad: 1 });
             }
             actualizarBarraCarrito();
         }
 
         function actualizarBarraCarrito() {
-            const barra = document.getElementById('barra-carrito');
-            const cantItems = document.getElementById('cant-items');
-            const totalCarrito = document.getElementById('total-carrito');
+            var barra = document.getElementById('barra-carrito');
+            var cantItems = document.getElementById('cant-items');
+            var totalCarrito = document.getElementById('total-carrito');
 
-            const totalCantidad = cart.reduce((acc, item) => acc + item.cantidad, 0);
-            const totalPrecio = cart.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
+            var totalCantidad = 0;
+            var totalPrecio = 0;
+            for (var i = 0; i < cart.length; i++) {
+                totalCantidad += cart[i].cantidad;
+                totalPrecio += (cart[i].precio * cart[i].cantidad);
+            }
 
             if (totalCantidad > 0) {
                 barra.classList.remove('hidden');
@@ -200,78 +180,68 @@
 
         function abrirModalPedido() {
             if (cart.length === 0) return;
-            const modal = document.getElementById('modal-pedido');
+            var modal = document.getElementById('modal-pedido');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
 
         function cerrarModalPedido() {
-            const modal = document.getElementById('modal-pedido');
+            var modal = document.getElementById('modal-pedido');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
         }
 
         async function confirmarYEnviarPedido(event) {
             event.preventDefault();
-
-            const nombre = document.getElementById('input-nombre').value;
-            const telefono = document.getElementById('input-telefono').value;
-            const direccion = document.getElementById('input-direccion').value;
-            const metodoPago = document.getElementById('select-pago').value;
-            const notas = document.getElementById('input-notas').value;
+            var nombre = document.getElementById('input-nombre').value;
+            var telefono = document.getElementById('input-telefono').value;
+            var direccion = document.getElementById('input-direccion').value;
+            var metodoPago = document.getElementById('select-pago').value;
+            var notas = document.getElementById('input-notas').value;
 
             if (cart.length === 0) return;
 
-            const total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
-            const detallePedido = cart.map(i => `${i.cantidad}x ${i.nombre}`).join(', ');
+            var total = 0;
+            var detalles = [];
+            for (var i = 0; i < cart.length; i++) {
+                total += (cart[i].precio * cart[i].cantidad);
+                detalles.push(cart[i].cantidad + 'x ' + cart[i].nombre);
+            }
+            var detallePedido = detalles.join(', ');
 
             try {
-                // 1. Guardar directo en Supabase
-                const { data, error } = await supabaseApp
-                    .from('pedidos')
-                    .insert([{
-                        cliente: nombre,
-                        telefono: telefono,
-                        direccion: direccion,
-                        detalle: detallePedido,
-                        total: total,
-                        estado: 'Pendiente',
-                        metodo_pago: metodoPago,
-                        notas: notas
-                    }]);
+                var res = await supabaseApp.from('pedidos').insert([{
+                    cliente: nombre,
+                    telefono: telefono,
+                    direccion: direccion,
+                    detalle: detallePedido,
+                    total: total,
+                    estado: 'Pendiente',
+                    metodo_pago: metodoPago,
+                    notas: notas
+                }]);
 
-                if (error) throw error;
+                if (res.error) throw res.error;
 
-                // 2. Notificación al usuario
-                alert("✅ ¡Pedido recibido con éxito! En un momento lo procesaremos.");
+                alert("✅ ¡Pedido enviado con éxito!");
                 cerrarModalPedido();
 
-                // 3. Redirigir a WhatsApp
                 if (numeroWhatsAppRestaurante) {
-                    const mensajeWA = `*NUEVO PEDIDO*\n` +
-                        `*Cliente:* ${nombre}\n` +
-                        `*Dirección:* ${direccion}\n` +
-                        `*Pedido:* ${detallePedido}\n` +
-                        `*Total:* $${total.toLocaleString('es-CO')}\n` +
-                        `*Pago:* ${metodoPago}`;
-                    
-                    window.open(`https://wa.me/${numeroWhatsAppRestaurante}?text=${encodeURIComponent(mensajeWA)}`, '_blank');
+                    var msj = "*NUEVO PEDIDO*\nCliente: " + nombre + "\nDirección: " + direccion + "\nPedido: " + detallePedido + "\nTotal: $" + total.toLocaleString('es-CO');
+                    window.open('https://wa.me/' + numeroWhatsAppRestaurante + '?text=' + encodeURIComponent(msj), '_blank');
                 }
 
                 cart = [];
                 actualizarBarraCarrito();
-
             } catch (err) {
-                console.error('Error insertando pedido:', err);
-                alert("⚠️ Error al guardar el pedido: " + err.message);
+                alert("⚠️ Error al guardar pedido: " + err.message);
             }
         }
 
         window.cargarMenu = cargarMenu;
-
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(cargarMenu, 300);
-        });
+        window.onload = function() {
+            cargarMenu();
+        };
     </script>
 </body>
 </html>
