@@ -455,6 +455,22 @@ document.getElementById('btnEliminarCuenta')?.addEventListener('click', async ()
     alert("Error: " + err.message);
   }
 });
+// Realtime: Escuchar nuevos pedidos automáticamente
+        supabaseApp
+            .channel('cambios-pedidos')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'pedidos' },
+                (payload) => {
+                    console.log('¡Nuevo pedido recibido!', payload.new);
+                    
+                    // Reemplaza 'cargarPedidos' por la función que usas para refrescar tu lista/tabla
+                    if (typeof cargarPedidos === 'function') {
+                        cargarPedidos();
+                    }
+                }
+            )
+            .subscribe();
   </script>
   <div class="p-4 mt-6 border border-red-500/30 bg-red-950/20 rounded-xl">
   <button id="btnEliminarCuenta" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
