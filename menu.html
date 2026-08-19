@@ -76,6 +76,7 @@
         var supabaseApp = null;
         var cart = [];
         var numeroWhatsAppRestaurante = '';
+        var ID_RESTAURANTE_ACTUAL = null;
 
         if (window.supabase && window.supabase.createClient) {
             supabaseApp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -105,6 +106,7 @@
                 }
 
                 var restaurantId = restData ? restData.id : 1;
+                ID_RESTAURANTE_ACTUAL = restaurantId;
 
                 var resProd = await supabaseApp.from('productos').select('*').eq('restaurante_id', restaurantId);
                 var productos = resProd.data;
@@ -204,6 +206,7 @@
             try {
                 // Aquí usamos LOS NOMBRES EXACTOS que salen en tu Supabase:
                 var res = await supabaseApp.from('pedidos').insert([{
+            restaurant_id: ID_RESTAURANTE_ACTUAL,
             cliente_nombre: 'Anónimo',
             cliente_telefono: 'Sin teléfono',
             direccion: direccion,

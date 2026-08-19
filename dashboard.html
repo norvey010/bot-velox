@@ -178,13 +178,33 @@
   </main>
 
   <script>
+    let ID_RESTAURANTE_ACTUAL = null; 
   const SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96YWlsdml5aW1yam1lYnJpbGJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMTA5MTEsImV4cCI6MjEwMDY4NjkxMX0.rkWEtTGV4uFB_w62sC-vygZoLbfEgx_KKTSd9oS-5CM';
 
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   let paginaActual = 0;
   const porPagina = 15;
-  const RESTAURANTE_ID = 1; // ID base asignado al negocio
+  async function inicializarDashboard() {
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('r');
+
+    if (!slug) {
+        alert("Falta el identificador del restaurante en la URL (?r=nombre)");
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from('restaurantes')
+        .select('id')
+        .eq('slug', slug)
+        .single();
+
+    if (data) {
+        ID_RESTAURANTE_ACTUAL = data.id;
+        cargarPedidos();
+    }
+}
 
   // --- NAVEGACIÓN ENTRE PESTAÑAS ---
   function cambiarSeccion(seccion) {
@@ -211,6 +231,7 @@
     let query = supabaseClient
       .from('pedidos')
       .select('*', { count: 'exact' })
+      .eq('restaurant_id', ID_RESTAURANTE_ACTUAL)
       .order('created_at', { ascending: false })
       .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
 
@@ -471,6 +492,7 @@ document.getElementById('btnEliminarCuenta')?.addEventListener('click', async ()
                 }
             )
             .subscribe();
+            inicializarDashboard();
   </script>
   <div class="p-4 mt-6 border border-red-500/30 bg-red-950/20 rounded-xl">
   <button id="btnEliminarCuenta" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
