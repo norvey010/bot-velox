@@ -191,56 +191,59 @@
             modal.classList.remove('flex');
         }
 
-        async function confirmarYEnviarPedido(event) {
-    event.preventDefault();
-    var direccion = document.getElementById('input-direccion').value;
-    var metodoPago = document.getElementById('select-pago').value;
-    var notas = document.getElementById('input-notas').value;
+       async function confirmarYEnviarPedido(event) {
+            event.preventDefault();
+            // Ya no leemos el nombre ni teléfono del formulario, usamos los nombres de tus columnas
+            var direccion = document.getElementById('input-direccion').value;
+            var metodoPago = document.getElementById('select-pago').value;
+            var notas = document.getElementById('input-notas').value;
 
-    if (cart.length === 0) return;
+            if (cart.length === 0) return;
 
-    var total = 0;
-    var detalles = [];
-    for (var i = 0; i < cart.length; i++) {
-        total += (cart[i].precio * cart[i].cantidad);
-        detalles.push(cart[i].cantidad + 'x ' + cart[i].nombre);
-    }
-    var detallePedido = detalles.join(', ');
+            var total = 0;
+            var detalles = [];
+            for (var i = 0; i < cart.length; i++) {
+                total += (cart[i].precio * cart[i].cantidad);
+                detalles.push(cart[i].cantidad + 'x ' + cart[i].nombre);
+            }
+            var detallePedido = detalles.join(', ');
 
-    try {
-        var res = await supabaseApp.from('pedidos').insert([{
-            cliente: 'Anónimo',
-            telefono: 'Sin teléfono',
-            direccion: direccion,
-            detalle: detallePedido,
-            total: total,
-            estado: 'Pendiente',
-            metodo_pago: metodoPago,
-            notas: notas
-        }]);
+            try {
+                // Aquí usamos LOS NOMBRES EXACTOS que salen en tu Supabase:
+                var res = await supabaseApp.from('pedidos').insert([{
+                    cliente_nombre: 'Anónimo',          // Correspondiente a tu columna 'cliente_nombre'
+                    cliente_telefono: 'Sin teléfono',  // Correspondiente a tu columna 'cliente_telefono'
+                    direccion: direccion,
+                    detalle: detallePedido,
+                    total: total,
+                    estado: 'Pendiente',
+                    metodo_pago: metodoPago,
+                    notas: notas
+                }]);
 
-        if (res.error) throw res.error;
+                if (res.error) throw res.error;
 
-        alert("✅ ¡Pedido enviado con éxito!");
-        cerrarModalPedido();
+                alert("✅ ¡Pedido enviado con éxito!");
+                cerrarModalPedido();
 
-        if (numeroWhatsAppRestaurante) {
-            var msj = "*NUEVO PEDIDO*\n" +
-                "📍 *Dirección/Mesa:* " + direccion + "\n" +
-                "🍔 *Pedido:* " + detallePedido + "\n" +
-                "💰 *Total:* $" + total.toLocaleString('es-CO') + "\n" +
-                "💳 *Pago:* " + metodoPago +
-                (notas ? "\n📝 *Notas:* " + notas : "");
+                if (numeroWhatsAppRestaurante) {
+                    var msj = "*NUEVO PEDIDO*\n" +
+                        "📍 *Dirección:* " + direccion + "\n" +
+                        "🍔 *Pedido:* " + detallePedido + "\n" +
+                        "💰 *Total:* $" + total.toLocaleString('es-CO') + "\n" +
+                        "💳 *Pago:* " + metodoPago +
+                        (notas ? "\n📝 *Notas:* " + notas : "");
 
-            window.open('https://wa.me/' + numeroWhatsAppRestaurante + '?text=' + encodeURIComponent(msj), '_blank');
+                    window.open('https://wa.me/' + numeroWhatsAppRestaurante + '?text=' + encodeURIComponent(msj), '_blank');
+                }
+
+                cart = [];
+                actualizarBarraCarrito();
+            } catch (err) {
+                alert("⚠️ Error al guardar pedido: " + err.message);
+                console.error(err);
+            }
         }
-
-        cart = [];
-        actualizarBarraCarrito();
-    } catch (err) {
-        alert("⚠️ Error al guardar pedido: " + err.message);
-    }
-}
         
 
         window.cargarMenu = cargarMenu;
