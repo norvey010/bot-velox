@@ -45,14 +45,7 @@
             </div>
 
             <form id="form-confirmar-pedido" onsubmit="confirmarYEnviarPedido(event)" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">Nombre Completo *</label>
-                    <input type="text" id="input-nombre" required placeholder="Ej: Juan Pérez" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">Teléfono / WhatsApp *</label>
-                    <input type="tel" id="input-telefono" required placeholder="Ej: 3001234567" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm">
-                </div>
+                
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-1">Dirección de Entrega *</label>
                     <input type="text" id="input-direccion" required placeholder="Ej: Calle 45 # 10-20" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm">
@@ -211,16 +204,16 @@
             try {
                 // Aquí usamos LOS NOMBRES EXACTOS que salen en tu Supabase:
                 var res = await supabaseApp.from('pedidos').insert([{
-                    cliente_nombre: 'Anónimo',          // Correspondiente a tu columna 'cliente_nombre'
-                    cliente_telefono: 'Sin teléfono',  // Correspondiente a tu columna 'cliente_telefono'
-                    direccion: direccion,
-                    detalle: detallePedido,
-                    total: total,
-                    estado: 'Pendiente',
-                    metodo_pago: metodoPago,
-                    notas: notas
-                }]);
-
+            cliente_nombre: 'Anónimo',
+            cliente_telefono: 'Sin teléfono',
+            direccion: direccion,
+            detalle: detallePedido,
+            items: detallePedido,
+            total: total,
+            estado: 'Pendiente',
+            metodo_pago: metodoPago,
+            notas: notas
+        }]);
                 if (res.error) throw res.error;
 
                 alert("✅ ¡Pedido enviado con éxito!");
