@@ -500,6 +500,63 @@ document.getElementById('btnEliminarCuenta')?.addEventListener('click', async ()
             )
             .subscribe();
             inicializarDashboard();
+            // 1. Cargar los datos al abrir el panel
+async function cargarConfiguracion() {
+  try {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (user) {
+      const { data, error } = await supabaseClient
+        .from('restaurantes')
+        .select('nombre_restaurante, telefono, slug')
+        .eq('id_usuario', user.id)
+        .single();
+      
+      if (data) {
+        document.getElementById('conf-nombre').value = data.nombre_restaurante || '';
+        document.getElementById('conf-phone').value = data.telefono || '';
+        document.getElementById('conf-slug').value = data.slug || '';
+      }
+    }
+  } catch (err) {
+    console.error("Error al cargar configuración:", err);
+  }
+}
+cargarConfiguracion(); // Se ejecuta de inmediato
+
+// 2. Guardar los datos (Conectada a tu HTML)
+async function guardarConfiguracion(event) {
+  event.preventDefault(); 
+
+  const btn = event.target.querySelector('button[type="submit"]');
+  const textoOriginal = btn.innerText;
+  btn.innerText = "Guardando...";
+  btn.disabled = true;
+
+  try {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const nuevoNombre = document.getElementById('conf-nombre').value;
+    const nuevoTelefono = document.getElementById('conf-phone').value;
+
+    if (user) {
+      const { error } = await supabaseClient
+        .from('restaurantes')
+        .update({
+          nombre_restaurante: nuevoNombre,
+          telefono: nuevoTelefono
+        })
+        .eq('id_usuario', user.id);
+
+      if (error) throw error;
+      alert("¡Configuración actualizada con éxito!");
+    }
+  } catch (err) {
+    console.error("Error al guardar:", err);
+    alert("Hubo un problema al guardar los cambios.");
+  } finally {
+    btn.innerText = textoOriginal;
+    btn.disabled = false;
+  }
+}
   </script>
   <div class="p-4 mt-6 border border-red-500/30 bg-red-950/20 rounded-xl">
   <button id="btnEliminarCuenta" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
