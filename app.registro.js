@@ -60,3 +60,4 @@ document.getElementById('form-registro').addEventListener('submit', async (e) =>
       btn.innerText = "Crear Cuenta y Continuar";
     }
   }
+  });
