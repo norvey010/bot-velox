@@ -21,7 +21,7 @@ document.getElementById('form-registro').addEventListener('submit', async (e) =>
 
   try {
     // 1. Crear el usuario en el módulo de Autenticación de Supabase (Paso 2 del manual)
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
       email: email,
       password: password
     });
@@ -29,7 +29,7 @@ document.getElementById('form-registro').addEventListener('submit', async (e) =>
     if (authError) throw authError;
 
     // 2. Insertar el perfil del negocio en la tabla 'restaurantes'
-    const { error: dbError } = await supabase
+   const { error: dbError } = await supabaseClient
       .from('restaurantes')
       .insert([{
         id_usuario: authData.user?.id,
