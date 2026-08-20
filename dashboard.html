@@ -185,25 +185,32 @@
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   let paginaActual = 0;
   const porPagina = 15;
-  async function inicializarDashboard() {
-    const params = new URLSearchParams(window.location.search);
-    const slug = params.get('r');
+ async function inicializarDashboard() {
+  // 1. Verificar quién inició sesión en Supabase Auth
+  const { data: { user }, error: errorAuth } = await supabaseClient.auth.getUser();
 
-    if (!slug) {
-        alert("Falta el identificador del restaurante en la URL (?r=nombre)");
-        return;
-    }
+  if (errorAuth || !user) {
+    console.error("Acceso denegado: No hay sesión activa.");
+    window.location.href = '/index.html';
+    return;
+  }
 
-    const { data, error } = await supabaseClient
-        .from('restaurantes')
-        .select('id')
-        .eq('slug', slug)
-        .single();
+  // 2. Buscar el restaurante del usuario autenticado
+  const { data: restaurante, error: errorRestaurante } = await supabaseClient
+    .from('restaurantes')
+    .select('id')
+    .eq('user_id', user.id)
+    .single();
 
-    if (data) {
-        ID_RESTAURANTE_ACTUAL = data.id;
-        cargarPedidos();
-    }
+  if (errorRestaurante || !restaurante) {
+    console.error("No se encontró un restaurante asociado a tu cuenta:", errorRestaurante);
+    alert("Tu cuenta no tiene un restaurante asignado.");
+    return;
+  }
+
+  // 3. Asignar ID y cargar pedidos de forma segura
+  ID_RESTAURANTE_ACTUAL = restaurante.id;
+  cargarPedidos();
 }
 
   // --- NAVEGACIÓN ENTRE PESTAÑAS ---
