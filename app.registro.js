@@ -19,10 +19,10 @@ document.getElementById('form-registro').addEventListener('submit', async (e) =>
   const password = document.getElementById('password')?.value;
   const plan = document.getElementById('plan')?.value;
 
-  // Generar slug automático y dinámico para la URL pública del menú
-  const slug = nombreRestaurante 
-    ? nombreRestaurante.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
-    : 'restaurante-' + Date.now();
+  // Generar slug único combinando el nombre y el tiempo actual
+const slug = (nombreRestaurante
+  ? nombreRestaurante.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '')
+  : 'restaurante') + '-' + Date.now();
 
   try {
     // 1. Crear el usuario en Auth de Supabase
