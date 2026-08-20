@@ -12,15 +12,20 @@ document.getElementById('form-registro').addEventListener('submit', async (e) =>
   btn.innerText = "Procesando registro...";
 
   // Capturar los valores del formulario
-  const nombreRestaurante = document.getElementById('nombreRestaurante').value;
-  const nombreEncargado = document.getElementById('nombreEncargado').value;
-  const telefono = document.getElementById('telefono').value;
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  const plan = document.getElementById('plan').value;
+  const nombreRestaurante = document.getElementById('nombreRestaurante')?.value;
+  const nombreEncargado = document.getElementById('nombreEncargado')?.value;
+  const telefono = document.getElementById('telefono')?.value;
+  const email = document.getElementById('email')?.value;
+  const password = document.getElementById('password')?.value;
+  const plan = document.getElementById('plan')?.value;
+
+  // Generar slug automático y dinámico para la URL pública del menú
+  const slug = nombreRestaurante 
+    ? nombreRestaurante.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+    : 'restaurante-' + Date.now();
 
   try {
-    // 1. Crear el usuario en el módulo de Autenticación de Supabase (Paso 2 del manual)
+    // 1. Crear el usuario en Auth de Supabase
     const { data: authData, error: authError } = await supabaseClient.auth.signUp({
       email: email,
       password: password
@@ -29,7 +34,7 @@ document.getElementById('form-registro').addEventListener('submit', async (e) =>
     if (authError) throw authError;
 
     // 2. Insertar el perfil del negocio en la tabla 'restaurantes'
-   const { error: dbError } = await supabaseClient
+    const { error: dbError } = await supabaseClient
       .from('restaurantes')
       .insert([{
         id_usuario: authData.user?.id,
@@ -38,18 +43,20 @@ document.getElementById('form-registro').addEventListener('submit', async (e) =>
         telefono: telefono,
         email: email,
         plan_seleccionado: plan,
-        estado_cuenta: plan === 'prueba' ? 'prueba_activa' : 'pendiente_pago'
+        estado_cuenta: plan === 'prueba' ? 'prueba_activa' : 'pendiente_pago',
+        slug: slug
       }]);
 
     if (dbError) throw dbError;
 
-    alert("¡Cuenta registrada con éxito! Redirigiendo a tu panel de control...");
-    window.location.href = "/dashboard.html";
+    alert("¡Registro exitoso! Redirigiendo al panel...");
+    window.location.href = '/dashboard.html';
 
-  } catch (error) {
-    console.error("Error en el registro:", error);
-    alert("Ocurrió un error al registrar la cuenta: " + error.message);
-    btn.disabled = false;
-    btn.innerText = "Crear Cuenta y Continuar";
+  } catch (err) {
+    console.error("Error durante el registro:", err);
+    alert("Ocurrió un error al registrar la cuenta: " + err.message);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = "Crear Cuenta y Continuar";
+    }
   }
-});
