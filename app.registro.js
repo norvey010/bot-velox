@@ -49,8 +49,20 @@ const slug = (nombreRestaurante
 
     if (dbError) throw dbError;
 
-    alert("¡Registro exitoso! Redirigiendo al panel...");
-    window.location.href = '/dashboard.html';
+    // Iniciar sesión automáticamente con el correo y contraseña recién ingresados
+    const { error: loginError } = await supabaseClient.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (loginError) {
+      alert("¡Cuenta creada con éxito! Por favor inicia sesión.");
+      window.location.href = 'index.html';
+      return;
+    }
+
+    // Si todo va bien, directos al dashboard
+    window.location.href = 'dashboard.html';
 
   } catch (err) {
     console.error("Error durante el registro:", err);
