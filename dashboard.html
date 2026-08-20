@@ -484,7 +484,7 @@ document.getElementById('btnEliminarCuenta')?.addEventListener('click', async ()
   }
 });
 // Realtime: Escuchar nuevos pedidos automáticamente
-        supabaseApp
+        supabaseClient
             .channel('cambios-pedidos')
             .on(
                 'postgres_changes',
