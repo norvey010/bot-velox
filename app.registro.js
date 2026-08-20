@@ -2,7 +2,7 @@
 const SUPABASE_URL = "https://ozailviyimrjmebrilbp.supabase.co"; // Reemplaza con tu URL de Supabase
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96YWlsdml5aW1yam1lYnJpbGJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMTA5MTEsImV4cCI6MjEwMDY4NjkxMX0.rkWEtTGV4uFB_w62sC-vygZoLbfEgx_KKTSd9oS-5CM"; // Reemplaza con tu anon key de Supabase
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 document.getElementById('form-registro').addEventListener('submit', async (e) => {
   e.preventDefault();
