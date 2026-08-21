@@ -55,15 +55,15 @@ const slug = (nombreRestaurante
       password: password
     });
 
-    if (loginError) {
-      alert("¡Cuenta creada con éxito! Por favor inicia sesión.");
-      window.location.href = 'index.html';
-      return;
-    }
+   if (loginError) {
+            alert("¡Cuenta creada con éxito! Pero hubo un problema al iniciar sesión automáticamente.");
+            window.location.href = 'index.html';
+            return;
+        }
 
-    // Si todo va bien, directos al dashboard
-    window.location.href = 'dashboard.html';
-
+        // Si todo va bien, directos al dashboard
+        window.location.href = 'dashboard.html';
+        
   } catch (err) {
     console.error("Error durante el registro:", err);
     alert("Ocurrió un error al registrar la cuenta: " + err.message);
