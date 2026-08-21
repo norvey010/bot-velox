@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Iniciar Sesión - Velox</title>
+    <style>
+        body {
+            background-color: #0b0e14;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-card {
+            background: #161b22;
+            padding: 30px;
+            border-radius: 8px;
+            width: 320px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        h2 { text-align: center; margin-bottom: 20px; }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            color: white;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover { background: #2ea043; }
+        .links { text-align: center; margin-top: 15px; }
+        a { color: #58a6ff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <h2>Iniciar Sesión</h2>
+        <input type="email" id="email" placeholder="Correo electrónico">
+        <input type="password" id="password" placeholder="Contraseña">
+        <button id="login-btn" onclick="iniciarSesion()">Entrar a Velox</button>
+        
+        <div class="links">
+            <p><a href="index.html">¿No tienes cuenta? Regístrate</a></p>
+        </div>
+    </div>
+
+    <!-- Archivo JavaScript con la lógica de autenticación -->
+    <script type="module" src="app.login.js"></script>
+</body>
+</html>
