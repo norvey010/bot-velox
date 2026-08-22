@@ -73,15 +73,22 @@ const slug = (nombreRestaurante
     }
   }
   });
-  function togglePasswordVisibility() {
+ function togglePasswordVisibility() {
     const passwordInput = document.getElementById('password');
-    const toggleBtn = document.getElementById('togglePassword');
+    const eyeOpenIcon = document.getElementById('icon-eye-open');
+    const eyeClosedIcon = document.getElementById('icon-eye-closed');
     
     if (passwordInput.type === 'password') {
+        // Cambiar el tipo de input a 'text' para mostrar la contraseña
         passwordInput.type = 'text';
-        toggleBtn.textContent = '🙈';
+        // Mostrar ícono de ojo cerrado, ocultar el abierto
+        eyeOpenIcon.style.display = 'none';
+        eyeClosedIcon.style.display = 'block';
     } else {
+        // Cambiar el tipo de input a 'password' para ocultar la contraseña
         passwordInput.type = 'password';
-        toggleBtn.textContent = '👁️';
+        // Mostrar ícono de ojo abierto, ocultar el cerrado
+        eyeOpenIcon.style.display = 'block';
+        eyeClosedIcon.style.display = 'none';
     }
 }

@@ -40,3 +40,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById('password');
+    const eyeOpenIcon = document.getElementById('icon-eye-open');
+    const eyeClosedIcon = document.getElementById('icon-eye-closed');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeOpenIcon.style.display = 'none';
+        eyeClosedIcon.style.display = 'block';
+    } else {
+        passwordInput.type = 'password';
+        eyeOpenIcon.style.display = 'block';
+        eyeClosedIcon.style.display = 'none';
+    }
+}
