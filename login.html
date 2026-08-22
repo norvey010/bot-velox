@@ -55,30 +55,50 @@
         <input type="email" id="email" placeholder="Correo electrónico">
         
         <div style="position: relative; width: 100%;">
-    <input type="password" id="password" class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-amber-500" placeholder="Contraseña" required style="padding-right: 40px;">
-    
-    <button type="button" id="togglePassword" onclick="togglePasswordVisibility()" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #94a3b8; width: 24px; height: 24px; padding: 0;">
-        
-        <!-- Ojo Abierto -->
-        <svg id="icon-eye-open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px;">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-        </svg>
+            <input type="password" id="password" class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-amber-500" placeholder="Contraseña" required style="padding-right: 40px;">
+            
+            <button type="button" id="togglePassword" onclick="togglePasswordVisibility()" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #94a3b8; width: 24px; height: 24px; padding: 0;">
+                
+                <!-- Ojo Abierto -->
+                <svg id="icon-eye-open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
 
-        <!-- Ojo Cerrado -->
-        <svg id="icon-eye-closed" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px; display: none;">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.223 6.223A10.483 10.483 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 0 1-4.293 5.774M6.223 6.223 3 3m19.898 19.898-3.963-3.963m-5.278-5.278A4.5 4.5 0 0 1 6.223 8.223m0 0 3 3" />
-        </svg>
-    </button>
-</div>
+                <!-- Ojo Cerrado -->
+                <svg id="icon-eye-closed" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px; display: none;">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.223 6.223A10.483 10.483 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 0 1-4.293 5.774M6.223 6.223 3 3m19.898 19.898-3.963-3.963m-5.278-5.278A4.5 4.5 0 0 1 6.223 8.223m0 0 3 3" />
+                </svg>
+            </button>
+        </div>
+
         <button id="login-btn" onclick="iniciarSesion()">Entrar a Velox</button>
         
         <div class="links">
             <p><a href="index.html">¿No tienes cuenta? Regístrate</a></p>
         </div>
-</div>
+    </div>
 
-    <!-- Archivo JavaScript con la lógica de autenticación -->
+    <!-- Archivo JavaScript principal -->
     <script type="module" src="app.login.js"></script>
+
+    <!-- Script directo para asegurar que la función del ojito responda sí o sí -->
+    <script>
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const eyeOpenIcon = document.getElementById('icon-eye-open');
+            const eyeClosedIcon = document.getElementById('icon-eye-closed');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeOpenIcon.style.display = 'none';
+                eyeClosedIcon.style.display = 'block';
+            } else {
+                passwordInput.type = 'password';
+                eyeOpenIcon.style.display = 'block';
+                eyeClosedIcon.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>
