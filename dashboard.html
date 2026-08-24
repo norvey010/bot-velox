@@ -199,7 +199,7 @@
   const { data: restaurante, error: errorRestaurante } = await supabaseClient
     .from('restaurantes')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('id_usuario', user.id)
     .single();
 
   if (errorRestaurante || !restaurante) {
