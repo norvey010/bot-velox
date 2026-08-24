@@ -235,6 +235,7 @@ cargarPedidos();
 
   // --- MÓDULO PEDIDOS ---
   async function cargarPedidos() {
+    if (!RESTAURANTE_ID) return;
     const estado = document.getElementById('select-estado').value;
     const busqueda = document.getElementById('input-search').value.trim();
 
