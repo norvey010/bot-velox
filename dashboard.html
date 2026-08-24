@@ -239,7 +239,7 @@ cargarPedidos();
     let query = supabaseClient
       .from('pedidos')
       .select('*', { count: 'exact' })
-      .eq('restaurant_id', ID_RESTAURANTE_ACTUAL)
+     .eq('restaurante_id', RESTAURANTE_ID)
       .order('created_at', { ascending: false })
       .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
 
