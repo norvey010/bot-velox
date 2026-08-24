@@ -15,8 +15,8 @@
   <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
     <div class="flex items-center gap-3">
       <div class="w-3 h-3 bg-emerald-500 rounded-full animate-ping"></div>
-      <h1 class="text-xl font-bold tracking-wide text-emerald-400">⚡ VELOX BOT <span class="text-xs font-normal text-slate-400">| Panel de Administración</span></h1>
-    </div>
+<h1 class="text-xl font-bold tracking-wide text-emerald-400" id="nombre-restaurante-header">Velox Bot</h1>  
+  </div>
     
     <!-- Pestañas de Navegación -->
     <nav class="flex gap-2 bg-slate-900 p-1 rounded-lg border border-slate-700">
@@ -198,7 +198,7 @@
   // 2. Buscar el restaurante del usuario autenticado
   const { data: restaurante, error: errorRestaurante } = await supabaseClient
     .from('restaurantes')
-    .select('id')
+    .select('*')
     .eq('user_id', user.id)
     .single();
 
@@ -208,9 +208,10 @@
     return;
   }
 
-  // 3. Asignar ID y cargar pedidos de forma segura
-  let RESTAURANTE_ID = null;
-  cargarPedidos();
+ // 3. Asignar ID, nombre y cargar pedidos
+RESTAURANTE_ID = restaurante.id;
+document.getElementById('nombre-restaurante-header').innerText = restaurante.nombre;
+cargarPedidos();
 }
 
   // --- NAVEGACIÓN ENTRE PESTAÑAS ---
