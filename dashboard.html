@@ -581,25 +581,27 @@ async function eliminarProducto(id) {
     cargarProductos();
 }
 
-// Función para preparar la edición (carga los datos en el formulario)
 async function prepararEdicionProducto(id) {
+    const productId = (typeof id === 'object' && id !== null) ? (id.id || id.target) : id;
+
     const { data, error } = await supabaseClient
         .from('productos')
         .select('*')
-        .eq('id', id)
-        .single();
+        .eq('id', productId)
+        .maybeSingle();
 
-    if (error) {
-        alert('Error al cargar el producto para editar: ' + error.message);
+    if (error || !data) {
+        alert('No se pudo cargar el producto para editar.');
+        console.error(error);
         return;
     }
 
-    // Llena los campos con los datos actuales del producto
     document.getElementById('prod-id').value = data.id;
     document.getElementById('prod-nombre').value = data.nombre || '';
     document.getElementById('prod-precio').value = data.precio || '';
     document.getElementById('prod-descripcion').value = data.descripcion || '';
-    // (Opcional) Sube la vista o el formulario si lo necesitas visible
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
   </script>
   <div class="p-4 mt-6 border border-red-500/30 bg-red-950/20 rounded-xl">
