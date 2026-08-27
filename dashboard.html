@@ -401,20 +401,11 @@ cargarPedidos();
     await supabaseClient.from('productos').insert([payload]);
   }
 
-  cargarProductos();
-}
-function limpiarFormProducto() {
-    // Limpia el ID oculto para que el sistema sepa que el próximo será un producto nuevo
-    const inputId = document.getElementById('prod-id');
-    if (inputId) inputId.value = '';
-
     // Limpia el selector de archivos de la imagen
     const inputFile = document.getElementById('prod-imagen-file');
     if (inputFile) inputFile.value = '';
 
-    // Si tienes inputs de texto para el nombre o precio, puedes vaciarlos aquí también
-    // document.getElementById('prod-nombre').value = '';
-    // document.getElementById('prod-precio').value = '';
+    ;
 }
   // --- MÓDULO CONFIGURACIÓN DEL NEGOCIO ---
   async function cargarConfiguracion() {
