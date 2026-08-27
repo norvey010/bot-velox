@@ -82,15 +82,13 @@
             supabaseApp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
-        async function cargarMenu() {
+       async function cargarMenu() {
     var contenedor = document.getElementById('contenedor-menu');
     var urlParams = new URLSearchParams(window.location.search);
-    
-    // 1. Capturamos el slug de forma limpia (acepta tanto ?slug= como ?r=)
     var clienteSlug = urlParams.get('slug') || urlParams.get('r');
 
     if (!clienteSlug) {
-        contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error: No se especificó el restaurante en el enlace.</p>';
+        contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error: No se especificó el restaurante.</p>';
         return;
     }
 
@@ -98,64 +96,78 @@
         supabaseApp = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 
-    if (!supabaseApp) {
-        contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error de conexión con la base de datos.</p>';
-        return;
-    }
-
-    
-    try {
     let { data: restData, error: restError } = await supabaseApp
         .from('restaurantes')
         .select('*')
         .eq('slug', clienteSlug)
-        .maybeSingle(); // Usamos maybeSingle para que no dé error 400 si no lo encuentra exacto
+        .maybeSingle();
 
     if (restError || !restData) {
-        console.error("Error de Supabase:", restError);
-        contenedor.innerHTML = '<p class="text-center text-red-400 py-10">El restaurante no existe o el enlace es incorrecto.</p>';
+        contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Restaurante no encontrado.</p>';
         return;
     }
 
-    var ID_RESTAURANTE_ACTUAL = restData.id; 
-    numeroWhatsAppRestaurante = restData.phone_number_id;
-    
+    var ID_RESTAURANTE_ACTUAL = restData.id;
     var elNombre = document.getElementById('nombre-restaurante');
     if (elNombre) elNombre.innerText = restData.nombre_restaurante;
-        // 3. Consultamos los productos usando el UUID exacto (ID_RESTAURANTE_ACTUAL)
-        let { data: productos, error: resProd } = await supabaseApp
-            .from('productos')
-            .select('*')
-            .eq('restaurante_id', ID_RESTAURANTE_ACTUAL);
 
-        if (resProd) {
-            console.error(resProd);
-            contenedor.innerHTML = `<p class="text-center text-red-400 py-10">Error consultando productos: ${resProd.message}</p>`;
-            return;
+    let { data: productos, error: resProd } = await supabaseApp
+        .from('productos')
+        .select('*')
+        .eq('restaurante_id', ID_RESTAURANTE_ACTUAL);
+
+    if (resProd || !productos) {
+        contenedor.innerHTML = '<p class="text-center text-red-400 py-6">No se pudieron cargar los productos.</p>';
+        return;
+    }
+
+    const productosPorCategoria = {};
+    productos.forEach(prod => {
+        const cat = prod.categoria || 'General';
+        if (!productosPorCategoria[cat]) {
+            productosPorCategoria[cat] = [];
         }
+        productosPorCategoria[cat].push(prod);
+    });
 
-        // Aquí continúa tu código que dibuja los productos en la pantalla...
+    var html = '';
+    for (const [categoria, lista] of Object.entries(productosPorCategoria)) {
+        html += `
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-amber-400 border-b border-slate-700 pb-2 mb-4 uppercase tracking-wide flex items-center gap-2">
+                    <span>📌</span> ${categoria}
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        `;
 
-                var html = '';
-                for (var i = 0; i < productos.length; i++) {
-                    var prod = productos[i];
-                    html += '<div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex gap-4 items-center shadow-md">' +
-                        '<img src="' + (prod.imagen_url || 'https://via.placeholder.com/100') + '" class="w-20 h-20 object-cover rounded-xl bg-slate-700">' +
-                        '<div class="flex-1">' +
-                        '<h3 class="font-bold text-white">' + prod.nombre + '</h3>' +
-                        '<p class="text-xs text-slate-400">' + (prod.descripcion || '') + '</p>' +
-                        '<div class="mt-2 flex justify-between items-center">' +
-                        '<span class="font-bold text-emerald-400">$' + Number(prod.precio).toLocaleString('es-CO') + '</span>' +
-                        '<button onclick="agregarAlCarrito(\'' + prod.id + '\', \'' + prod.nombre.replace(/'/g, "\\'") + '\', ' + prod.precio + ')" class="bg-emerald-500 text-slate-950 font-bold px-3 py-1 rounded-lg text-sm">+ Agregar</button>' +
-                        '</div></div></div>';
-                }
-                contenedor.innerHTML = html;
+        lista.forEach(prod => {
+            html += `
+                <div class="bg-slate-800 p-4 rounded-xl flex items-center justify-between border border-slate-700/60 shadow-lg">
+                    <div class="flex items-center space-x-3">
+                        ${prod.imagen_url ? `<img src="${prod.imagen_url}" class="w-16 h-16 object-cover rounded-lg border border-slate-700">` : ''}
+                        <div>
+                            <h3 class="font-bold text-white text-base">${prod.nombre}</h3>
+                            <p class="text-xs text-slate-400 line-clamp-2">${prod.descripcion || ''}</p>
+                            <p class="text-emerald-400 font-bold mt-1">$${Number(prod.precio).toLocaleString('es-CO')}</p>
+                        </div>
+                    </div>
+                    <button onclick="agregarAlCarrito('${prod.id}')" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs py-2 px-3 rounded-lg transition-colors">
+                        + Agregar
+                    </button>
+                </div>
+            `;
+        });
 
-            } catch (err) {
-                console.error(err);
-                contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error inesperado: ' + err.message + '</p>';
-            }
-        }
+        html += `
+                </div>
+            </div>
+        `;
+    }
+
+    contenedor.innerHTML = html;
+}
+            
+        
 
         function agregarAlCarrito(id, nombre, precio) {
             var item = cart.find(function(i) { return i.id === id; });
