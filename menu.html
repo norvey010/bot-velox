@@ -83,43 +83,60 @@
         }
 
         async function cargarMenu() {
-            var contenedor = document.getElementById('contenedor-menu');
-            var urlParams = new URLSearchParams(window.location.search);
-            var clienteSlug = urlParams.get('r') || 'demo';
+    var contenedor = document.getElementById('contenedor-menu');
+    var urlParams = new URLSearchParams(window.location.search);
+    
+    // 1. Capturamos el slug de forma limpia (acepta tanto ?slug= como ?r=)
+    var clienteSlug = urlParams.get('slug') || urlParams.get('r');
 
-            if (!supabaseApp && window.supabase) {
-                supabaseApp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            }
+    if (!clienteSlug) {
+        contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error: No se especificó el restaurante en el enlace.</p>';
+        return;
+    }
 
-            if (!supabaseApp) {
-                contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error conectando con la librería Supabase.</p>';
-                return;
-            }
+    if (!supabaseApp && window.supabase) {
+        supabaseApp = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
 
-            try {
-                var resRest = await supabaseApp.from('restaurantes').select('id, phone_number_id, nombre').eq('slug', clienteSlug).single();
-                var restData = resRest.data;
+    if (!supabaseApp) {
+        contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error de conexión con la base de datos.</p>';
+        return;
+    }
 
-                if (restData) {
-                    if (restData.phone_number_id) numeroWhatsAppRestaurante = restData.phone_number_id;
-                    if (restData.nombre) document.getElementById('nombre-restaurante').innerText = restData.nombre;
-                }
+    try {
+        // 2. Buscamos el restaurante en Supabase usando el slug para obtener su UUID real y su información
+        let { data: restData, error: restError } = await supabaseApp
+            .from('restaurantes')
+            .select('id, phone_number_id, nombre')
+            .eq('slug', clienteSlug)
+            .single();
 
-                var restaurantId = restData ? restData.id : 1;
-                ID_RESTAURANTE_ACTUAL = restaurantId;
+        if (restError || !restData) {
+            contenedor.innerHTML = '<p class="text-center text-red-400 py-10">El restaurante no existe o el enlace es incorrecto.</p>';
+            return;
+        }
 
-                var resProd = await supabaseApp.from('productos').select('*').eq('restaurante_id', restaurantId);
-                var productos = resProd.data;
+        // Asignamos las variables globales de forma limpia y dinámica
+        var ID_RESTAURANTE_ACTUAL = restData.id; // ¡Este es el UUID correcto que exige Supabase!
+        numeroWhatsAppRestaurante = restData.phone_number_id;
+        
+        // Si tienes un elemento para mostrar el nombre del restaurante en el menú, lo actualizamos
+        var elNombre = document.getElementById('nombre-restaurante');
+        if (elNombre) elNombre.innerText = restData.nombre;
 
-                if (resProd.error) {
-                    contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error consultando productos: ' + resProd.error.message + '</p>';
-                    return;
-                }
+        // 3. Consultamos los productos usando el UUID exacto (ID_RESTAURANTE_ACTUAL)
+        let { data: productos, error: resProd } = await supabaseApp
+            .from('productos')
+            .select('*')
+            .eq('restaurante_id', ID_RESTAURANTE_ACTUAL);
 
-                if (!productos || productos.length === 0) {
-                    contenedor.innerHTML = '<p class="text-center text-slate-400 py-10">No hay productos disponibles por ahora.</p>';
-                    return;
-                }
+        if (resProd) {
+            console.error(resProd);
+            contenedor.innerHTML = `<p class="text-center text-red-400 py-10">Error consultando productos: ${resProd.message}</p>`;
+            return;
+        }
+
+        // Aquí continúa tu código que dibuja los productos en la pantalla...
 
                 var html = '';
                 for (var i = 0; i < productos.length; i++) {
