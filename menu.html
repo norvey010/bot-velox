@@ -105,25 +105,22 @@
 
     try {
         // 2. Buscamos el restaurante en Supabase usando el slug para obtener su UUID real y su información
-        let { data: restData, error: restError } = await supabaseApp
-            .from('restaurantes')
-            .select('id, phone_number_id, nombre')
-            .eq('slug', clienteSlug)
-            .single();
+       let { data: restData, error: restError } = await supabaseApp
+    .from('restaurantes')
+    .select('id, phone_number_id, nombre_restaurante') // <-- Cambiado de 'nombre' a 'nombre_restaurante'
+    .eq('slug', clienteSlug)
+    .single();
 
-        if (restError || !restData) {
-            contenedor.innerHTML = '<p class="text-center text-red-400 py-10">El restaurante no existe o el enlace es incorrecto.</p>';
-            return;
-        }
+if (restError || !restData) {
+    contenedor.innerHTML = '<p class="text-center text-red-400 py-10">El restaurante no existe o el enlace es incorrecto.</p>';
+    return;
+}
 
-        // Asignamos las variables globales de forma limpia y dinámica
-        var ID_RESTAURANTE_ACTUAL = restData.id; // ¡Este es el UUID correcto que exige Supabase!
-        numeroWhatsAppRestaurante = restData.phone_number_id;
-        
-        // Si tienes un elemento para mostrar el nombre del restaurante en el menú, lo actualizamos
-        var elNombre = document.getElementById('nombre-restaurante');
-        if (elNombre) elNombre.innerText = restData.nombre;
+var ID_RESTAURANTE_ACTUAL = restData.id; 
+numeroWhatsAppRestaurante = restData.phone_number_id;
 
+var elNombre = document.getElementById('nombre-restaurante');
+if (elNombre) elNombre.innerText = restData.nombre_restaurante;
         // 3. Consultamos los productos usando el UUID exacto (ID_RESTAURANTE_ACTUAL)
         let { data: productos, error: resProd } = await supabaseApp
             .from('productos')
