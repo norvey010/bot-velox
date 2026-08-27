@@ -563,6 +563,44 @@ async function guardarConfiguracion(event) {
     btn.disabled = false;
   }
 }
+// Función para eliminar un producto por su ID
+async function eliminarProducto(id) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este producto?')) return;
+
+    const { error } = await supabaseClient
+        .from('productos')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        alert('Error al eliminar el producto: ' + error.message);
+        return;
+    }
+
+    // Recarga la tabla para que desaparezca de la pantalla
+    cargarProductos();
+}
+
+// Función para preparar la edición (carga los datos en el formulario)
+async function prepararEdicionProducto(id) {
+    const { data, error } = await supabaseClient
+        .from('productos')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) {
+        alert('Error al cargar el producto para editar: ' + error.message);
+        return;
+    }
+
+    // Llena los campos con los datos actuales del producto
+    document.getElementById('prod-id').value = data.id;
+    document.getElementById('prod-nombre').value = data.nombre || '';
+    document.getElementById('prod-precio').value = data.precio || '';
+    document.getElementById('prod-descripcion').value = data.descripcion || '';
+    // (Opcional) Sube la vista o el formulario si lo necesitas visible
+}
   </script>
   <div class="p-4 mt-6 border border-red-500/30 bg-red-950/20 rounded-xl">
   <button id="btnEliminarCuenta" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
