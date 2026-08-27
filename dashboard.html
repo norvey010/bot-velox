@@ -343,7 +343,7 @@ cargarPedidos();
           <td class="p-4 text-xs text-slate-400">${prod.descripcion || 'Sin descripción'}</td>
           <td class="p-4 font-bold text-emerald-400">$${Number(prod.precio).toLocaleString()}</td>
           <td class="p-4 text-center space-x-2">
-            <button onclick="prepararEdicionProducto(${JSON.stringify(prod).replace(/"/g, '&quot;')})" class="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded text-xs">✏️ Editar</button>
+<button onclick="prepararEdicionProducto(${prod.id})" class="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded text-xs">✏️ Editar</button>
             <button onclick="eliminarProducto(${prod.id})" class="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded text-xs">🗑️ Borrar</button>
           </td>
         </tr>
