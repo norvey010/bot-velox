@@ -219,26 +219,25 @@
         }
 
        async function confirmarYEnviarPedido(event) {
-            event.preventDefault();
-            // Ya no leemos el nombre ni teléfono del formulario, usamos los nombres de tus columnas
-            var direccion = document.getElementById('input-direccion').value;
-            var metodoPago = document.getElementById('select-pago').value;
-            var notas = document.getElementById('input-notas').value;
+    event.preventDefault();
+    
+    var direccion = document.getElementById('input-direccion').value;
+    var metodoPago = document.getElementById('select-pago').value;
+    var notas = document.getElementById('input-notas').value;
 
-            if (cart.length === 0) return;
+    if (cart.length === 0) return;
 
-            var total = 0;
-            var detalles = [];
-            for (var i = 0; i < cart.length; i++) {
-                total += (cart[i].precio * cart[i].cantidad);
-                detalles.push(cart[i].cantidad + 'x ' + cart[i].nombre);
-            }
-            var detallePedido = detalles.join(', ');
+    var total = 0;
+    var detalles = [];
+    for (var i = 0; i < cart.length; i++) {
+        total += (cart[i].precio * cart[i].cantidad);
+        detalles.push(cart[i].cantidad + 'x ' + cart[i].nombre);
+    }
+    var detallePedido = detalles.join(', ');
 
-            try {
-                // Aquí usamos LOS NOMBRES EXACTOS que salen en tu Supabase:
-                var res = await supabaseApp.from('pedidos').insert([{
-            restaurant_id: ID_RESTAURANTE_ACTUAL,
+    try {
+        var res = await supabaseApp.from('pedidos').insert([{
+            restaurante_id: ID_RESTAURANTE_ACTUAL,
             cliente_nombre: 'Anónimo',
             cliente_telefono: 'Sin teléfono',
             direccion: direccion,
@@ -247,32 +246,42 @@
             total: total,
             estado: 'Pendiente',
             metodo_pago: metodoPago,
-            notas: notas
+            notas: notas || ''
         }]);
-                if (res.error) throw res.error;
 
-                alert("✅ ¡Pedido enviado con éxito!");
-                cerrarModalPedido();
+        if (res.error) throw res.error;
 
-                if (numeroWhatsAppRestaurante) {
-                    var msj = "*NUEVO PEDIDO*\n" +
-                        "📍 *Dirección:* " + direccion + "\n" +
-                        "🍔 *Pedido:* " + detallePedido + "\n" +
-                        "💰 *Total:* $" + total.toLocaleString('es-CO') + "\n" +
-                        "💳 *Pago:* " + metodoPago +
-                        (notas ? "\n📝 *Notas:* " + notas : "");
+        alert("✅ ¡Pedido enviado con éxito!");
+        cerrarModalPedido();
 
-                    window.open('https://wa.me/' + numeroWhatsAppRestaurante + '?text=' + encodeURIComponent(msj), '_blank');
-                }
-
-                cart = [];
-                actualizarBarraCarrito();
-            } catch (err) {
-                alert("⚠️ Error al guardar pedido: " + err.message);
-                console.error(err);
-            }
+        // Extraer y limpiar el número de WhatsApp de manera universal desde los datos del restaurante
+        let numeroWhatsAppRestaurante = "573222027893"; // Respaldo por defecto
+        if (typeof restData !== 'undefined' && restData && restData.telefono) {
+            numeroWhatsAppRestaurante = restData.telefono.replace(/[^0-9]/g, '');
         }
-        
+
+        let nombreRestauranteText = (typeof restData !== 'undefined' && restData && restData.nombre_restaurante) ? restData.nombre_restaurante : "Restaurante";
+
+        if (numeroWhatsAppRestaurante) {
+            var msj = `*NUEVO PEDIDO - ${nombreRestauranteText}*\n` +
+                "📍 *Dirección:* " + direccion + "\n" +
+                "🍔 *Pedido:* " + detallePedido + "\n" +
+                "💰 *Total:* $" + total.toLocaleString('es-CO') + "\n" +
+                "💳 *Pago:* " + metodoPago +
+                (notas ? "\n📝 *Notas:* " + notas : "") +
+                "\n\n[/NUEVO_PEDIDO]";
+
+            window.open('https://wa.me/' + numeroWhatsAppRestaurante + '?text=' + encodeURIComponent(msj), '_blank');
+        }
+
+        cart = [];
+        actualizarBarraCarrito();
+
+    } catch (err) {
+        alert("⚠️ Error al guardar pedido: " + err.message);
+        console.error(err);
+    }
+}
 
         window.cargarMenu = cargarMenu;
         window.onload = function() {
