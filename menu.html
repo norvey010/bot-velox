@@ -236,8 +236,9 @@
     var detallePedido = detalles.join(', ');
 
     try {
+        // Usamos exactamente 'restaurant_id' tal como está creado en tu tabla de Supabase de pedidos
         var res = await supabaseApp.from('pedidos').insert([{
-            restaurante_id: ID_RESTAURANTE_ACTUAL,
+            restaurant_id: ID_RESTAURANTE_ACTUAL,
             cliente_nombre: 'Anónimo',
             cliente_telefono: 'Sin teléfono',
             direccion: direccion,
@@ -251,38 +252,38 @@
 
         if (res.error) throw res.error;
 
-        alert("✅ ¡Pedido enviado con éxito!");
-        cerrarModalPedido();
-
-        // Extraer y limpiar el número de WhatsApp de manera universal desde los datos del restaurante
-        let numeroWhatsAppRestaurante = "573222027893"; // Respaldo por defecto
-        if (typeof restData !== 'undefined' && restData && restData.telefono) {
-            numeroWhatsAppRestaurante = restData.telefono.replace(/[^0-9]/g, '');
+        // Validamos que el restaurante tenga un número de WhatsApp registrado en la base de datos
+        if (typeof restData === 'undefined' || !restData || !restData.telefono) {
+            alert("⚠️ Pedido guardado, pero este restaurante no tiene un número de WhatsApp configurado.");
+            return;
         }
 
-        let nombreRestauranteText = (typeof restData !== 'undefined' && restData && restData.nombre_restaurante) ? restData.nombre_restaurante : "Restaurante";
+        let numeroWhatsAppRestaurante = restData.telefono.replace(/[^0-9]/g, '');
+        let nombreRestauranteText = restData.nombre_restaurante || "Restaurante";
 
-        if (numeroWhatsAppRestaurante) {
-            var msj = `*NUEVO PEDIDO - ${nombreRestauranteText}*\n` +
-                "📍 *Dirección:* " + direccion + "\n" +
-                "🍔 *Pedido:* " + detallePedido + "\n" +
-                "💰 *Total:* $" + total.toLocaleString('es-CO') + "\n" +
-                "💳 *Pago:* " + metodoPago +
-                (notas ? "\n📝 *Notas:* " + notas : "") +
-                "\n\n[/NUEVO_PEDIDO]";
- 
-            window.open('https://wa.me/' + numeroWhatsAppRestaurante + '?text=' + encodeURIComponent(msj), '_blank');
-        }
+        var msj = `*NUEVO PEDIDO - ${nombreRestauranteText}*\n` +
+            "📍 *Dirección:* " + direccion + "\n" +
+            "🍔 *Pedido:* " + detallePedido + "\n" +
+            "💰 *Total:* $" + total.toLocaleString('es-CO') + "\n" +
+            "💳 *Pago:* " + metodoPago +
+            (notas ? "\n📝 *Notas:* " + notas : "") +
+            "\n\n[/NUEVO_PEDIDO]";
 
+        var urlWhatsApp = 'https://wa.me/' + numeroWhatsAppRestaurante + '?text=' + encodeURIComponent(msj);
+        
+        // Limpiamos el carrito local antes de salir
         cart = [];
-        actualizarBarraCarrito();
+        if (typeof actualizarBarraCarrito === 'function') actualizarBarraCarrito();
+
+        // Redirige directo al WhatsApp del restaurante actual
+        window.location.href = urlWhatsApp;
+        return;
 
     } catch (err) {
         alert("⚠️ Error al guardar pedido: " + err.message);
         console.error(err);
     }
 }
-
         window.cargarMenu = cargarMenu;
         window.onload = function() {
             cargarMenu();
