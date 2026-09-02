@@ -242,7 +242,7 @@ async function cargarPedidos() {
     let query = supabaseClient
       .from('pedidos')
       .select('*', { count: 'exact' })
-      .eq('restaurant_id', RESTAURANTE_ID)
+      .eq('restaurante_id', RESTAURANTE_ID)
       .order('created_at', { ascending: false })
       .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
 
