@@ -283,12 +283,12 @@
         let nombreNegocio = restaurante.nombre_restaurante || "Restaurante";
 
         // 5. Arma el mensaje estructurado para WhatsApp
-        var mensajeWhatsApp = `*NUEVO PEDIDO - ${nombreNegocio}*\n` +
-            "📍 *Dirección:* " + direccion + "\n" +
-            "🍔 *Pedido:* " + detallePedido + "\n" +
-            "💰 *Total:* $" + total.toLocaleString('es-CO') + "\n" +
-            "💳 *Pago:* " + metodoPago +
-            (notas ? "\n📝 *Notas:* " + notas : "") +
+        var mensajeWhatsApp = `*NUEVO PEDIDO - ${nombreNegocio}*\n\n` +
+            "- *Dirección:* " + direccion + "\n" +
+            "- *Pedido:* " + detallePedido + "\n" +
+            "- *Total:* $" + total.toLocaleString('es-CO') + "\n" +
+            "- *Pago:* " + metodoPago +
+            (notas ? "\n- *Notas:* " + notas : "") +
             "\n\n[/NUEVO_PEDIDO]";
 
         let prefijo = numeroLimpio.startsWith('57') ? '' : '57';
