@@ -218,7 +218,7 @@
             modal.classList.remove('flex');
         }
 
-       async function confirmarYEnviarPedido(event) {
+      async function confirmarYEnviarPedido(event) {
     event.preventDefault();
     
     var direccion = document.getElementById('input-direccion').value;
@@ -236,7 +236,6 @@
     var detallePedido = detalles.join(', ');
 
     try {
-        // Usamos exactamente 'restaurant_id' tal como está creado en tu tabla de Supabase de pedidos
         var res = await supabaseApp.from('pedidos').insert([{
             restaurant_id: ID_RESTAURANTE_ACTUAL,
             cliente_nombre: 'Anónimo',
@@ -252,14 +251,20 @@
 
         if (res.error) throw res.error;
 
-        // Validamos que el restaurante tenga un número de WhatsApp registrado en la base de datos
-        if (typeof restData === 'undefined' || !restData || !restData.telefono) {
-            alert("⚠️ Pedido guardado, pero este restaurante no tiene un número de WhatsApp configurado.");
+        // Consultamos directamente a Supabase el restaurante actual usando el ID global
+        let { data: restInfo, error: errRest } = await supabaseApp
+            .from('restaurantes')
+            .select('*')
+            .eq('id', ID_RESTAURANTE_ACTUAL)
+            .maybeSingle();
+
+        if (errRest || !restInfo || !restInfo.telefono) {
+            alert("⚠️ Pedido guardado, pero no se encontró el teléfono del restaurante en la base de datos.");
             return;
         }
 
-        let numeroWhatsAppRestaurante = restData.telefono.replace(/[^0-9]/g, '');
-        let nombreRestauranteText = restData.nombre_restaurante || "Restaurante";
+        let numeroWhatsAppRestaurante = String(restInfo.telefono).replace(/[^0-9]/g, '');
+        let nombreRestauranteText = restInfo.nombre_restaurante || "Restaurante";
 
         var msj = `*NUEVO PEDIDO - ${nombreRestauranteText}*\n` +
             "📍 *Dirección:* " + direccion + "\n" +
@@ -269,7 +274,8 @@
             (notas ? "\n📝 *Notas:* " + notas : "") +
             "\n\n[/NUEVO_PEDIDO]";
 
-        var urlWhatsApp = 'https://wa.me/' + numeroWhatsAppRestaurante + '?text=' + encodeURIComponent(msj);
+        let prefijoPais = numeroWhatsAppRestaurante.startsWith('57') ? '' : '57';
+        var urlWhatsApp = 'https://wa.me/' + prefijoPais + numeroWhatsAppRestaurante + '?text=' + encodeURIComponent(msj);
         
         // Limpiamos el carrito local antes de salir
         cart = [];
