@@ -218,7 +218,7 @@
             modal.classList.remove('flex');
         }
 
-      async function confirmarYEnviarPedido(event) {
+     async function confirmarYEnviarPedido(event) {
     event.preventDefault();
     
     var direccion = document.getElementById('input-direccion').value;
@@ -236,8 +236,30 @@
     var detallePedido = detalles.join(', ');
 
     try {
+        // Obtenemos el identificador directamente de la URL actual (slug o r)
+        var urlParams = new URLSearchParams(window.location.search);
+        var clienteSlug = urlParams.get('slug') || urlParams.get('r');
+
+        if (!clienteSlug) {
+            alert("⚠️ Error: No se identificó el restaurante en la URL.");
+            return;
+        }
+
+        // Consultamos directamente el restaurante en Supabase usando el slug o teléfono de la URL
+        let { data: restInfo, error: errRest } = await supabaseApp
+            .from('restaurantes')
+            .select('*')
+            .or(`slug.eq.${clienteSlug},telefono.eq.${clienteSlug}`)
+            .maybeSingle();
+
+        if (errRest || !restInfo) {
+            alert("⚠️ Error: No se encontró la información del restaurante en la base de datos.");
+            return;
+        }
+
+        // Guardamos el pedido usando el ID real que acabamos de encontrar
         var res = await supabaseApp.from('pedidos').insert([{
-            restaurant_id: ID_RESTAURANTE_ACTUAL,
+            restaurant_id: restInfo.id,
             cliente_nombre: 'Anónimo',
             cliente_telefono: 'Sin teléfono',
             direccion: direccion,
@@ -251,15 +273,8 @@
 
         if (res.error) throw res.error;
 
-        // Consultamos directamente a Supabase el restaurante actual usando el ID global
-        let { data: restInfo, error: errRest } = await supabaseApp
-            .from('restaurantes')
-            .select('*')
-            .eq('id', ID_RESTAURANTE_ACTUAL)
-            .maybeSingle();
-
-        if (errRest || !restInfo || !restInfo.telefono) {
-            alert("⚠️ Pedido guardado, pero no se encontró el teléfono del restaurante en la base de datos.");
+        if (!restInfo.telefono) {
+            alert("⚠️ Pedido guardado, pero este restaurante no tiene un número de WhatsApp configurado.");
             return;
         }
 
