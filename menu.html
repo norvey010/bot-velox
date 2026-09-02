@@ -236,30 +236,30 @@
     var detallePedido = detalles.join(', ');
 
     try {
-        // Obtenemos el identificador directamente de la URL actual (slug o r)
+        // 1. Lee automáticamente el parámetro de la URL (sirve para cualquier restaurante sin importar su nombre o ID)
         var urlParams = new URLSearchParams(window.location.search);
-        var clienteSlug = urlParams.get('slug') || urlParams.get('r');
+        var identificadorRestaurante = urlParams.get('slug') || urlParams.get('r');
 
-        if (!clienteSlug) {
-            alert("⚠️ Error: No se identificó el restaurante en la URL.");
+        if (!identificadorRestaurante) {
+            alert("⚠️ Error: El enlace del menú no es válido.");
             return;
         }
 
-        // Consultamos directamente el restaurante en Supabase usando el slug o teléfono de la URL
-        let { data: restInfo, error: errRest } = await supabaseApp
+        // 2. Busca universalmente al restaurante en la base de datos por su slug o por su ID
+        let { data: restaurante, error: errorRest } = await supabaseApp
             .from('restaurantes')
             .select('*')
-            .or(`slug.eq.${clienteSlug},telefono.eq.${clienteSlug}`)
+            .or(`slug.eq.${identificadorRestaurante},id.eq.${identificadorRestaurante}`)
             .maybeSingle();
 
-        if (errRest || !restInfo) {
-            alert("⚠️ Error: No se encontró la información del restaurante en la base de datos.");
+        if (errorRest || !restaurante) {
+            alert("⚠️ Error: No se encontró el restaurante en el sistema.");
             return;
         }
 
-        // Guardamos el pedido usando el ID real que acabamos de encontrar
+        // 3. Guarda el pedido usando el ID exacto del restaurante encontrado
         var res = await supabaseApp.from('pedidos').insert([{
-            restaurant_id: restInfo.id,
+            restaurant_id: restaurante.id,
             cliente_nombre: 'Anónimo',
             cliente_telefono: 'Sin teléfono',
             direccion: direccion,
@@ -273,15 +273,17 @@
 
         if (res.error) throw res.error;
 
-        if (!restInfo.telefono) {
-            alert("⚠️ Pedido guardado, pero este restaurante no tiene un número de WhatsApp configurado.");
+        // 4. Valida de forma universal si el restaurante tiene teléfono registrado
+        if (!restaurante.telefono) {
+            alert("⚠️ Pedido guardado con éxito, pero este establecimiento no tiene un número de WhatsApp configurado.");
             return;
         }
 
-        let numeroWhatsAppRestaurante = String(restInfo.telefono).replace(/[^0-9]/g, '');
-        let nombreRestauranteText = restInfo.nombre_restaurante || "Restaurante";
+        let numeroLimpio = String(restaurante.telefono).replace(/[^0-9]/g, '');
+        let nombreNegocio = restaurante.nombre_restaurante || "Restaurante";
 
-        var msj = `*NUEVO PEDIDO - ${nombreRestauranteText}*\n` +
+        // 5. Arma el mensaje estructurado para WhatsApp
+        var mensajeWhatsApp = `*NUEVO PEDIDO - ${nombreNegocio}*\n` +
             "📍 *Dirección:* " + direccion + "\n" +
             "🍔 *Pedido:* " + detallePedido + "\n" +
             "💰 *Total:* $" + total.toLocaleString('es-CO') + "\n" +
@@ -289,19 +291,18 @@
             (notas ? "\n📝 *Notas:* " + notas : "") +
             "\n\n[/NUEVO_PEDIDO]";
 
-        let prefijoPais = numeroWhatsAppRestaurante.startsWith('57') ? '' : '57';
-        var urlWhatsApp = 'https://wa.me/' + prefijoPais + numeroWhatsAppRestaurante + '?text=' + encodeURIComponent(msj);
+        let prefijo = numeroLimpio.startsWith('57') ? '' : '57';
+        var linkFinal = 'https://wa.me/' + prefijo + numeroLimpio + '?text=' + encodeURIComponent(mensajeWhatsApp);
         
-        // Limpiamos el carrito local antes de salir
+        // 6. Limpia el carrito y redirige automáticamente al WhatsApp del negocio
         cart = [];
         if (typeof actualizarBarraCarrito === 'function') actualizarBarraCarrito();
 
-        // Redirige directo al WhatsApp del restaurante actual
-        window.location.href = urlWhatsApp;
+        window.location.href = linkFinal;
         return;
 
     } catch (err) {
-        alert("⚠️ Error al guardar pedido: " + err.message);
+        alert("⚠️ Error inesperado: " + err.message);
         console.error(err);
     }
 }
