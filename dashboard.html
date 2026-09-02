@@ -249,9 +249,9 @@ async function cargarPedidos() {
     if (estado !== 'todos') query = query.eq('estado', estado);
     if (busqueda) query = query.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
 
-    const { data, count, error } = await query;
+   const { data, count, error } = await query;
     if (error) {
-        console.error("Error al cargar pedidos:", error);
+        console.error("Error exacto de Supabase:", error.message, error.details, error.hint);
         return;
     }
 
