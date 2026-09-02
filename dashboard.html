@@ -234,7 +234,7 @@ cargarPedidos();
   }
 
   // --- MÓDULO PEDIDOS ---
-  async function cargarPedidos() {
+async function cargarPedidos() {
     if (!RESTAURANTE_ID) return;
     const estado = document.getElementById('select-estado').value;
     const busqueda = document.getElementById('input-search').value.trim();
@@ -242,7 +242,7 @@ cargarPedidos();
     let query = supabaseClient
       .from('pedidos')
       .select('*', { count: 'exact' })
-     .eq('restaurante_id', RESTAURANTE_ID)
+      .eq('restaurant_id', RESTAURANTE_ID)
       .order('created_at', { ascending: false })
       .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
 
@@ -250,13 +250,15 @@ cargarPedidos();
     if (busqueda) query = query.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
 
     const { data, count, error } = await query;
-    if (error) return;
+    if (error) {
+        console.error("Error al cargar pedidos:", error);
+        return;
+    }
 
     renderTablaPedidos(data);
     actualizarPaginacion(count);
     calcularMetricas();
-  }
-
+}
   function renderTablaPedidos(pedidos) {
     const tbody = document.getElementById('pedidos-body');
     tbody.innerHTML = '';
