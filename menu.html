@@ -96,7 +96,7 @@
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 
-    let { data: restData, error: restError } = await supabaseApp
+    let { data: restData, error: restError } = await supabaseClient
         .from('restaurantes')
         .select('*')
         .eq('slug', clienteSlug)
@@ -111,7 +111,7 @@
     var elNombre = document.getElementById('nombre-restaurante');
     if (elNombre) elNombre.innerText = restData.nombre_restaurante;
 
-    let { data: productos, error: resProd } = await supabaseApp
+    let { data: productos, error: resProd } = await supabaseClient
         .from('productos')
         .select('*')
         .eq('restaurante_id', ID_RESTAURANTE_ACTUAL);
@@ -246,7 +246,7 @@
         }
 
         // 2. Busca universalmente al restaurante en la base de datos por su slug o por su ID
-        let { data: restaurante, error: errorRest } = await supabaseApp
+        let { data: restaurante, error: errorRest } = await supabaseClient
             .from('restaurantes')
             .select('*')
             .or(`slug.eq.${identificadorRestaurante},id.eq.${identificadorRestaurante}`)
@@ -258,7 +258,7 @@
         }
 
         // 3. Guarda el pedido usando el ID exacto del restaurante encontrado
-        var res = await supabaseApp.from('pedidos').insert([{
+        var res = await supabaseClient.from('pedidos').insert([{
             restaurant_id: restaurante.id,
             cliente_nombre: 'Anónimo',
             cliente_telefono: 'Sin teléfono',
