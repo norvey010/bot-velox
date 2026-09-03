@@ -92,8 +92,8 @@
         return;
     }
 
-    if (!supabaseApp && window.supabase) {
-        supabaseApp = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    if (!supabaseClient && window.supabase) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 
     let { data: restData, error: restError } = await supabaseApp
