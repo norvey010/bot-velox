@@ -73,13 +73,13 @@
     <script>
         var SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
         var SUPABASE_KEY = 'sb_publishable_6YqFb_vPKTOFJZ9sp8AUzw_4aNLkH-l';
-        var supabaseApp = null;
+        var supabaseClient = null;
         var cart = [];
         var numeroWhatsAppRestaurante = '';
         var ID_RESTAURANTE_ACTUAL = null;
 
         if (window.supabase && window.supabase.createClient) {
-            supabaseApp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
        async function cargarMenu() {
