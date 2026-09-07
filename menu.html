@@ -248,18 +248,18 @@
             .eq('id', ID_RESTAURANTE_ACTUAL)
             .single();
 
-        var telefonoNegocio = "573000000000"; // Número de respaldo por si acaso
-        var nombreNegocio = "Restaurante";
+        var telefonoNegocio = "573000000000"; // Respaldo por defecto
 
-        if (resRestaurante.data) {
-            if (resRestaurante.data.telefono) {
-                telefonoNegocio = resRestaurante.data.telefono;
-            }
-            if (resRestaurante.data.nombre_restaurante) {
-                nombreNegocio = resRestaurante.data.nombre_restaurante;
+        if (resRestaurante.data && resRestaurante.data.telefono) {
+            let telLimpio = String(resRestaurante.data.telefono).replace(/\D/g, ''); // Saca solo los números
+            
+            // Si el número tiene 10 dígitos (ej: 3101234567), le antepone el 57 de Colombia
+            if (telLimpio.length === 10) {
+                telefonoNegocio = "57" + telLimpio;
+            } else if (telLimpio.length > 10) {
+                telefonoNegocio = telLimpio; // Si ya trae el indicativo completo
             }
         }
-
         // 2. Guarda el pedido en la tabla pedidos
         var resPedido = await supabaseClient.from('pedidos').insert([{
             restaurante_id: ID_RESTAURANTE_ACTUAL,
