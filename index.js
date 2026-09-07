@@ -90,11 +90,13 @@ app.get('/webhook', (req, res) => {
 
 // Funciones para soporte Multi-Restaurante
 async function obtenerRestaurante(phoneNumberId) {
+    // Nota: Como Meta a veces manda el número de teléfono del remitente o el ID, 
+    // buscamos directamente en la columna 'telefono' de la tabla restaurantes.
     const { data: restaurante } = await supabase
         .from('restaurantes')
         .select('*')
-        .eq('phone_number_id', phoneNumberId)
-        .single();
+        .eq('telefono', phoneNumberId)
+        .maybeSingle();
     return restaurante;
 }
 
