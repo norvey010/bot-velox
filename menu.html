@@ -218,9 +218,9 @@
             modal.classList.remove('flex');
         }
 
-     async function confirmarYEnviarPedido(event) {
+    async function confirmarYEnviarPedido(event) {
     event.preventDefault();
-    
+
     var direccion = document.getElementById('input-direccion').value;
     var metodoPago = document.getElementById('select-pago').value;
     var notas = document.getElementById('input-notas').value;
@@ -231,26 +231,17 @@
     var detalles = [];
     for (var i = 0; i < cart.length; i++) {
         total += (cart[i].precio * cart[i].cantidad);
-        detalles.push(cart[i].cantidad + 'x ' + cart[i].nombre);
+        detalles.push(cart[i].cantidad + ' x ' + cart[i].nombre);
     }
     var detallePedido = detalles.join(', ');
 
+    if (!ID_RESTAURANTE_ACTUAL) {
+        alert("⚠️ Error: No se encontró el restaurante en el sistema.");
+        return;
+    }
+
     try {
-        // 1. Lee automáticamente el parámetro de la URL (sirve para cualquier restaurante sin importar su nombre o ID)
-        var urlParams = new URLSearchParams(window.location.search);
-        var identificadorRestaurante = urlParams.get('slug') || urlParams.get('r');
-
-        if (!identificadorRestaurante) {
-            alert("⚠️ Error: El enlace del menú no es válido.");
-            return;
-        }
-
-       if (!ID_RESTAURANTE_ACTUAL) {
-    alert("⚠️ Error: No se encontró el restaurante en el sistema.");
-    return;
-}
-
-        // 3. Guarda el pedido usando el ID exacto del restaurante encontrado
+        // 1. Guarda en Supabase usando la columna correcta
         var res = await supabaseClient.from('pedidos').insert([{
             restaurante_id: ID_RESTAURANTE_ACTUAL,
             cliente_nombre: 'Anónimo',
@@ -264,39 +255,37 @@
             notas: notas || ''
         }]);
 
-        if (res.error) throw res.error;
-
-        // 4. Valida de forma universal si el restaurante tiene teléfono registrado
-        if (!restaurante.telefono) {
-            alert("⚠️ Pedido guardado con éxito, pero este establecimiento no tiene un número de WhatsApp configurado.");
+        if (res.error) {
+            console.error("Error de Supabase:", res.error);
+            alert("Error al guardar: " + res.error.message);
             return;
         }
 
-        let numeroLimpio = String(restaurante.telefono).replace(/[^0-9]/g, '');
-        let nombreNegocio = restaurante.nombre_restaurante || "Restaurante";
-
-        // 5. Arma el mensaje estructurado para WhatsApp
-        var mensajeWhatsApp = `*NUEVO PEDIDO - ${nombreNegocio}*\n\n` +
-            "- *Dirección:* " + direccion + "\n" +
-            "- *Pedido:* " + detallePedido + "\n" +
-            "- *Total:* $" + total.toLocaleString('es-CO') + "\n" +
-            "- *Pago:* " + metodoPago +
-            (notas ? "\n- *Notas:* " + notas : "") +
-            "\n\n[/NUEVO_PEDIDO]";
-
-        let prefijo = numeroLimpio.startsWith('57') ? '' : '57';
-        var linkFinal = 'https://wa.me/' + prefijo + numeroLimpio + '?text=' + encodeURIComponent(mensajeWhatsApp);
+        // 2. Arma el mensaje universal para WhatsApp
+        var numeroPorDefecto = "573000000000"; 
+        var nombreNegocio = "Restaurante";
         
-        // 6. Limpia el carrito y redirige automáticamente al WhatsApp del negocio
+        var mensajeWhatsapp = `*NUEVO PEDIDO - ${nombreNegocio}*\n\n` +
+            `• *Dirección:* ${direccion}\n` +
+            `• *Pedido:* ${detallePedido}\n` +
+            `• *Total:* $ ${total.toLocaleString('es-CO')}\n` +
+            `• *Pago:* ${metodoPago}\n` +
+            (notas ? `• *Notas:* ${notas}\n` : '') +
+            `\n\n[/NUEVO_PEDIDO]`;
+
+        var linkFinal = 'https://wa.me/' + numeroPorDefecto + '?text=' + encodeURIComponent(mensajeWhatsapp);
+
+        // 3. Limpia el carrito y abre el WhatsApp
         cart = [];
         if (typeof actualizarBarraCarrito === 'function') actualizarBarraCarrito();
+        if (typeof cerrarModalPedido === 'function') cerrarModalPedido();
 
         window.location.href = linkFinal;
         return;
 
     } catch (err) {
-        alert("⚠️ Error inesperado: " + err.message);
-        console.error(err);
+        console.error("Error inesperado:", err);
+        alert("Error inesperado: " + err.message);
     }
 }
         window.cargarMenu = cargarMenu;
