@@ -119,7 +119,9 @@ app.post('/webhook', async (req, res) => {
             const changes = entry?.changes?.[0];
             const value = changes?.value;
             const phoneNumberId = value?.metadata?.phone_number_id;
-            const message = value?.messages?.[0];
+console.log("🔥 ID QUE LLEGA:", phoneNumberId);
+const message = value?.messages?.[0];
+            
 
             if (message) {
                 const numeroRemitente = message.from;
