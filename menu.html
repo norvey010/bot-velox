@@ -245,21 +245,14 @@
             return;
         }
 
-        // 2. Busca universalmente al restaurante en la base de datos por su slug o por su ID
-        let { data: restaurante, error: errorRest } = await supabaseClient
-            .from('restaurantes')
-            .select('*')
-            .or(`slug.eq.${identificadorRestaurante},id.eq.${identificadorRestaurante}`)
-            .maybeSingle();
-
-        if (errorRest || !restaurante) {
-            alert("⚠️ Error: No se encontró el restaurante en el sistema.");
-            return;
-        }
+       if (!ID_RESTAURANTE_ACTUAL) {
+    alert("⚠️ Error: No se encontró el restaurante en el sistema.");
+    return;
+}
 
         // 3. Guarda el pedido usando el ID exacto del restaurante encontrado
         var res = await supabaseClient.from('pedidos').insert([{
-            restaurant_id: restaurante.id,
+            restaurant_id: ID_RESTAURANTE_ACTUAL,
             cliente_nombre: 'Anónimo',
             cliente_telefono: 'Sin teléfono',
             direccion: direccion,
