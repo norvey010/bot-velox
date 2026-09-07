@@ -252,7 +252,7 @@
 
         // 3. Guarda el pedido usando el ID exacto del restaurante encontrado
         var res = await supabaseClient.from('pedidos').insert([{
-            id_restaurante: ID_RESTAURANTE_ACTUAL,
+            restaurante_id: ID_RESTAURANTE_ACTUAL,
             cliente_nombre: 'Anónimo',
             cliente_telefono: 'Sin teléfono',
             direccion: direccion,
