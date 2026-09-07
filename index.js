@@ -155,6 +155,7 @@ const message = value?.messages?.[0];
 
                 // Consultar a qué restaurante pertenece este WhatsApp usando el phone_number_id
                 const restauranteData = await obtenerRestaurante(phoneNumberId);
+                console.log("🍔 RESTAURANTE ENCONTRADO:", restauranteData);
                 
                 let linkMenuDinamico = "https://bot-velox-production.up.railway.app/menu.html";
                 let restauranteIdActual = null;
