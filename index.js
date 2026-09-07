@@ -14,7 +14,8 @@ app.use(express.json());
 app.use(express.static(__dirname));
 const historiales = {};
 const PORT = process.env.PORT || 3000;
-const SYSTEM_PROMPT = `
+
+const SYSTEM_PROMPT_BASE = `
 Eres Velox, el asistente virtual inteligente encargado de atender pedidos y domicilios amablemente.
 
 REGLAS DE ATENCIÓN (EN ORDEN DE PRIORIDAD):
@@ -31,10 +32,10 @@ Notas: {Escribe aquí el detalle exacto pedido por el cliente}
    - Confirma con entusiasmo, dile el total y que su pedido ya fue enviado.
 
 3. SI PREGUNTA POR EL MENÚ O QUIERE PEDIR ALGO NUEVO:
-   - Salúdalo con amabilidad y dale nuestro link del Menú Digital interactivo:
-     👉 https://bot-velox-production.up.railway.app/menu.html
+   - Salúdalo con amabilidad y dale el link del Menú Digital interactivo que te proporcionaré abajo.
    - Si insiste en pedir por texto, toma su orden con gusto.
-FORMATO FINAL DE ORDEN:
+
+FORMATO FINAL DE ORDER:
 Al confirmar el pedido, incluye al final de tu mensaje este formato exacto:
 
 [NUEVO_PEDIDO]
@@ -45,13 +46,11 @@ Pago: {Método}
 [/NUEVO_PEDIDO]
 `;
 
-
 // Ruta principal del servidor
-
-// Ruta para servir el Panel de Control
 app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
+
 app.get('/', (req, res) => {
     res.send('¡El bot de Velox está activo y funcionando!');
 });
@@ -89,7 +88,6 @@ app.get('/webhook', (req, res) => {
     }
 });
 
-// 2. Ruta para recibir los mensajes de WhatsApp
 // Funciones para soporte Multi-Restaurante
 async function obtenerRestaurante(phoneNumberId) {
     const { data: restaurante } = await supabase
@@ -108,6 +106,7 @@ async function obtenerMenu(restauranteId) {
         .eq('disponible', true);
     return productos || [];
 }
+
 app.post('/webhook', async (req, res) => {
     res.sendStatus(200);
     try {
@@ -128,128 +127,143 @@ app.post('/webhook', async (req, res) => {
                     console.log("⚠️ Mensaje no contiene texto. Se ignora.");
                     return;
                 }
-                console.log(`Mensaje recibido de ${numeroRemitente}: ${textoUsuario}`);
+                console.log(`Mensaje recibido de ${numeroRemitente} (Phone ID: ${phoneNumberId}): ${textoUsuario}`);
+
+                // Consultar a qué restaurante pertenece este WhatsApp usando el phone_number_id
+                const restauranteData = await obtenerRestaurante(phoneNumberId);
+                
+                let linkMenuDinamico = "https://bot-velox-production.up.railway.app/menu.html";
+                let restauranteIdActual = null;
+
+                if (restauranteData) {
+                    restauranteIdActual = restauranteData.id;
+                    if (restauranteData.slug) {
+                        linkMenuDinamico = `https://bot-velox-production.up.railway.app/menu.html?slug=${restauranteData.slug}`;
+                    }
+                }
+
+                // Construir el System Prompt personalizado con el link exacto del restaurante
+                const systemPromptDinamico = SYSTEM_PROMPT_BASE + `\nLINK DEL MENÚ OFICIAL DE ESTE NEGOCIO: ${linkMenuDinamico}`;
+
                 if (!historiales[numeroRemitente]) {
-  historiales[numeroRemitente] = [];
-}
-historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
-                // Consultamos a OpenAI con el mensaje recibido
-    const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            ...historiales[numeroRemitente]
-        ],
-    });
+                    historiales[numeroRemitente] = [];
+                }
+                historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
 
-    const aiResponse = completion.choices[0].message.content;
-    console.log(`🤖 Respuesta IA: ${aiResponse}`);
-    historiales[numeroRemitente].push({ role: "assistant", content: aiResponse });
-    
- // Detectar y guardar el pedido en Supabase si se confirmó
-      const matchPedido = aiResponse.match(/\[NUEVO_PEDIDO\]([\s\S]*?)\[\/NUEVO_PEDIDO\]/);
+                // Consultamos a OpenAI con el prompt personalizado
+                const completion = await openai.chat.completions.create({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        { role: "system", content: systemPromptDinamico },
+                        ...historiales[numeroRemitente]
+                    ],
+                });
 
-      if (matchPedido) {
-        try{
-        const contenidoBloque = matchPedido[1];
+                const aiResponse = completion.choices[0].message.content;
+                console.log(`🤖 Respuesta IA: ${aiResponse}`);
+                historiales[numeroRemitente].push({ role: "assistant", content: aiResponse });
+                
+                // Detectar y guardar el pedido en Supabase si se confirmó
+                const matchPedido = aiResponse.match(/\[NUEVO_PEDIDO\]([\s\S]*?)\[\/NUEVO_PEDIDO\]/);
 
-        // Extraer cada campo de forma limpia
-        const clienteMatch = contenidoBloque.match(/Cliente:\s*(.+)/i);
-        const itemsMatch = contenidoBloque.match(/Items:\s*(.+)/i);
-        const totalMatch = contenidoBloque.match(/Total:\s*\$?([\d\.\,]+)/i);
-        const direccionMatch = contenidoBloque.match(/Dirección:\s*(.+)/i);
+                if (matchPedido) {
+                    try {
+                        const contenidoBloque = matchPedido[1];
 
-        // Variables organizadas
-        const clienteNombre = clienteMatch ? clienteMatch[1].trim() : 'Cliente WhatsApp';
-        const itemsDetalle = itemsMatch ? itemsMatch[1].trim() : 'Sin detalle';
-        const direccionCliente = direccionMatch ? direccionMatch[1].trim() : 'Sin dirección';
+                        const clienteMatch = contenidoBloque.match(/Cliente:\s*(.+)/i);
+                        const itemsMatch = contenidoBloque.match(/Items:\s*(.+)/i);
+                        const totalMatch = contenidoBloque.match(/Total:\s*\$?([\d\.\,]+)/i);
+                        const direccionMatch = contenidoBloque.match(/Dirección:\s*(.+)/i);
+                        const pagoMatch = contenidoBloque.match(/Pago:\s*(.+)/i);
 
-        let totalLimpio = 0;
-        if (totalMatch) {
-          const rawTotal = totalMatch[1].replace(/\./g, '').replace(',', '.');
-          totalLimpio = parseFloat(rawTotal) || 0;
-        }
+                        const clienteNombre = clienteMatch ? clienteMatch[1].trim() : 'Cliente WhatsApp';
+                        const itemsDetalle = itemsMatch ? itemsMatch[1].trim() : 'Sin detalle';
+                        const direccionCliente = direccionMatch ? direccionMatch[1].trim() : 'Sin dirección';
+                        const metodoPago = pagoMatch ? pagoMatch[1].trim() : 'Efectivo';
 
-        // Insertar en Supabase con los campos separados
-        const { data, error } = await supabase.from('pedidos').insert([
-          {
-            cliente_telefono: numeroRemitente,
-            cliente_nombre: clienteNombre,
-            items: itemsDetalle,
-            total: totalLimpio,
-            direccion: direccionCliente,
-            estado: 'pendiente'
-          }
-        ]);
+                        let totalLimpio = 0;
+                        if (totalMatch) {
+                            const rawTotal = totalMatch[1].replace(/\./g, '').replace(',', '.');
+                            totalLimpio = parseFloat(rawTotal) || 0;
+                        }
 
-        if (error) {
-          console.error('❌ Error devuelto por Supabase:', error.message);
-        } else {
-          console.log('✅ Pedido guardado exitosamente en Supabase');
-        }
-    } catch (errSupabase) {
-      console.error('❌ Error al guardar en Supabase:', errSupabase);
-    }
-  }
-  // Detectar y actualizar notas en Supabase si el cliente hizo una aclaración
-const matchActualizar = aiResponse.match(/\[ACTUALIZAR_PEDIDO\]([\s\S]*?)\[\/ACTUALIZAR_PEDIDO\]/);
+                        // Insertar en Supabase asociando el restaurante_id correspondiente
+                        const { error } = await supabase.from('pedidos').insert([
+                            {
+                                restaurante_id: restauranteIdActual,
+                                cliente_telefono: numeroRemitente,
+                                cliente_nombre: clienteNombre,
+                                items: itemsDetalle,
+                                total: totalLimpio,
+                                direccion: direccionCliente,
+                                metodo_pago: metodoPago,
+                                estado: 'Pendiente'
+                            }
+                        ]);
 
-if (matchActualizar) {
-  try {
-    const contenidoNotas = matchActualizar[1];
-    const matchNotas = contenidoNotas.match(/Notas:\s*(.*)/i);
-    const nuevaNota = matchNotas ? matchNotas[1].trim() : contenidoNotas.trim();
+                        if (error) {
+                            console.error('❌ Error devuelto por Supabase:', error.message);
+                        } else {
+                            console.log('✅ Pedido guardado exitosamente en Supabase para el restaurante:', restauranteIdActual);
+                        }
+                    } catch (errSupabase) {
+                        console.error('❌ Error al guardar en Supabase:', errSupabase);
+                    }
+                }
 
-    // 1. Buscar el último pedido de este número de teléfono
-    const { data: ultimoPedido } = await supabase
-      .from('pedidos')
-      .select('id, notas')
-      .eq('cliente_telefono', numeroRemitente)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+                // Detectar y actualizar notas en Supabase si el cliente hizo una aclaración
+                const matchActualizar = aiResponse.match(/\[ACTUALIZAR_PEDIDO\]([\s\S]*?)\[\/ACTUALIZAR_PEDIDO\]/);
 
-    if (ultimoPedido) {
-      const notasActualizadas = ultimoPedido.notas 
-        ? `${ultimoPedido.notas} | Nota extra: ${nuevaNota}` 
-        : `Nota extra: ${nuevaNota}`;
+                if (matchActualizar) {
+                    try {
+                        const contenidoNotas = matchActualizar[1];
+                        const matchNotas = contenidoNotas.match(/Notas:\s*(.*)/i);
+                        const nuevaNota = matchNotas ? matchNotas[1].trim() : contenidoNotas.trim();
 
-      // 2. Actualizar en Supabase
-      await supabase
-        .from('pedidos')
-        .update({ notas: notasActualizadas })
-        .eq('id', ultimoPedido.id);
+                        const { data: ultimoPedido } = await supabase
+                            .from('pedidos')
+                            .select('id, notas')
+                            .eq('cliente_telefono', numeroRemitente)
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
 
-      console.log(`✅ Notas del pedido #${ultimoPedido.id} actualizadas: ${nuevaNota}`);
-    }
-  } catch (errorActualizar) {
-    console.error("❌ Error al actualizar las notas:", errorActualizar);
-  }
-}
-    // Enviar respuesta a WhatsApp
-        await axios({
-  method: 'POST',
-  url: `https://graph.facebook.com/v20.0/${process.env.PHONE_NUMBER_ID}/messages`,
-  data: {
-    messaging_product: 'whatsapp',
-    to: numeroRemitente,
-    type: 'text',
-    text: { body: aiResponse }
-  },
-  headers: {
-    'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`,
-    'Content-Type': 'application/json'
-  }
-});
+                        if (ultimoPedido) {
+                            const notasActualizadas = ultimoPedido.notas 
+                                ? `${ultimoPedido.notas} | Nota extra: ${nuevaNota}` 
+                                : `Nota extra: ${nuevaNota}`;
+
+                            await supabase
+                                .from('pedidos')
+                                .update({ notas: notasActualizadas })
+                                .eq('id', ultimoPedido.id);
+
+                            console.log(`✅ Notas del pedido #${ultimoPedido.id} actualizadas: ${nuevaNota}`);
+                        }
+                    } catch (errorActualizar) {
+                        console.error("❌ Error al actualizar las notas:", errorActualizar);
+                    }
+                }
+
+                // Enviar respuesta a WhatsApp
+                await axios({
+                    method: 'POST',
+                    url: `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
+                    data: {
+                        messaging_product: 'whatsapp',
+                        to: numeroRemitente,
+                        type: 'text',
+                        text: { body: aiResponse }
+                    },
+                    headers: {
+                        'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
             }
-
-        
         }
-        
-    
     } catch (error) {
         console.error("Error en el webhook:", JSON.stringify(error.response?.data || error.message, null, 2));
-    
     }
 });
 
