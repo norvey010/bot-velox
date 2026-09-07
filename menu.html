@@ -241,26 +241,32 @@
     }
 
     try {
-        // 1. Consulta los datos reales del restaurante en Supabase para obtener su teléfono y nombre
+        // 1. Consulta los datos reales del restaurante
         var resRestaurante = await supabaseClient
             .from('restaurantes')
             .select('nombre_restaurante, telefono')
             .eq('id', ID_RESTAURANTE_ACTUAL)
             .single();
 
-        var telefonoNegocio = "573000000000"; // Respaldo por defecto
+        var telefonoNegocio = "573000000000"; 
+        var nombreNegocio = "Restaurante";
 
-        if (resRestaurante.data && resRestaurante.data.telefono) {
-            let telLimpio = String(resRestaurante.data.telefono).replace(/\D/g, ''); // Saca solo los números
-            
-            // Si el número tiene 10 dígitos (ej: 3101234567), le antepone el 57 de Colombia
-            if (telLimpio.length === 10) {
-                telefonoNegocio = "57" + telLimpio;
-            } else if (telLimpio.length > 10) {
-                telefonoNegocio = telLimpio; // Si ya trae el indicativo completo
+        if (resRestaurante.data) {
+            if (resRestaurante.data.nombre_restaurante) {
+                nombreNegocio = resRestaurante.data.nombre_restaurante;
+            }
+            if (resRestaurante.data.telefono) {
+                let telLimpio = String(resRestaurante.data.telefono).replace(/\D/g, '');
+                // Si el número viene sin el 57 y tiene 10 dígitos, se lo anteponemos
+                if (telLimpio.length === 10) {
+                    telefonoNegocio = "57" + telLimpio;
+                } else {
+                    telefonoNegocio = telLimpio;
+                }
             }
         }
-        // 2. Guarda el pedido en la tabla pedidos
+
+        // 2. Guarda el pedido en la base de datos
         var resPedido = await supabaseClient.from('pedidos').insert([{
             restaurante_id: ID_RESTAURANTE_ACTUAL,
             cliente_nombre: 'Anónimo',
@@ -280,7 +286,7 @@
             return;
         }
 
-        // 3. Arma el mensaje estructurado para WhatsApp con los datos reales
+        // 3. Arma el mensaje estructurado para WhatsApp
         var mensajeWhatsapp = `*NUEVO PEDIDO - ${nombreNegocio}*\n\n` +
             `• *Dirección:* ${direccion}\n` +
             `• *Pedido:* ${detallePedido}\n` +
@@ -291,7 +297,7 @@
 
         var linkFinal = 'https://wa.me/' + telefonoNegocio + '?text=' + encodeURIComponent(mensajeWhatsapp);
 
-        // 4. Limpia el carrito y abre el WhatsApp del restaurante correcto
+        // 4. Limpia el carrito y abre el WhatsApp correcto
         cart = [];
         if (typeof actualizarBarraCarrito === 'function') actualizarBarraCarrito();
         if (typeof cerrarModalPedido === 'function') cerrarModalPedido();
