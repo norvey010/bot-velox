@@ -32,7 +32,7 @@ Notas: {Escribe aquí el detalle exacto pedido por el cliente}
    - Confirma con entusiasmo, dile el total y que su pedido ya fue enviado.
 
 3. SI PREGUNTA POR EL MENÚ O QUIERE PEDIR ALGO NUEVO:
-   - Salúdalo con amabilidad y entrégale OBLIGATORIAMENTE el LINK DEL MENÚ OFICIAL proporcionado en la información del sistema al final de estas instrucciones.
+   - Responde ÚNICAMENTE usando este enlace exacto: ${linkMenuDinamico} (no uses ningún otro link genérico).
    - Si insiste en pedir por texto, toma su orden con gusto.
 
 FORMATO FINAL DE ORDER:
@@ -168,7 +168,7 @@ const message = value?.messages?.[0];
                 }
 
                 // Construir el System Prompt personalizado con el link exacto del restaurante
-                const systemPromptDinamico = SYSTEM_PROMPT_BASE + `\nLINK DEL MENÚ OFICIAL DE ESTE NEGOCIO: ${linkMenuDinamico}`;
+               const systemPromptDinamico = SYSTEM_PROMPT_BASE + `\nINSTRUCCIÓN CRÍTICA: Debes usar obligatoriamente este enlace exacto para el menú digital: ${linkMenuDinamico}. Está prohibido usar cualquier otro link genérico.`;
 
                 if (!historiales[numeroRemitente]) {
                     historiales[numeroRemitente] = [];
