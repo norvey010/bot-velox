@@ -89,31 +89,22 @@ app.get('/webhook', (req, res) => {
 
 // Funciones para soporte Multi-Restaurante
 async function obtenerRestaurante(phoneNumberId) {
-    // 1. Buscamos directamente por el phone_number_id oficial de Meta
+    // 1. Buscamos de manera flexible (por si hay espacios o tipos de datos)
     let { data: restaurante, error } = await supabase
         .from('restaurantes')
         .select('*')
-        .eq('phone_number_id', phoneNumberId)
+        .eq('phone_number_id', String(phoneNumberId).trim())
         .maybeSingle();
 
-    // 2. Si por alguna razón no lo encuentra, podemos asignarlo al primer restaurante disponible (ideal para pruebas o primer registro)
-    if (!restaurante) {
-        const { data: primerRestaurante } = await supabase
-            .from('restaurantes')
-            .select('*')
-            .is('phone_number_id', null)
-            .limit(1)
-            .maybeSingle();
+    if (error) {
+        console.error("❌ Error de Supabase:", error.message);
+    }
 
-        if (primerRestaurante) {
-            // Guardamos el phone_number_id automáticamente en la base de datos para el futuro
-            await supabase
-                .from('restaurantes')
-                .update({ phone_number_id: phoneNumberId })
-                .eq('id', primerRestaurante.id);
-            
-            restaurante = { ...primerRestaurante, phone_number_id: phoneNumberId };
-        }
+    // 2. Si sigue dando null, imprimimos toda la tabla para ver qué hay adentro
+    if (!restaurante) {
+        console.log("⚠️ No hizo match exacto. Consultando toda la tabla de restaurantes...");
+        const { data: todos } = await supabase.from('restaurantes').select('*');
+        console.log("📋 Contenido actual de Supabase:", JSON.stringify(todos, null, 2));
     }
 
     return restaurante;
