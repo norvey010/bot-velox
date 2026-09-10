@@ -248,7 +248,7 @@
             .eq('id', ID_RESTAURANTE_ACTUAL)
             .single();
 
-        var telefonoNegocio = "573000000000"; 
+       var telefonoNegocio = ""; 
         var nombreNegocio = "Restaurante";
 
         if (resRestaurante.data) {
@@ -257,7 +257,6 @@
             }
             if (resRestaurante.data.telefono) {
                 let telLimpio = String(resRestaurante.data.telefono).replace(/\D/g, '');
-                // Si el número viene sin el 57 y tiene 10 dígitos, se lo anteponemos
                 if (telLimpio.length === 10) {
                     telefonoNegocio = "57" + telLimpio;
                 } else {
@@ -266,6 +265,11 @@
             }
         }
 
+        // Si el restaurante no tiene teléfono registrado, avisamos en pantalla
+        if (!telefonoNegocio) {
+            alert("⚠️ Error: El restaurante no tiene un número de WhatsApp configurado.");
+            return;
+        }
         // 2. Guarda el pedido en la base de datos
         var resPedido = await supabaseClient.from('pedidos').insert([{
             restaurante_id: ID_RESTAURANTE_ACTUAL,
