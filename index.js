@@ -1,3 +1,5 @@
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 const axios = require('axios');
 require('dotenv').config();
 const path = require('path');
@@ -280,15 +282,7 @@ const message = value?.messages?.[0];
     } catch (error) {
         console.error("Error en el webhook:", JSON.stringify(error.response?.data || error.message, null, 2));
     }
-});
-
-const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
-const OpenAI = require('openai');
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
+});app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
     try {
         const { restaurante_id } = req.body;
         const file = req.file;
