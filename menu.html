@@ -246,8 +246,8 @@
     var telefonoNegocio = "";
     var nombreNegocio = restauranteData.nombre_restaurante || "Restaurante";
 
-    var telefonoCrudo = restauranteData.phone_number_id || restauranteData.telefono || "";
-
+    var telefonoCrudo = restauranteData.telefono || "";
+    
     if (telefonoCrudo) {
         let telLimpio = String(telefonoCrudo).replace(/\D/g, '');
         if (telLimpio.length === 10) {
