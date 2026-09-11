@@ -155,7 +155,22 @@
         </div>
       </div>
     </section>
-
+<!-- SECCIÓN: MENÚ AI -->
+<section id="sec-menu-ia" class="hidden space-y-6">
+    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg space-y-4">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">🤖 Importar Menú con IA</h2>
+        <p class="text-xs text-slate-400">Sube una foto o archivo de tu menú para que la inteligencia artificial cargue los productos automáticamente.</p>
+        
+        <form action="/api/importar-menu" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <input type="hidden" name="restaurante_id" id="ai-restaurante-id">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">Selecciona el archivo del menú (Imagen o PDF)</label>
+                <input type="file" name="menuFile" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white transition">Procesar Menú con IA</button>
+        </form>
+    </div>
+</section>
     <!-- SECCIÓN 3: CONFIGURACIÓN RESTAURANTE -->
     <section id="sec-configuracion" class="hidden max-w-2xl mx-auto">
       <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg space-y-4">
