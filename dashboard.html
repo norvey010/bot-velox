@@ -24,6 +24,7 @@
     <nav class="flex gap-2 bg-slate-900 p-1 rounded-lg border border-slate-700">
       <button onclick="cambiarSeccion('pedidos')" id="tab-pedidos" class="px-4 py-1.5 rounded-md text-xs font-medium bg-emerald-600 text-white transition">📦 Pedidos</button>
       <button onclick="cambiarSeccion('productos')" id="tab-productos" class="px-4 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition">🍔 Productos</button>
+      <button onclick="cambiarSeccion('menu-ia')" id="tab-menu-ia" class="px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition">🤖 Menú IA</button>
       <button onclick="cambiarSeccion('configuracion')" id="tab-configuracion" class="px-4 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition">⚙️ Configuración</button>
     </nav>
 
@@ -220,18 +221,21 @@ cargarPedidos();
   function cambiarSeccion(seccion) {
     document.getElementById('sec-pedidos').classList.add('hidden');
     document.getElementById('sec-productos').classList.add('hidden');
+    document.getElementById('sec-menu-ia').classList.add('hidden');
     document.getElementById('sec-configuracion').classList.add('hidden');
 
-    document.getElementById('tab-pedidos').className = "px-4 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition";
-    document.getElementById('tab-productos').className = "px-4 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition";
-    document.getElementById('tab-configuracion').className = "px-4 py-1.5 rounded-md text-xs font-medium text-slate-400 hover:text-white transition";
+    document.getElementById('tab-pedidos').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
+    document.getElementById('tab-productos').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
+    document.getElementById('tab-menu-ia').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
+    document.getElementById('tab-configuracion').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
 
     document.getElementById(`sec-${seccion}`).classList.remove('hidden');
     document.getElementById(`tab-${seccion}`).className = "px-4 py-1.5 rounded-md text-xs font-medium bg-emerald-600 text-white transition";
 
     if (seccion === 'productos') cargarProductos();
+    if (seccion === 'menu-ia') cargarVistaPreviaEditorIA();
     if (seccion === 'configuracion') cargarConfiguracion();
-  }
+}
 
   // --- MÓDULO PEDIDOS ---
 async function cargarPedidos() {
