@@ -235,44 +235,34 @@
     }
     var detallePedido = detalles.join(', ');
 
-    if (!ID_RESTAURANTE_ACTUAL) {
+    // Validamos que ya tengamos los datos del restaurante cargados en memoria
+    if (!window.RESTAURANTE_ACTUAL || !window.RESTAURANTE_ACTUAL.id) {
         alert("⚠️ Error: No se encontró el restaurante en el sistema.");
         return;
     }
 
+    var restauranteData = window.RESTAURANTE_ACTUAL;
+    var telefonoNegocio = ""; 
+    var nombreNegocio = restauranteData.nombre_restaurante || "Restaurante";
+
+    if (restauranteData.telefono) {
+        let telLimpio = String(restauranteData.telefono).replace(/\D/g, '');
+        if (telLimpio.length === 10) {
+            telefonoNegocio = "57" + telLimpio;
+        } else {
+            telefonoNegocio = telLimpio;
+        }
+    }
+
+    if (!telefonoNegocio) {
+        alert("⚠️ Error: El restaurante no tiene un número de WhatsApp configurado.");
+        return;
+    }
+
     try {
-        // 1. Consulta los datos reales del restaurante
-        var resRestaurante = await supabaseClient
-            .from('restaurantes')
-            .select('nombre_restaurante, telefono')
-            .eq('id', ID_RESTAURANTE_ACTUAL)
-            .single();
-
-       var telefonoNegocio = ""; 
-        var nombreNegocio = "Restaurante";
-
-        if (resRestaurante.data) {
-            if (resRestaurante.data.nombre_restaurante) {
-                nombreNegocio = resRestaurante.data.nombre_restaurante;
-            }
-            if (resRestaurante.data.telefono) {
-                let telLimpio = String(resRestaurante.data.telefono).replace(/\D/g, '');
-                if (telLimpio.length === 10) {
-                    telefonoNegocio = "57" + telLimpio;
-                } else {
-                    telefonoNegocio = telLimpio;
-                }
-            }
-        }
-
-        // Si el restaurante no tiene teléfono registrado, avisamos en pantalla
-        if (!telefonoNegocio) {
-            alert("⚠️ Error: El restaurante no tiene un número de WhatsApp configurado.");
-            return;
-        }
-        // 2. Guarda el pedido en la base de datos
+        // 2. Guarda el pedido en la base de datos usando el ID real
         var resPedido = await supabaseClient.from('pedidos').insert([{
-            restaurante_id: ID_RESTAURANTE_ACTUAL,
+            restaurante_id: restauranteData.id,
             cliente_nombre: 'Anónimo',
             cliente_telefono: 'Sin teléfono',
             direccion: direccion,
