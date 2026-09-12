@@ -52,39 +52,51 @@
         </button>
     </div>
 
-    <!-- MODAL -->
-    <div id="modal-pedido" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100">
-            <div class="flex justify-between items-center mb-5 border-b border-slate-800 pb-3">
-                <h3 class="text-xl font-bold text-white">Finalizar Pedido</h3>
-                <button onclick="cerrarModalPedido()" class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
-            </div>
-
-            <form id="form-confirmar-pedido" onsubmit="confirmarYEnviarPedido(event)" class="space-y-4">
-                
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">Dirección de Entrega *</label>
-                    <input type="text" id="input-direccion" required placeholder="Ej: Calle 45 # 10-20" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">Método de Pago *</label>
-                    <select id="select-pago" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm">
-                        <option value="Efectivo">Efectivo contra entrega</option>
-                        <option value="Transferencia (Nequi / Daviplata)">Transferencia (Nequi / Daviplata)</option>
-                        <option value="Datáfono">Datáfono al entregar</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-300 mb-1">Notas especiales</label>
-                    <textarea id="input-notas" rows="2" placeholder="Ej: Sin cebolla..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm resize-none"></textarea>
-                </div>
-                <div class="pt-3 flex gap-3">
-                    <button type="button" onclick="cerrarModalPedido()" class="w-1/3 bg-slate-800 text-slate-300 py-3 rounded-xl text-sm">Cancelar</button>
-                    <button type="submit" class="w-2/3 bg-emerald-500 text-slate-950 font-bold py-3 rounded-xl text-sm">Confirmar Pedido 🚀</button>
-                </div>
-            </form>
+   <!-- MODAL -->
+<div id="modal-pedido" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100">
+        <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+            <h3 class="text-xl font-bold text-white">Finalizar Pedido 🛒</h3>
+            <button onclick="cerrarModalPedido()" class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
         </div>
+
+        <!-- 1. LISTA DE PRODUCTOS DEL CARRITO (¡Esto es lo que faltaba agregar!) -->
+        <div class="mb-4">
+            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tus productos:</h4>
+            <div id="lista-items-carrito" class="max-h-40 overflow-y-auto space-y-2 pr-1">
+                <!-- Aquí se pintan los platos dinámicamente con JS -->
+            </div>
+            <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-800 font-bold">
+                <span class="text-sm text-slate-300">Total a Pagar:</span>
+                <span id="total-modal-carrito" class="text-emerald-400 text-base">$0</span>
+            </div>
+        </div>
+
+        <!-- 2. FORMULARIO DE DATOS DE ENVÍO -->
+        <form id="form-confirmar-pedido" onsubmit="confirmarYEnviarPedido(event)" class="space-y-3">
+            <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Dirección de Entrega *</label>
+                <input type="text" id="input-direccion" required placeholder="Ej: Calle 45 # 10-20" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Método de Pago *</label>
+                <select id="select-pago" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm">
+                    <option value="Efectivo">Efectivo contra entrega</option>
+                    <option value="Transferencia (Nequi / Daviplata)">Transferencia (Nequi / Daviplata)</option>
+                    <option value="Datáfono">Datáfono al entregar</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Notas especiales</label>
+                <textarea id="input-notas" rows="2" placeholder="Ej: Sin cebolla..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm resize-none"></textarea>
+            </div>
+            <div class="pt-2 flex gap-3">
+                <button type="button" onclick="cerrarModalPedido()" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl text-sm transition">Cancelar</button>
+                <button type="submit" class="w-2/3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl text-sm transition">Confirmar Pedido 🚀</button>
+            </div>
+        </form>
     </div>
+</div>
 
     <script>
         var SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
@@ -249,12 +261,74 @@ function filtrarCategoria(categoriaElegida) {
             }
         }
 
-        function abrirModalPedido() {
-            if (cart.length === 0) return;
-            var modal = document.getElementById('modal-pedido');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
+       function abrirModalPedido() {
+    if (cart.length === 0) return;
+    
+    var modal = document.getElementById('modal-pedido');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    // Renderizar los items dentro del modal
+    renderizarCarritoModal();
+}
+
+function renderizarCarritoModal() {
+    // Busca o crea un contenedor para los items dentro de tu modal de pedido
+    var contenedorItems = document.getElementById('lista-items-carrito');
+    var totalModal = document.getElementById('total-modal-carrito');
+    
+    if (!contenedorItems) return;
+
+    let html = '';
+    let totalGeneral = 0;
+
+    cart.forEach((item, index) => {
+        let subtotal = item.precio * item.cantidad;
+        totalGeneral += subtotal;
+
+        html += `
+            <div class="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-slate-700/50 mb-2">
+                <div class="flex-1 pr-2">
+                    <h4 class="text-white font-bold text-sm">${item.nombre}</h4>
+                    <p class="text-emerald-400 text-xs font-semibold">$${item.precio.toLocaleString('es-CO')} c/u</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="cambiarCantidadItem(${index}, -1)" class="w-7 h-7 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold flex items-center justify-center">-</button>
+                    <span class="text-white text-sm font-bold w-5 text-center">${item.cantidad}</span>
+                    <button onclick="cambiarCantidadItem(${index}, 1)" class="w-7 h-7 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold flex items-center justify-center">+</button>
+                    <button onclick="eliminarItemCarrito(${index})" class="ml-2 text-red-400 hover:text-red-300 text-xs p-1">🗑️</button>
+                </div>
+            </div>
+        `;
+    });
+
+    contenedorItems.innerHTML = html;
+    if (totalModal) totalModal.innerText = '$' + totalGeneral.toLocaleString('es-CO');
+}
+
+function cambiarCantidadItem(index, delta) {
+    cart[index].cantidad += delta;
+    if (cart[index].cantidad <= 0) {
+        cart.splice(index, 1);
+    }
+    actualizarBarraCarrito();
+    renderizarCarritoModal();
+    
+    // Si el carrito se quedó vacío, cerrar el modal automáticamente
+    if (cart.length === 0) {
+        cerrarModalPedido();
+    }
+}
+
+function eliminarItemCarrito(index) {
+    cart.splice(index, 1);
+    actualizarBarraCarrito();
+    renderizarCarritoModal();
+    
+    if (cart.length === 0) {
+        cerrarModalPedido();
+    }
+}
 
         function cerrarModalPedido() {
             var modal = document.getElementById('modal-pedido');
