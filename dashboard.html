@@ -126,6 +126,10 @@
             <label class="block text-xs text-slate-400 mb-1">Descripción</label>
             <input type="text" id="prod-descripcion" placeholder="Ej: Carne 180g, queso cheddar, tocineta y salsa especial" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
           </div>
+          <div>
+    <label class="block text-xs text-slate-400 mb-1">Categoría</label>
+    <input type="text" id="prod-categoria" required placeholder="Ej: Hamburguesas, Bebidas..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+</div>
           <div class="md:col-span-3 flex justify-end gap-2">
             <button type="button" onclick="limpiarFormProducto()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-white">Cancelar</button>
             <button type="submit" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-bold text-white">Guardar Producto</button>
@@ -403,14 +407,13 @@ async function cargarPedidos() {
     urlImagenFinal = urlData.publicUrl;
   }
 
-  // 2. Armar objeto para la base de datos
-  const payload = {
-    nombre: document.getElementById('prod-nombre').value,
-    precio: parseFloat(document.getElementById('prod-precio').value),
-    descripcion: document.getElementById('prod-descripcion').value,
-    restaurante_id: RESTAURANTE_ID
-  };
-
+ const payload = {
+  nombre: document.getElementById('prod-nombre').value,
+  precio: parseFloat(document.getElementById('prod-precio').value),
+  descripcion: document.getElementById('prod-descripcion').value,
+  categoria: document.getElementById('prod-categoria') ? document.getElementById('prod-categoria').value : 'General',
+  restaurante_id: RESTAURANTE_ID
+};
   if (urlImagenFinal) {
     payload.imagen_url = urlImagenFinal;
   }
