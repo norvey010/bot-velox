@@ -6,7 +6,18 @@
     <title>Menú Digital | Velox</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+    /* Ocultar barra de desplazamiento en la barra de categorías */
+    .scrollbar-none::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-none {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>
 </head>
+
 <body class="bg-slate-900 text-slate-100 min-h-screen pb-24">
 
     <!-- HEADER -->
@@ -21,7 +32,12 @@
             </div>
         </div>
     </header>
-
+<!-- Barra de Categorías Deslizante -->
+<div class="max-w-md mx-auto px-4 pt-4">
+    <div id="contenedor-categorias" class="flex gap-2 overflow-x-auto whitespace-nowrap pb-2 scrollbar-none">
+        <button onclick="filtrarCategoria('TODOS')" class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950 transition shadow">🌟 Todos</button>
+    </div>
+</div>
     <!-- CATÁLOGO -->
     <main class="max-w-md mx-auto p-4 space-y-4" id="contenedor-menu">
         <p class="text-center text-slate-400 py-10" id="estado-carga">Cargando catálogo...</p>
@@ -82,8 +98,11 @@
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
-       async function cargarMenu() {
+       let todosLosProductos = [];
+
+async function cargarMenu() {
     var contenedor = document.getElementById('contenedor-menu');
+    var contenedorCategorias = document.getElementById('contenedor-categorias');
     var urlParams = new URLSearchParams(window.location.search);
     var clienteSlug = urlParams.get('slug') || urlParams.get('r');
 
@@ -122,8 +141,26 @@
         return;
     }
 
+    todosLosProductos = productos;
+
+    // Extraer categorías únicas para los botones superiores
+    const categoriasSet = new Set();
+    productos.forEach(p => categoriasSet.add(p.categoria || 'General'));
+    
+    let botonesHtml = `<button onclick="filtrarCategoria('TODOS')" class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950 transition shadow whitespace-nowrap">🌟 Todos</button>`;
+    categoriasSet.forEach(cat => {
+        botonesHtml += `<button onclick="filtrarCategoria('${cat}')" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition shadow whitespace-nowrap">${cat}</button>`;
+    });
+    if (contenedorCategorias) contenedorCategorias.innerHTML = botonesHtml;
+
+    renderizarProductos(todosLosProductos);
+}
+
+function renderizarProductos(listaProds) {
+    var contenedor = document.getElementById('contenedor-menu');
     const productosPorCategoria = {};
-    productos.forEach(prod => {
+
+    listaProds.forEach(prod => {
         const cat = prod.categoria || 'General';
         if (!productosPorCategoria[cat]) {
             productosPorCategoria[cat] = [];
@@ -172,9 +209,15 @@
 
     contenedor.innerHTML = html;
 }
-            
-        
 
+function filtrarCategoria(categoriaElegida) {
+    if (categoriaElegida === 'TODOS') {
+        renderizarProductos(todosLosProductos);
+    } else {
+        const filtrados = todosLosProductos.filter(p => (p.categoria || 'General') === categoriaElegida);
+        renderizarProductos(filtrados);
+    }
+}
         function agregarAlCarrito(id, nombre, precio) {
             var item = cart.find(function(i) { return i.id === id; });
             if (item) {
