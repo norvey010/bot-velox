@@ -165,14 +165,14 @@
         <h2 class="text-lg font-bold text-white flex items-center gap-2">🤖 Importar Menú con IA</h2>
         <p class="text-xs text-slate-400">Sube una foto o archivo de tu menú para que la inteligencia artificial cargue los productos automáticamente.</p>
         
-        <form action="/api/importar-menu" method="POST" enctype="multipart/form-data" class="space-y-4">
-            <input type="hidden" name="restaurante_id" id="ai-restaurante-id">
-            <div>
-                <label class="block text-xs text-slate-400 mb-1">Selecciona el archivo del menú (Imagen o PDF)</label>
-                <input type="file" name="menuFile" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
-            </div>
-            <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white transition">Procesar Menú con IA</button>
-        </form>
+        <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-4">
+    <input type="hidden" id="ai-restaurante-id">
+    <div>
+        <label class="block text-xs text-slate-400 mb-1">Selecciona el archivo del menú (Imagen o PDF)</label>
+        <input type="file" id="input-menu-file" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-500 file:text-slate-950 hover:file:bg-emerald-600">
+    </div>
+    <button type="submit" id="btn-procesar-ia" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition">Procesar Menú con IA 🚀</button>
+</form>
     </div>
 </section>
     <!-- SECCIÓN 3: CONFIGURACIÓN RESTAURANTE -->
@@ -603,6 +603,51 @@ async function eliminarProducto(id) {
 
     // Recarga la tabla para que desaparezca de la pantalla
     cargarProductos();
+}
+async function enviarMenuConIA(event) {
+    event.preventDefault();
+    
+    const archivoInput = document.getElementById('input-menu-file');
+    const btnProcesar = document.getElementById('btn-procesar-ia');
+    
+    if (!archivoInput.files[0]) {
+        alert('Por favor selecciona un archivo.');
+        return;
+    }
+
+    if (!RESTAURANTE_ID) {
+        alert('No se encontró el ID del restaurante.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('menuFile', archivoInput.files[0]);
+    formData.append('restaurante_id', RESTAURANTE_ID);
+    btnProcesar.innerText = '🤖 Analizando menú con IA... (Esto puede tomar unos segundos)';
+    btnProcesar.disabled = true;
+
+    try {
+        const respuesta = await fetch('/api/importar-menu', {
+            method: 'POST',
+            body: formData
+        });
+
+        const resultado = await respuesta.json();
+
+        if (respuesta.ok) {
+            alert('¡Menú importado y guardado con éxito por la IA!');
+            location.reload(); // Recarga para ver los nuevos productos en el panel
+        } else {
+            alert('Error: ' + (resultado.error || 'No se pudo procesar el archivo.'));
+            btnProcesar.innerText = 'Procesar Menú con IA 🚀';
+            btnProcesar.disabled = false;
+        }
+    } catch (error) {
+        console.error(error);
+        alert('Ocurrió un error de conexión con el servidor.');
+        btnProcesar.innerText = 'Procesar Menú con IA 🚀';
+        btnProcesar.disabled = false;
+    }
 }
 
 async function prepararEdicionProducto(id) {
