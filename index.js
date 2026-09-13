@@ -335,14 +335,14 @@ const message = value?.messages?.[0];
             descripcion: p.descripcion || ""
         }));
 
-        const { error: insertError } = await supabase
+        const { error: insertError } = await supabaseClient
             .from('productos')
             .insert(productosParaSupabase);
 
         if (insertError) throw insertError;
 
         // 4. Consultar el slug del restaurante para devolverlo al cliente y redirigirlo
-        const { data: restData } = await supabase
+        const { data: restData } = await supabaseClient
             .from('restaurantes')
             .select('slug')
             .eq('id', restaurante_id)
