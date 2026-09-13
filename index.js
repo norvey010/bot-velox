@@ -281,8 +281,94 @@ const message = value?.messages?.[0];
         }
     } catch (error) {
         console.error("Error en el webhook:", JSON.stringify(error.response?.data || error.message, null, 2));
+    } me
+});
+const pdfParse = require('pdf-parse'); // Asegúrate de tener esto arriba en tus requires
+
+app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
+    try {
+        const { restaurante_id } = req.body;
+        const file = req.file;
+
+        if (!file || !restaurante_id) {
+            return res.status(400).json({ error: "Faltan el archivo del menú o el ID del restaurante." });
+        }
+
+        let contenidoPromptIA = "";
+
+        // Si es un PDF, extraemos su texto plano
+        if (file.mimetype === 'application/pdf') {
+            const pdfData = await pdfParse(file.buffer);
+            contenidoPromptIA = `Analiza el texto de este menú en PDF y extrae todos los productos. Devuélvelos estrictamente en un JSON con la estructura: { "productos": [ { "categoria": "Nombre Categoría", "nombre": "Nombre Plato", "precio": 15000, "descripcion": "Detalle opcional" } ] }. No inventes precios si no se ven, usa 0.\n\nTexto del menú:\n${pdfData.text}`;
+        } else {
+            // Si es imagen (JPG/PNG), usamos base64 y visión
+            const base64Image = file.buffer.toString('base64');
+            contenidoPromptIA = [
+                { type: "text", text: "Analiza este menú de imagen y extrae los platos en el formato JSON solicitado:" },
+                {
+                    type: "image_url",
+                    image_url: { url: `data:${file.mimetype};base64,${base64Image}` }
+                }
+            ];
+        }
+
+        // Enviar a OpenAI (GPT-4o-mini)
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "system",
+                    content: "Eres un experto analista gastronómico. Devuelve la información estrictamente en formato JSON válido."
+                },
+                {
+                    role: "user",
+                    content: contenidoPromptIA
+                }
+            ],
+            response_format: { type: "json_object" }
+        });
+
+        const resultadoIA = JSON.parse(response.choices[0].message.content);
+        const listaProductos = resultadoIA.productos || Object.values(resultadoIA)[0];
+
+        if (!Array.isArray(listaProductos) || listaProductos.length === 0) {
+            return res.status(400).json({ error: "No se pudieron detectar productos claros en el archivo." });
+        }
+
+        // Mapear e insertar masivamente en la tabla 'productos' de Supabase
+        const productosParaSupabase = listaProductos.map(p => ({
+            restaurante_id: restaurante_id,
+            categoria: p.categoria || "General",
+            nombre: p.nombre,
+            precio: Number(p.precio) || 0,
+            descripcion: p.descripcion || ""
+        }));
+
+        const { error: insertError } = await supabaseClient
+            .from('productos')
+            .insert(productosParaSupabase);
+
+        if (insertError) throw insertError;
+
+        // Consultar el slug del restaurante
+        const { data: restData } = await supabaseClient
+            .from('restaurantes')
+            .select('slug')
+            .eq('id', restaurante_id)
+            .single();
+
+        res.json({ 
+            success: true, 
+            slug: restData ? restData.slug : null 
+        });
+
+    } catch (err) {
+        console.error("Error procesando el menú:", err);
+        res.status(500).json({ error: "Hubo un error al procesar el archivo con Inteligencia Artificial." });
     }
-});app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
+});
+
+app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
     try {
         const { restaurante_id } = req.body;
         const file = req.file;
