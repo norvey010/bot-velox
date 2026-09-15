@@ -284,7 +284,7 @@ const message = value?.messages?.[0];
         console.error("Error en el webhook:", JSON.stringify(error.response?.data || error.message, null, 2));
     } me
 });
-const pdfParse = require('pdf-parse'); // Asegúrate de tener esto arriba en tus requires
+
 
 app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
     try {
