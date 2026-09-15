@@ -276,7 +276,7 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
-// Ruta única para importar menú (Soporta PDF e Imágenes)
+// Ruta inteligente y todoterreno para importar menú (Soporta PDF de texto, PDF escaneado e Imágenes)
 app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
     try {
         const { restaurante_id } = req.body;
@@ -286,35 +286,49 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
             return res.status(400).json({ error: "Faltan el archivo del menú o el ID del restaurante." });
         }
 
-        let mensajesOpenAI = [];
+        let textoExtraido = "";
 
         if (file.mimetype === 'application/pdf') {
-            const parseFunction = pdfParse.default || pdfParse;
-            const pdfData = await parseFunction(file.buffer);
+            try {
+                const parseFunction = pdfParse.default || pdfParse;
+                const pdfData = await parseFunction(file.buffer);
+                textoExtraido = pdfData.text || "";
+            } catch (errPdf) {
+                console.log("⚠️ No se pudo extraer texto plano del PDF, pasando a procesamiento visual directo...");
+            }
+        }
+
+        let mensajesOpenAI = [];
+
+        // Si extrajo texto de forma limpia, lo mandamos estructurado
+        if (file.mimetype === 'application/pdf' && textoExtraido.trim().length >= 30) {
             mensajesOpenAI = [
                 {
                     role: "system",
-                    content: "Eres un experto analista gastronómico. Extrae los platos del texto del menú y devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. No inventes precios si no se ven, usa 0."
+                    content: "Eres un experto analista gastronómico y extractor de datos. Analiza el siguiente texto de menú y extrae todos los platos, categorías y precios. Devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. No inventes precios si no se ven, usa 0."
                 },
                 {
                     role: "user",
-                    content: `Extrae el menú del siguiente texto:\n\n${pdfData.text}`
+                    content: `Aquí está el texto completo del menú:\n\n${textoExtraido}`
                 }
             ];
         } else {
-            const base64Image = file.buffer.toString('base64');
+            // Si es imagen o un PDF escaneado (sin texto plano útil), tiramos de visión pura de OpenAI
+            const base64Data = file.buffer.toString('base64');
+            const mimeUsado = file.mimetype === 'application/pdf' ? 'application/pdf' : file.mimetype;
+            
             mensajesOpenAI = [
                 {
                     role: "system",
-                    content: "Eres un experto analista gastronómico. Extrae los platos de la imagen y devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. No inventes precios si no se ven, usa 0."
+                    content: "Eres un experto analista gastronómico. Extrae todos los platos, categorías y precios de este menú (archivo o imagen). Devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. No inventes precios si no se ven, usa 0."
                 },
                 {
                     role: "user",
                     content: [
-                        { type: "text", text: "Extrae el menú de esta imagen en el formato JSON solicitado:" },
+                        { type: "text", text: "Extrae todo el menú de este archivo en el formato JSON solicitado:" },
                         {
                             type: "image_url",
-                            image_url: { url: `data:${file.mimetype};base64,${base64Image}` }
+                            image_url: { url: `data:${mimeUsado};base64,${base64Data}` }
                         }
                     ]
                 }
@@ -324,7 +338,8 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
         const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: mensajesOpenAI,
-            response_format: { type: "json_object" }
+            response_format: { type: "json_object" },
+            max_tokens: 4096
         });
 
         const resultadoIA = JSON.parse(response.choices[0].message.content);
