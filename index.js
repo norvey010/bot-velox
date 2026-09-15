@@ -294,37 +294,45 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
             return res.status(400).json({ error: "Faltan el archivo del menú o el ID del restaurante." });
         }
 
-        let contenidoPromptIA = "";
+        let mensajesOpenAI = [];
 
-        // Si es un PDF, extraemos su texto plano
+        // Si es PDF, extraemos el texto con pdf-parse para que la IA lo lea perfectamente
         if (file.mimetype === 'application/pdf') {
             const pdfData = await pdfParse(file.buffer);
-            contenidoPromptIA = `Analiza el texto de este menú en PDF y extrae todos los productos. Devuélvelos estrictamente en un JSON con la estructura: { "productos": [ { "categoria": "Nombre Categoría", "nombre": "Nombre Plato", "precio": 15000, "descripcion": "Detalle opcional" } ] }. No inventes precios si no se ven, usa 0.\n\nTexto del menú:\n${pdfData.text}`;
-        } else {
-            // Si es imagen (JPG/PNG), usamos base64 y visión
-            const base64Image = file.buffer.toString('base64');
-            contenidoPromptIA = [
-                { type: "text", text: "Analiza este menú de imagen y extrae los platos en el formato JSON solicitado:" },
+            mensajesOpenAI = [
                 {
-                    type: "image_url",
-                    image_url: { url: `data:${file.mimetype};base64,${base64Image}` }
+                    role: "system",
+                    content: "Eres un experto analista gastronómico. Extrae los platos del texto del menú y devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. No inventes precios si no se ven, usa 0."
+                },
+                {
+                    role: "user",
+                    content: `Extrae el menú del siguiente texto:\n\n${pdfData.text}`
+                }
+            ];
+        } else {
+            // Si es imagen (JPG/PNG), usamos el formato de visión normal
+            const base64Image = file.buffer.toString('base64');
+            mensajesOpenAI = [
+                {
+                    role: "system",
+                    content: "Eres un experto analista gastronómico. Extrae los platos de la imagen y devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. No inventes precios si no se ven, usa 0."
+                },
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: "Extrae el menú de esta imagen en el formato JSON solicitado:" },
+                        {
+                            type: "image_url",
+                            image_url: { url: `data:${file.mimetype};base64,${base64Image}` }
+                        }
+                    ]
                 }
             ];
         }
 
-        // Enviar a OpenAI (GPT-4o-mini)
         const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
-            messages: [
-                {
-                    role: "system",
-                    content: "Eres un experto analista gastronómico. Devuelve la información estrictamente en formato JSON válido."
-                },
-                {
-                    role: "user",
-                    content: contenidoPromptIA
-                }
-            ],
+            messages: mensajesOpenAI,
             response_format: { type: "json_object" }
         });
 
@@ -335,7 +343,6 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
             return res.status(400).json({ error: "No se pudieron detectar productos claros en el archivo." });
         }
 
-        // Mapear e insertar masivamente en la tabla 'productos' de Supabase
         const productosParaSupabase = listaProductos.map(p => ({
             restaurante_id: restaurante_id,
             categoria: p.categoria || "General",
@@ -350,7 +357,6 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
 
         if (insertError) throw insertError;
 
-        // Consultar el slug del restaurante
         const { data: restData } = await supabaseClient
             .from('restaurantes')
             .select('slug')
@@ -363,7 +369,7 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
         });
 
     } catch (err) {
-        console.error("Error procesando el menú:", err);
+        console.error("Error procesando el menú con IA:", err);
         res.status(500).json({ error: "Hubo un error al procesar el archivo con Inteligencia Artificial." });
     }
 });
