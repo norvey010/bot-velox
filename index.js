@@ -7,6 +7,7 @@ const express = require('express');
 const pdfParse = require('pdf-parse');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabaseUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 const supabaseKey = (process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
@@ -30,13 +31,13 @@ Notas: {Escribe aquí el detalle exacto pedido por el cliente}
 [/ACTUALIZAR_PEDIDO]
 
 2. SI EL MENSAJE CONTIENE [NUEVO_PEDIDO]:
-   - Significa que el cliente ya hizo su pedido desde la carta digital web.
-   - ACEPTA Y CONFIRMA el pedido inmediatamente. No cuestiones ni discutas.
-   - Confirma con entusiasmo, dile el total y que su pedido ya fue enviado.
+    - Significa que el cliente ya hizo su pedido desde la carta digital web.
+    - ACEPTA Y CONFIRMA el pedido inmediatamente. No cuestiones ni discutas.
+    - Confirma con entusiasmo, dile el total y que su pedido ya fue enviado.
 
 3. SI PREGUNTA POR EL MENÚ O QUIERE PEDIR ALGO NUEVO:
-   - Responde amablemente y entrega el enlace del menú oficial que se te proporcionará.
-   - Si insiste en pedir por texto, toma su orden con gusto.
+    - Responde amablemente y entrega el enlace del menú oficial que se te proporcionará.
+    - Si insiste en pedir por texto, toma su orden con gusto.
 FORMATO FINAL DE ORDER:
 Al confirmar el pedido, incluye al final de tu mensaje este formato exacto:
 
@@ -50,7 +51,7 @@ Pago: {Método}
 
 // Ruta principal del servidor
 app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard.html'));
+    res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
 app.get('/', (req, res) => {
@@ -92,7 +93,6 @@ app.get('/webhook', (req, res) => {
 
 // Funciones para soporte Multi-Restaurante
 async function obtenerRestaurante(phoneNumberId) {
-    // 1. Buscamos de manera flexible (por si hay espacios o tipos de datos)
     let { data: restaurante, error } = await supabase
         .from('restaurantes')
         .select('*')
@@ -103,7 +103,6 @@ async function obtenerRestaurante(phoneNumberId) {
         console.error("❌ Error de Supabase:", error.message);
     }
 
-    // 2. Si sigue dando null, imprimimos toda la tabla para ver qué hay adentro
     if (!restaurante) {
         console.log("⚠️ No hizo match exacto. Consultando toda la tabla de restaurantes...");
         const { data: todos } = await supabase.from('restaurantes').select('*');
@@ -132,10 +131,9 @@ app.post('/webhook', async (req, res) => {
             const changes = entry?.changes?.[0];
             const value = changes?.value;
             const phoneNumberId = value?.metadata?.phone_number_id;
-console.log("🔥 ID QUE LLEGA:", phoneNumberId);
-const message = value?.messages?.[0];
+            console.log("🔥 ID QUE LLEGA:", phoneNumberId);
+            const message = value?.messages?.[0];
             
-
             if (message) {
                 const numeroRemitente = message.from;
                 const textoUsuario = message.text?.body;
@@ -146,7 +144,6 @@ const message = value?.messages?.[0];
                 }
                 console.log(`Mensaje recibido de ${numeroRemitente} (Phone ID: ${phoneNumberId}): ${textoUsuario}`);
 
-                // Consultar a qué restaurante pertenece este WhatsApp usando el phone_number_id
                 const restauranteData = await obtenerRestaurante(phoneNumberId);
                 console.log("🍔 RESTAURANTE ENCONTRADO:", restauranteData);
                 
@@ -160,15 +157,13 @@ const message = value?.messages?.[0];
                     }
                 }
 
-                // Construir el System Prompt personalizado con el link exacto del restaurante
-               const systemPromptDinamico = SYSTEM_PROMPT_BASE + `\nINSTRUCCIÓN CRÍTICA: Debes usar obligatoriamente este enlace exacto para el menú digital: ${linkMenuDinamico}. Está prohibido usar cualquier otro link genérico.`;
+                const systemPromptDinamico = SYSTEM_PROMPT_BASE + `\nINSTRUCCIÓN CRÍTICA: Debes usar obligatoriamente este enlace exacto para el menú digital: ${linkMenuDinamico}. Está prohibido usar cualquier otro link genérico.`;
 
                 if (!historiales[numeroRemitente]) {
                     historiales[numeroRemitente] = [];
                 }
                 historiales[numeroRemitente].push({ role: "user", content: textoUsuario });
 
-                // Consultamos a OpenAI con el prompt personalizado
                 const completion = await openai.chat.completions.create({
                     model: "gpt-4o-mini",
                     messages: [
@@ -181,7 +176,6 @@ const message = value?.messages?.[0];
                 console.log(`🤖 Respuesta IA: ${aiResponse}`);
                 historiales[numeroRemitente].push({ role: "assistant", content: aiResponse });
                 
-                // Detectar y guardar el pedido en Supabase si se confirmó
                 const matchPedido = aiResponse.match(/\[NUEVO_PEDIDO\]([\s\S]*?)\[\/NUEVO_PEDIDO\]/);
 
                 if (matchPedido) {
@@ -205,7 +199,6 @@ const message = value?.messages?.[0];
                             totalLimpio = parseFloat(rawTotal) || 0;
                         }
 
-                        // Insertar en Supabase asociando el restaurante_id correspondiente
                         const { error } = await supabase.from('pedidos').insert([
                             {
                                 restaurante_id: restauranteIdActual,
@@ -229,7 +222,6 @@ const message = value?.messages?.[0];
                     }
                 }
 
-                // Detectar y actualizar notas en Supabase si el cliente hizo una aclaración
                 const matchActualizar = aiResponse.match(/\[ACTUALIZAR_PEDIDO\]([\s\S]*?)\[\/ACTUALIZAR_PEDIDO\]/);
 
                 if (matchActualizar) {
@@ -263,7 +255,6 @@ const message = value?.messages?.[0];
                     }
                 }
 
-                // Enviar respuesta a WhatsApp
                 await axios({
                     method: 'POST',
                     url: `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
@@ -282,10 +273,10 @@ const message = value?.messages?.[0];
         }
     } catch (error) {
         console.error("Error en el webhook:", JSON.stringify(error.response?.data || error.message, null, 2));
-    } me
+    }
 });
 
-
+// Ruta única para importar menú (Soporta PDF e Imágenes)
 app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
     try {
         const { restaurante_id } = req.body;
@@ -299,7 +290,7 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
 
         if (file.mimetype === 'application/pdf') {
             const parseFunction = pdfParse.default || pdfParse;
-const pdfData = await parseFunction(file.buffer);
+            const pdfData = await parseFunction(file.buffer);
             mensajesOpenAI = [
                 {
                     role: "system",
@@ -351,13 +342,13 @@ const pdfData = await parseFunction(file.buffer);
             descripcion: p.descripcion || ""
         }));
 
-        const { error: insertError } = await supabaseClient
+        const { error: insertError } = await supabase
             .from('productos')
             .insert(productosParaSupabase);
 
         if (insertError) throw insertError;
 
-        const { data: restData } = await supabaseClient
+        const { data: restData } = await supabase
             .from('restaurantes')
             .select('slug')
             .eq('id', restaurante_id)
@@ -371,82 +362,6 @@ const pdfData = await parseFunction(file.buffer);
     } catch (err) {
         console.error("Error procesando el menú con IA:", err);
         res.status(500).json({ error: "Hubo un error al procesar el archivo con Inteligencia Artificial." });
-    }
-});
-app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
-    try {
-        const { restaurante_id } = req.body;
-        const file = req.file;
-
-        if (!file || !restaurante_id) {
-            return res.status(400).json({ error: "Faltan el archivo del menú o el ID del restaurante." });
-        }
-
-        // 1. Convertir la imagen o archivo subido a base64
-        const base64Image = file.buffer.toString('base64');
-        const mimeType = file.mimetype;
-
-        // 2. Enviar a OpenAI (GPT-4o-mini procesa imágenes y texto perfectamente)
-        const response = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-                {
-                    role: "system",
-                    content: "Eres un experto analista gastronómico. Extrae los platos de la imagen y devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. No inventes precios si no se ven, usa 0."
-                },
-                {
-                    role: "user",
-                    content: [
-                        { type: "text", text: "Extrae el menú de esta imagen en el formato JSON solicitado:" },
-                        {
-                            type: "image_url",
-                            image_url: {
-                                url: `data:${mimeType};base64,${base64Image}`
-                            }
-                        }
-                    ]
-                }
-            ],
-            response_format: { type: "json_object" }
-        });
-
-        const resultadoIA = JSON.parse(response.choices[0].message.content);
-        const listaProductos = resultadoIA.productos || Object.values(resultadoIA)[0];
-
-        if (!Array.isArray(listaProductos) || listaProductos.length === 0) {
-            return res.status(400).json({ error: "No se pudieron detectar productos claros en la imagen." });
-        }
-
-        // 3. Mapear e insertar masivamente en la tabla 'productos' de Supabase
-        const productosParaSupabase = listaProductos.map(p => ({
-            restaurante_id: restaurante_id,
-            categoria: p.categoria || "General",
-            nombre: p.nombre,
-            precio: Number(p.precio) || 0,
-            descripcion: p.descripcion || ""
-        }));
-
-        const { error: insertError } = await supabaseClient
-            .from('productos')
-            .insert(productosParaSupabase);
-
-        if (insertError) throw insertError;
-
-        // 4. Consultar el slug del restaurante para devolverlo al cliente y redirigirlo
-        const { data: restData } = await supabaseClient
-            .from('restaurantes')
-            .select('slug')
-            .eq('id', restaurante_id)
-            .single();
-
-        res.json({ 
-            success: true, 
-            slug: restData ? restData.slug : null 
-        });
-
-    } catch (err) {
-        console.error("Error procesando el menú con IA:", err);
-        res.status(500).json({ error: "Hubo un error al procesar el menú con Inteligencia Artificial." });
     }
 });
 
