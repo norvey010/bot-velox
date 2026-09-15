@@ -4,6 +4,7 @@ const axios = require('axios');
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
+const pdfParse = require('pdf-parse');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
