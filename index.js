@@ -298,7 +298,8 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
         let mensajesOpenAI = [];
 
         if (file.mimetype === 'application/pdf') {
-            const pdfData = await pdfParse(file.buffer);
+            const parseFunction = pdfParse.default || pdfParse;
+const pdfData = await parseFunction(file.buffer);
             mensajesOpenAI = [
                 {
                     role: "system",
