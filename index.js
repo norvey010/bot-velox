@@ -297,7 +297,6 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
 
         let mensajesOpenAI = [];
 
-        // Si es PDF, extraemos el texto con pdf-parse para que la IA lo lea perfectamente
         if (file.mimetype === 'application/pdf') {
             const pdfData = await pdfParse(file.buffer);
             mensajesOpenAI = [
@@ -311,7 +310,6 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
                 }
             ];
         } else {
-            // Si es imagen (JPG/PNG), usamos el formato de visión normal
             const base64Image = file.buffer.toString('base64');
             mensajesOpenAI = [
                 {
@@ -374,7 +372,6 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
         res.status(500).json({ error: "Hubo un error al procesar el archivo con Inteligencia Artificial." });
     }
 });
-
 app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
     try {
         const { restaurante_id } = req.body;
