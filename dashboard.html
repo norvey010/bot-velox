@@ -200,512 +200,399 @@
   </main>
 
   <script>
-   let RESTAURANTE_ID = null;
-  const SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96YWlsdml5aW1yam1lYnJpbGJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMTA5MTEsImV4cCI6MjEwMDY4NjkxMX0.rkWEtTGV4uFB_w62sC-vygZoLbfEgx_KKTSd9oS-5CM';
+    let RESTAURANTE_ID = null;
+    const SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96YWlsdml5aW1yam1lYnJpbGJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMTA5MTEsImV4cCI6MjEwMDY4NjkxMX0.rkWEtTGV4uFB_w62sC-vygZoLbfEgx_KKTSd9oS-5CM';
 
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  let paginaActual = 0;
-  const porPagina = 15;
- async function inicializarDashboard() {
-  // 1. Verificar quién inició sesión en Supabase Auth
-  const { data: { user }, error: errorAuth } = await supabaseClient.auth.getUser();
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let paginaActual = 0;
+    const porPagina = 15;
 
-  if (errorAuth || !user) {
-    console.error("Acceso denegado: No hay sesión activa.");
-    window.location.href = '/index.html';
-    return;
-  }
-
-  // 2. Buscar el restaurante del usuario autenticado
-  const { data: restaurante, error: errorRestaurante } = await supabaseClient
-    .from('restaurantes')
-    .select('*')
-    .eq('id_usuario', user.id)
-    .single();
-
-  if (errorRestaurante || !restaurante) {
-    console.error("No se encontró un restaurante asociado a tu cuenta:", errorRestaurante);
-    alert("Tu cuenta no tiene un restaurante asignado.");
-    return;
-  }
-
- // 3. Asignar ID, nombre y cargar pedidos
-RESTAURANTE_ID = restaurante.id;
-document.getElementById('ai-restaurante-id').value = restaurante.id;
-document.getElementById('nombre-restaurante-header').innerText = restaurante.nombre_restaurante;
-cargarPedidos();
-}
-
-  // --- NAVEGACIÓN ENTRE PESTAÑAS ---
-  function cambiarSeccion(seccion) {
-    document.getElementById('sec-pedidos').classList.add('hidden');
-    document.getElementById('sec-productos').classList.add('hidden');
-    document.getElementById('sec-menu-ia').classList.add('hidden');
-    document.getElementById('sec-configuracion').classList.add('hidden');
-
-    document.getElementById('tab-pedidos').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
-    document.getElementById('tab-productos').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
-    document.getElementById('tab-menu-ia').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
-    document.getElementById('tab-configuracion').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
-
-    document.getElementById(`sec-${seccion}`).classList.remove('hidden');
-    document.getElementById(`tab-${seccion}`).className = "px-4 py-1.5 rounded-md text-xs font-medium bg-emerald-600 text-white transition";
-
-    if (seccion === 'productos') cargarProductos();
-    if (seccion === 'menu-ia') cargarVistaPreviaEditorIA();
-    if (seccion === 'configuracion') cargarConfiguracion();
-}
-document.getElementById('formImportar').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const btnProcesar = document.getElementById('btnProcesar'); // el botón de enviar
-    btnProcesar.disabled = true;
-    btnProcesar.innerText = "Analizando menú con IA...";
-
-    const formData = new FormData(this);
-
-    try {
-        const respuesta = await fetch('/api/importar-menu', {
-            method: 'POST',
-            body: formData
-        });
-        const resultado = await respuesta.json();
-
-        if (resultado.success) {
-            alert("¡Menú importado y guardado con éxito por la IA!");
-            this.reset(); // <--- ESTO LIMPIA EL INPUT Y EVITA QUE SE QUEDE PEGADO
-        } else {
-            alert("Error: " + (resultado.error || "No se pudo procesar"));
-        }
-    } catch (err) {
-        alert("Hubo un error de conexión.");
-    } finally {
-        btnProcesar.disabled = false;
-        btnProcesar.innerText = "Procesar Menú con IA 🚀";
-    }
-});
-  // --- MÓDULO PEDIDOS ---
-async function cargarPedidos() {
-    if (!RESTAURANTE_ID) return;
-    const estado = document.getElementById('select-estado').value;
-    const busqueda = document.getElementById('input-search').value.trim();
-
-    let query = supabaseClient
-      .from('pedidos')
-      .select('*', { count: 'exact' })
-      .eq('restaurante_id', RESTAURANTE_ID)
-      .order('created_at', { ascending: false })
-      .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
-
-    if (estado !== 'todos') query = query.eq('estado', estado);
-    if (busqueda) query = query.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
-
-   const { data, count, error } = await query;
-    if (error) {
-        console.error("Error exacto de Supabase:", error.message, error.details, error.hint);
+    async function inicializarDashboard() {
+      // 1. Verificar sesión
+      const { data: { user }, error: errorAuth } = await supabaseClient.auth.getUser();
+      if (errorAuth || !user) {
+        console.error("Acceso denegado: No hay sesión activa.");
+        window.location.href = '/index.html';
         return;
-    }
+      }
 
-    renderTablaPedidos(data);
-    actualizarPaginacion(count);
-    calcularMetricas();
-}
-  function renderTablaPedidos(pedidos) {
-    const tbody = document.getElementById('pedidos-body');
-    tbody.innerHTML = '';
-
-    if (!pedidos || pedidos.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">No hay pedidos registrados.</td></tr>`;
-      return;
-    }
-
-    pedidos.forEach(p => {
-      const fecha = new Date(p.created_at).toLocaleString('es-CO');
-      const badgeColor = getBadgeColor(p.estado || 'pendiente');
-
-      tbody.innerHTML += `
-        <tr class="hover:bg-slate-750 transition">
-          <td class="p-4 text-xs text-slate-400 whitespace-nowrap">${fecha}</td>
-          <td class="p-4">
-            <div class="font-medium text-white">${p.cliente_nombre || 'Cliente'}</div>
-            <div class="text-xs text-slate-400">${p.cliente_telefono || ''}</div>
-          </td>
-          <td class="p-4 max-w-xs truncate text-slate-300" title="${p.items}">${p.items || 'Sin detalle'}</td>
-          <td class="p-4 max-w-xs truncate text-slate-300" title="${p.direccion}">${p.direccion || 'Sin dirección'}</td>
-          <td class="p-4 font-bold text-emerald-400">$${(p.total || 0).toLocaleString()}</td>
-          <td class="p-4 text-center flex items-center justify-center gap-2">
-            <select onchange="actualizarEstado('${p.id}', this.value)" class="text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeColor} bg-slate-900 cursor-pointer focus:outline-none">
-              <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>🟡 Pendiente</option>
-              <option value="preparando" ${p.estado === 'preparando' ? 'selected' : ''}>🟠 Preparando</option>
-              <option value="en_camino" ${p.estado === 'en_camino' ? 'selected' : ''}>🔵 En Camino</option>
-              <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>🟢 Entregado</option>
-              <option value="cancelado" ${p.estado === 'cancelado' ? 'selected' : ''}>🔴 Cancelado</option>
-            </select>
-            <button onclick="imprimirTicketAutomatico(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs">🖨️</button>
-          </td>
-        </tr>
-      `;
-    });
-  }
-
-  async function actualizarEstado(id, nuevoEstado) {
-    await supabaseClient.from('pedidos').update({ estado: nuevoEstado }).eq('id', id);
-    cargarPedidos();
-  }
-
-  function getBadgeColor(estado) {
-    switch (estado) {
-      case 'pendiente': return 'text-amber-400 border-amber-800';
-      case 'preparando': return 'text-orange-400 border-orange-800';
-      case 'en_camino': return 'text-blue-400 border-blue-800';
-      case 'entregado': return 'text-emerald-400 border-emerald-800';
-      case 'cancelado': return 'text-rose-400 border-rose-800';
-      default: return 'text-slate-400 border-slate-700';
-    }
-  }
-
-  async function calcularMetricas() {
-    const { data } = await supabaseClient.from('pedidos').select('total, estado');
-    if (data) {
-      document.getElementById('total-pedidos-count').innerText = data.length;
-      const totalVentas = data.reduce((sum, p) => sum + (p.total || 0), 0);
-      document.getElementById('total-ventas-sum').innerText = `$${totalVentas.toLocaleString()}`;
-      document.getElementById('total-pendientes-count').innerText = data.filter(p => p.estado === 'pendiente').length;
-    }
-  }
-
-  // --- MÓDULO GESTIÓN DE PRODUCTOS ---
-  async function cargarProductos() {
-    const { data, error } = await supabaseClient
-      .from('productos')
-      .select('*')
-      .order('id', { ascending: true });
-
-    const tbody = document.getElementById('productos-body');
-    tbody.innerHTML = '';
-
-    if (error || !data || data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-slate-500">No hay productos registrados en la base de datos.</td></tr>`;
-      return;
-    }
-
-    data.forEach(prod => {
-      tbody.innerHTML += `
-        <tr class="hover:bg-slate-750 transition">
-          <td class="p-4 font-bold text-white">${prod.nombre}</td>
-          <td class="p-4 text-xs text-slate-400">${prod.descripcion || 'Sin descripción'}</td>
-          <td class="p-4 font-bold text-emerald-400">$${Number(prod.precio).toLocaleString()}</td>
-          <td class="p-4 text-center space-x-2">
-<button onclick="prepararEdicionProducto(${prod.id})" class="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded text-xs">✏️ Editar</button>
-            <button onclick="eliminarProducto(${prod.id})" class="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded text-xs">🗑️ Borrar</button>
-          </td>
-        </tr>
-      `;
-    });
-  }
-
-  async function guardarProducto(event) {
-  event.preventDefault();
-  const id = document.getElementById('prod-id').value;
-  const fileInput = document.getElementById('prod-imagen-file');
-  let urlImagenFinal = '';
-
-  // 1. Subir archivo a Supabase Storage si se seleccionó una foto
-  if (fileInput && fileInput.files.length > 0) {
-    const file = fileInput.files[0];
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `restaurante_${RESTAURANTE_ID}/${fileName}`;
-
-    const { data: uploadData, error: uploadError } = await supabaseClient
-      .storage
-      .from('productos')
-      .upload(filePath, file);
-
-    if (uploadError) {
-      alert('Error al subir la imagen: ' + uploadError.message);
-      return;
-    }
-
-    const { data: urlData } = supabaseClient
-      .storage
-      .from('productos')
-      .getPublicUrl(filePath);
-
-    urlImagenFinal = urlData.publicUrl;
-  }
-
- const payload = {
-  nombre: document.getElementById('prod-nombre').value,
-  precio: parseFloat(document.getElementById('prod-precio').value),
-  descripcion: document.getElementById('prod-descripcion').value,
-  categoria: document.getElementById('prod-categoria') ? document.getElementById('prod-categoria').value : 'General',
-  restaurante_id: RESTAURANTE_ID
-};
-  if (urlImagenFinal) {
-    payload.imagen_url = urlImagenFinal;
-  }
-
-  // 3. Guardar en Supabase
-  if (id) {
-    await supabaseClient.from('productos').update(payload).eq('id', id);
-  } else {
-    await supabaseClient.from('productos').insert([payload]);
-  }
-
-    // Limpia el selector de archivos de la imagen
-    const inputFile = document.getElementById('prod-imagen-file');
-    if (inputFile) inputFile.value = '';
-
-    ;
-}
-  // --- MÓDULO CONFIGURACIÓN DEL NEGOCIO ---
-  async function cargarConfiguracion() {
-    const { data } = await supabaseClient.from('restaurantes').select('*').eq('id', RESTAURANTE_ID).single();
-    if (data) {
-      document.getElementById('conf-nombre').value = data.nombre || '';
-      document.getElementById('conf-phone').value = data.phone_number_id || '';
-      document.getElementById('conf-slug').value = data.slug || '';
-    }
-  }
-
-  async function guardarConfiguracion(event) {
-    event.preventDefault();
-    const nombre = document.getElementById('conf-nombre').value;
-    const phone = document.getElementById('conf-phone').value;
-
-    await supabaseClient.from('restaurantes').update({
-      nombre: nombre,
-      phone_number_id: phone
-    }).eq('id', RESTAURANTE_ID);
-
-    alert('Configuración actualizada correctamente');
-  }
-
-  // --- IMPRESIÓN Y REALTIME ---
-  function imprimirTicketAutomatico(p) {
-    let iframe = document.getElementById('iframe-impresora');
-    if (!iframe) {
-      iframe = document.createElement('iframe');
-      iframe.id = 'iframe-impresora';
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
-    }
-    const url = `ticket.html?cliente=${encodeURIComponent(p.cliente_nombre || '')}` +
-                `&tel=${encodeURIComponent(p.cliente_telefono || '')}` +
-                `&dir=${encodeURIComponent(p.cliente_direccion || '')}` +
-                `&total=${p.total || 0}` +
-                `&pago=${encodeURIComponent(p.metodo_pago || '')}`;
-    iframe.src = url;
-  }
-
-  supabaseClient
-    .channel('pedidos-realtime')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, payload => {
-      cargarPedidos();
-      imprimirTicketAutomatico(payload.new);
-    })
-    .subscribe();
-
-  function cambiarPagina(delta) {
-    paginaActual += delta;
-    if (paginaActual < 0) paginaActual = 0;
-    cargarPedidos();
-  }
-
-  function actualizarPaginacion(totalCount) {
-    document.getElementById('page-info').innerText = `Página ${paginaActual + 1} de ${Math.ceil(totalCount / porPagina) || 1}`;
-    document.getElementById('btn-prev').disabled = paginaActual === 0;
-    document.getElementById('btn-next').disabled = (paginaActual + 1) * porPagina >= totalCount;
-  }
-
-  document.getElementById('input-search').addEventListener('input', () => { paginaActual = 0; cargarPedidos(); });
-  document.getElementById('select-estado').addEventListener('change', () => { paginaActual = 0; cargarPedidos(); });
-
-  cargarPedidos();
-  // Eliminar cuenta
-document.getElementById('btnEliminarCuenta')?.addEventListener('click', async () => {
-  if (!confirm("⚠️ ¿Eliminar tu cuenta? Se borrarán tus datos y productos.")) return;
-
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return alert("No hay sesión activa.");
-
-    await supabase.from('productos').delete().eq('id_usuario', user.id);
-    await supabase.from('restaurantes').delete().eq('id_usuario', user.id);
-    await supabase.auth.signOut();
-
-    alert("Cuenta eliminada.");
-    window.location.href = "/index.html";
-  } catch (err) {
-    alert("Error: " + err.message);
-  }
-});
-// Realtime: Escuchar nuevos pedidos automáticamente
-        supabaseClient
-            .channel('cambios-pedidos')
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'pedidos' },
-                (payload) => {
-                    console.log('¡Nuevo pedido recibido!', payload.new);
-                    
-                    // Reemplaza 'cargarPedidos' por la función que usas para refrescar tu lista/tabla
-                    if (typeof cargarPedidos === 'function') {
-                        cargarPedidos();
-                    }
-                }
-            )
-            .subscribe();
-            inicializarDashboard();
-            // 1. Cargar los datos al abrir el panel
-async function cargarConfiguracion() {
-  try {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (user) {
-      const { data, error } = await supabaseClient
+      // 2. Buscar restaurante
+      const { data: restaurante, error: errorRestaurante } = await supabaseClient
         .from('restaurantes')
-        .select('nombre_restaurante, telefono, slug')
+        .select('*')
         .eq('id_usuario', user.id)
         .single();
+
+      if (errorRestaurante || !restaurante) {
+        console.error("No se encontró un restaurante asociado:", errorRestaurante);
+        alert("Tu cuenta no tiene un restaurante asignado.");
+        return;
+      }
+
+      // 3. Asignar ID global y en el DOM de forma segura
+      RESTAURANTE_ID = restaurante.id;
+      const inputOculto = document.getElementById('ai-restaurante-id');
+      if (inputOculto) inputOculto.value = restaurante.id;
       
+      const headerNombre = document.getElementById('nombre-restaurante-header');
+      if (headerNombre) headerNombre.innerText = restaurante.nombre_restaurante || 'Mi Restaurante';
+
+      cargarPedidos();
+    }
+
+    // --- NAVEGACIÓN ENTRE PESTAÑAS ---
+    function cambiarSeccion(seccion) {
+      document.getElementById('sec-pedidos').classList.add('hidden');
+      document.getElementById('sec-productos').classList.add('hidden');
+      document.getElementById('sec-menu-ia').classList.add('hidden');
+      document.getElementById('sec-configuracion').classList.add('hidden');
+
+      document.getElementById('tab-pedidos').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
+      document.getElementById('tab-productos').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
+      document.getElementById('tab-menu-ia').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
+      document.getElementById('tab-configuracion').className = "px-4 py-1.5 rounded-md text-xs font-medium bg-slate-800 text-slate-400 hover:text-white transition";
+
+      document.getElementById(`sec-${seccion}`).classList.remove('hidden');
+      document.getElementById(`tab-${seccion}`).className = "px-4 py-1.5 rounded-md text-xs font-medium bg-emerald-600 text-white transition";
+
+      if (seccion === 'productos') cargarProductos();
+      if (seccion === 'configuracion') cargarConfiguracion();
+    }
+
+    // --- MÓDULO PEDIDOS ---
+    async function cargarPedidos() {
+      if (!RESTAURANTE_ID) return;
+      const estado = document.getElementById('select-estado').value;
+      const busqueda = document.getElementById('input-search').value.trim();
+
+      let query = supabaseClient
+        .from('pedidos')
+        .select('*', { count: 'exact' })
+        .eq('restaurante_id', RESTAURANTE_ID)
+        .order('created_at', { ascending: false })
+        .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
+
+      if (estado !== 'todos') query = query.eq('estado', estado);
+      if (busqueda) query = query.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
+
+      const { data, count, error } = await query;
+      if (error) {
+        console.error("Error de Supabase:", error.message);
+        return;
+      }
+
+      renderTablaPedidos(data);
+      actualizarPaginacion(count);
+      calcularMetricas();
+    }
+
+    function renderTablaPedidos(pedidos) {
+      const tbody = document.getElementById('pedidos-body');
+      tbody.innerHTML = '';
+
+      if (!pedidos || pedidos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">No hay pedidos registrados.</td></tr>`;
+        return;
+      }
+
+      pedidos.forEach(p => {
+        const fecha = new Date(p.created_at).toLocaleString('es-CO');
+        const badgeColor = getBadgeColor(p.estado || 'pendiente');
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-750 transition">
+            <td class="p-4 text-xs text-slate-400 whitespace-nowrap">${fecha}</td>
+            <td class="p-4">
+              <div class="font-medium text-white">${p.cliente_nombre || 'Cliente'}</div>
+              <div class="text-xs text-slate-400">${p.cliente_telefono || ''}</div>
+            </td>
+            <td class="p-4 max-w-xs truncate text-slate-300" title="${p.items}">${p.items || 'Sin detalle'}</td>
+            <td class="p-4 max-w-xs truncate text-slate-300" title="${p.direccion}">${p.direccion || 'Sin dirección'}</td>
+            <td class="p-4 font-bold text-emerald-400">$${(p.total || 0).toLocaleString()}</td>
+            <td class="p-4 text-center flex items-center justify-center gap-2">
+              <select onchange="actualizarEstado('${p.id}', this.value)" class="text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeColor} bg-slate-900 cursor-pointer focus:outline-none">
+                <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>🟡 Pendiente</option>
+                <option value="preparando" ${p.estado === 'preparando' ? 'selected' : ''}>🟠 Preparando</option>
+                <option value="en_camino" ${p.estado === 'en_camino' ? 'selected' : ''}>🔵 En Camino</option>
+                <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>🟢 Entregado</option>
+                <option value="cancelado" ${p.estado === 'cancelado' ? 'selected' : ''}>🔴 Cancelado</option>
+              </select>
+              <button onclick='imprimirTicketAutomatico(${JSON.stringify(p)})' class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs">🖨️</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function actualizarEstado(id, nuevoEstado) {
+      await supabaseClient.from('pedidos').update({ estado: nuevoEstado }).eq('id', id);
+      cargarPedidos();
+    }
+
+    function getBadgeColor(estado) {
+      switch (estado) {
+        case 'pendiente': return 'text-amber-400 border-amber-800';
+        case 'preparando': return 'text-orange-400 border-orange-800';
+        case 'en_camino': return 'text-blue-400 border-blue-800';
+        case 'entregado': return 'text-emerald-400 border-emerald-800';
+        case 'cancelado': return 'text-rose-400 border-rose-800';
+        default: return 'text-slate-400 border-slate-700';
+      }
+    }
+
+    async function calcularMetricas() {
+      const { data } = await supabaseClient.from('pedidos').select('total, estado').eq('restaurante_id', RESTAURANTE_ID);
+      if (data) {
+        document.getElementById('total-pedidos-count').innerText = data.length;
+        const totalVentas = data.reduce((sum, p) => sum + (p.total || 0), 0);
+        document.getElementById('total-ventas-sum').innerText = `$${totalVentas.toLocaleString()}`;
+        document.getElementById('total-pendientes-count').innerText = data.filter(p => p.estado === 'pendiente').length;
+      }
+    }
+
+    // --- MÓDULO GESTIÓN DE PRODUCTOS ---
+    async function cargarProductos() {
+      if (!RESTAURANTE_ID) return;
+      const { data, error } = await supabaseClient
+        .from('productos')
+        .select('*')
+        .eq('restaurante_id', RESTAURANTE_ID)
+        .order('id', { ascending: true });
+
+      const tbody = document.getElementById('productos-body');
+      tbody.innerHTML = '';
+
+      if (error || !data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-slate-500">No hay productos registrados.</td></tr>`;
+        return;
+      }
+
+      data.forEach(prod => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-750 transition">
+            <td class="p-4 font-bold text-white">${prod.nombre}</td>
+            <td class="p-4 text-xs text-slate-400">${prod.descripcion || 'Sin descripción'}</td>
+            <td class="p-4 font-bold text-emerald-400">$${Number(prod.precio).toLocaleString()}</td>
+            <td class="p-4 text-center space-x-2">
+              <button onclick="prepararEdicionProducto(${prod.id})" class="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded text-xs">✏️ Editar</button>
+              <button onclick="eliminarProducto(${prod.id})" class="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded text-xs">🗑️ Borrar</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function guardarProducto(event) {
+      event.preventDefault();
+      const id = document.getElementById('prod-id').value;
+      const fileInput = document.getElementById('prod-imagen-file');
+      let urlImagenFinal = '';
+
+      if (fileInput && fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const filePath = `restaurante_${RESTAURANTE_ID}/${fileName}`;
+
+        const { error: uploadError } = await supabaseClient.storage.from('productos').upload(filePath, file);
+        if (uploadError) {
+          alert('Error al subir la imagen: ' + uploadError.message);
+          return;
+        }
+
+        const { data: urlData } = supabaseClient.storage.from('productos').getPublicUrl(filePath);
+        urlImagenFinal = urlData.publicUrl;
+      }
+
+      const payload = {
+        nombre: document.getElementById('prod-nombre').value,
+        precio: parseFloat(document.getElementById('prod-precio').value),
+        descripcion: document.getElementById('prod-descripcion').value,
+        categoria: document.getElementById('prod-categoria').value || 'General',
+        restaurante_id: RESTAURANTE_ID
+      };
+
+      if (urlImagenFinal) payload.imagen_url = urlImagenFinal;
+
+      if (id) {
+        await supabaseClient.from('productos').update(payload).eq('id', id);
+      } else {
+        await supabaseClient.from('productos').insert([payload]);
+      }
+
+      if (fileInput) fileInput.value = '';
+      document.getElementById('form-producto').reset();
+      cargarProductos();
+      alert('¡Producto guardado con éxito!');
+    }
+
+    async function eliminarProducto(id) {
+      if (!confirm('¿Estás seguro de eliminar este producto?')) return;
+      await supabaseClient.from('productos').delete().eq('id', id);
+      cargarProductos();
+    }
+
+    async function prepararEdicionProducto(id) {
+      const { data, error } = await supabaseClient.from('productos').select('*').eq('id', id).maybeSingle();
+      if (error || !data) {
+        alert('No se pudo cargar el producto.');
+        return;
+      }
+      document.getElementById('prod-id').value = data.id;
+      document.getElementById('prod-nombre').value = data.nombre || '';
+      document.getElementById('prod-precio').value = data.precio || '';
+      document.getElementById('prod-descripcion').value = data.descripcion || '';
+      document.getElementById('prod-categoria').value = data.categoria || '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function limpiarFormProducto() {
+      document.getElementById('form-producto').reset();
+      document.getElementById('prod-id').value = '';
+    }
+
+    // --- MÓDULO MENÚ IA (Múltiples imágenes dinámicas) ---
+    async function enviarMenuConIA(event) {
+      event.preventDefault();
+      
+      const inputFiles = document.getElementById('menuFile');
+      const btnProcesar = document.getElementById('btn-procesar-ia');
+      const formElement = document.getElementById('form-importar-ia');
+      
+      const inputOculto = document.getElementById('ai-restaurante-id');
+      const idRestauranteFinal = (inputOculto ? inputOculto.value : null) || RESTAURANTE_ID;
+
+      if (!inputFiles.files || inputFiles.files.length === 0) {
+        alert('Por favor selecciona al menos una imagen del menú.');
+        return;
+      }
+
+      if (!idRestauranteFinal) {
+        alert('Cargando datos del restaurante... Por favor espera 2 segundos y vuelve a intentar.');
+        return;
+      }
+
+      const formData = new FormData(formElement);
+      formData.set('restaurante_id', idRestauranteFinal);
+
+      if (btnProcesar) {
+        btnProcesar.innerText = '🤖 Analizando menú con IA... (Esto puede tomar unos segundos)';
+        btnProcesar.disabled = true;
+      }
+
+      try {
+        const respuesta = await fetch('/api/importar-menu', {
+          method: 'POST',
+          body: formData
+        });
+
+        const resultado = await respuesta.json();
+
+        if (respuesta.ok && resultado.success) {
+          alert('¡Menú importado y guardado con éxito por la IA!');
+          formElement.reset(); 
+          cambiarSeccion('productos'); // Te lleva directo a ver los productos nuevos
+        } else {
+          alert('Error: ' + (resultado.error || 'No se pudo procesar el archivo.'));
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Ocurrió un error de conexión con el servidor.');
+      } finally {
+        if (btnProcesar) {
+          btnProcesar.innerText = 'Procesar Menú con IA 🚀';
+          btnProcesar.disabled = false;
+        }
+      }
+    }
+
+    // --- MÓDULO CONFIGURACIÓN ---
+    async function cargarConfiguracion() {
+      if (!RESTAURANTE_ID) return;
+      const { data } = await supabaseClient.from('restaurantes').select('*').eq('id', RESTAURANTE_ID).single();
       if (data) {
         document.getElementById('conf-nombre').value = data.nombre_restaurante || '';
         document.getElementById('conf-phone').value = data.telefono || '';
         document.getElementById('conf-slug').value = data.slug || '';
       }
     }
-  } catch (err) {
-    console.error("Error al cargar configuración:", err);
-  }
-}
-cargarConfiguracion(); // Se ejecuta de inmediato
 
-// 2. Guardar los datos (Conectada a tu HTML)
-async function guardarConfiguracion(event) {
-  event.preventDefault(); 
+    async function guardarConfiguracion(event) {
+      event.preventDefault();
+      const btn = event.target.querySelector('button[type="submit"]');
+      const textoOriginal = btn.innerText;
+      btn.innerText = "Guardando...";
+      btn.disabled = true;
 
-  const btn = event.target.querySelector('button[type="submit"]');
-  const textoOriginal = btn.innerText;
-  btn.innerText = "Guardando...";
-  btn.disabled = true;
+      try {
+        const nuevoNombre = document.getElementById('conf-nombre').value;
+        const nuevoTelefono = document.getElementById('conf-phone').value;
 
-  try {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const nuevoNombre = document.getElementById('conf-nombre').value;
-    const nuevoTelefono = document.getElementById('conf-phone').value;
+        const { error } = await supabaseClient
+          .from('restaurantes')
+          .update({
+            nombre_restaurante: nuevoNombre,
+            telefono: nuevoTelefono
+          })
+          .eq('id', RESTAURANTE_ID);
 
-    if (user) {
-      const { error } = await supabaseClient
-        .from('restaurantes')
-        .update({
-          nombre_restaurante: nuevoNombre,
-          telefono: nuevoTelefono
-        })
-        .eq('id_usuario', user.id);
-
-      if (error) throw error;
-      alert("¡Configuración actualizada con éxito!");
-    }
-  } catch (err) {
-    console.error("Error al guardar:", err);
-    alert("Hubo un problema al guardar los cambios.");
-  } finally {
-    btn.innerText = textoOriginal;
-    btn.disabled = false;
-  }
-}
-// Función para eliminar un producto por su ID
-async function eliminarProducto(id) {
-    if (!confirm('¿Estás seguro de que deseas eliminar este producto?')) return;
-
-    const { error } = await supabaseClient
-        .from('productos')
-        .delete()
-        .eq('id', id);
-
-    if (error) {
-        alert('Error al eliminar el producto: ' + error.message);
-        return;
+        if (error) throw error;
+        alert("¡Configuración actualizada con éxito!");
+        document.getElementById('nombre-restaurante-header').innerText = nuevoNombre;
+      } catch (err) {
+        console.error("Error al guardar:", err);
+        alert("Hubo un problema al guardar los cambios.");
+      } finally {
+        btn.innerText = textoOriginal;
+        btn.disabled = false;
+      }
     }
 
-    // Recarga la tabla para que desaparezca de la pantalla
-    cargarProductos();
-}
-async function enviarMenuConIA(event) {
-    event.preventDefault();
-    
-    const inputFiles = document.getElementById('menuFile');
-    const btnProcesar = document.getElementById('btn-procesar-ia');
-    const formElement = document.getElementById('form-importar-ia');
-    
-    // Usamos directamente la variable global RESTAURANTE_ID que se carga al iniciar sesión
-    if (!inputFiles.files || inputFiles.files.length === 0) {
-        alert('Por favor selecciona al menos una imagen del menú.');
-        return;
+    // --- IMPRESIÓN Y REALTIME ---
+    function imprimirTicketAutomatico(p) {
+      let iframe = document.getElementById('iframe-impresora');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'iframe-impresora';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+      }
+      const url = `ticket.html?cliente=${encodeURIComponent(p.cliente_nombre || '')}` +
+                  `&tel=${encodeURIComponent(p.cliente_telefono || '')}` +
+                  `&dir=${encodeURIComponent(p.cliente_direccion || '')}` +
+                  `&total=${p.total || 0}` +
+                  `&pago=${encodeURIComponent(p.metodo_pago || '')}`;
+      iframe.src = url;
     }
 
-    if (typeof RESTAURANTE_ID === 'undefined' || !RESTAURANTE_ID) {
-        alert('Cargando datos del restaurante... Por favor recarga la página.');
-        return;
-    }
-
-    const formData = new FormData(formElement);
-    // Inyectamos el ID directamente desde la variable global
-    formData.set('restaurante_id', RESTAURANTE_ID);
-
-    if (btnProcesar) {
-        btnProcesar.innerText = '🤖 Analizando menú con IA... (Esto puede tomar unos segundos)';
-        btnProcesar.disabled = true;
-    }
-
-    try {
-        const respuesta = await fetch('/api/importar-menu', {
-            method: 'POST',
-            body: formData
-        });
-
-        const resultado = await respuesta.json();
-
-        if (respuesta.ok && resultado.success) {
-            alert('¡Menú importado y guardado con éxito por la IA!');
-            formElement.reset(); 
-            location.reload(); 
-        } else {
-            alert('Error: ' + (resultado.error || 'No se pudo procesar el archivo.'));
+    supabaseClient
+      .channel('pedidos-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, payload => {
+        if (payload.new.restaurante_id === RESTAURANTE_ID) {
+          cargarPedidos();
+          imprimirTicketAutomatico(payload.new);
         }
-    } catch (error) {
-        console.error(error);
-        alert('Ocurrió un error de conexión con el servidor.');
-    } finally {
-        if (btnProcesar) {
-            btnProcesar.innerText = 'Procesar Menú con IA 🚀';
-            btnProcesar.disabled = false;
-        }
-    }
-}
-async function prepararEdicionProducto(id) {
-    const productId = (typeof id === 'object' && id !== null) ? (id.id || id.target) : id;
+      })
+      .subscribe();
 
-    const { data, error } = await supabaseClient
-        .from('productos')
-        .select('*')
-        .eq('id', productId)
-        .maybeSingle();
-
-    if (error || !data) {
-        alert('No se pudo cargar el producto para editar.');
-        console.error(error);
-        return;
+    function cambiarPagina(delta) {
+      paginaActual += delta;
+      if (paginaActual < 0) paginaActual = 0;
+      cargarPedidos();
     }
 
-    document.getElementById('prod-id').value = data.id;
-    document.getElementById('prod-nombre').value = data.nombre || '';
-    document.getElementById('prod-precio').value = data.precio || '';
-    document.getElementById('prod-descripcion').value = data.descripcion || '';
-    
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+    function actualizarPaginacion(totalCount) {
+      document.getElementById('page-info').innerText = `Página ${paginaActual + 1} de ${Math.ceil(totalCount / porPagina) || 1}`;
+      document.getElementById('btn-prev').disabled = paginaActual === 0;
+      document.getElementById('btn-next').disabled = (paginaActual + 1) * porPagina >= totalCount;
+    }
+
+    document.getElementById('input-search').addEventListener('input', () => { paginaActual = 0; cargarPedidos(); });
+    document.getElementById('select-estado').addEventListener('change', () => { paginaActual = 0; cargarPedidos(); });
+
+    // Inicializar al cargar la página
+    inicializarDashboard();
   </script>
 </body>
 </html>
