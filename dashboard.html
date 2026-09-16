@@ -639,11 +639,10 @@ async function enviarMenuConIA(event) {
     const btnProcesar = document.getElementById('btn-procesar-ia');
     const formElement = document.getElementById('form-importar-ia');
     
-    // Buscamos el ID por todas las vías posibles en el DOM y variables globales
+    // Capturamos el ID del input oculto o de la variable global de la sesión
     const inputRestauranteId = document.getElementById('ai-restaurante-id');
-    let restauranteIdActual = window.RESTAURANTE_ID || window.restauranteId || (inputRestauranteId ? inputRestauranteId.value : null);
+    let restauranteIdActual = inputRestauranteId ? inputRestauranteId.value : null;
 
-    // Si aún así está vacío, intentamos buscarlo en localStorage o en el selector principal si existe
     if (!restauranteIdActual && typeof RESTAURANTE_ID !== 'undefined') {
         restauranteIdActual = RESTAURANTE_ID;
     }
@@ -654,7 +653,7 @@ async function enviarMenuConIA(event) {
     }
 
     if (!restauranteIdActual) {
-        alert('El sistema está cargando los datos del restaurante. Espera 3 segundos y vuelve a intentar.');
+        alert('Cargando sesión del restaurante... Vuelve a hacer clic en procesar en un segundito.');
         return;
     }
 
