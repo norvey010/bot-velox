@@ -635,11 +635,12 @@ async function eliminarProducto(id) {
 async function enviarMenuConIA(event) {
     event.preventDefault();
     
-    const archivoInput = document.getElementById('input-menu-file');
+    const inputFiles = document.getElementById('menuFile');
     const btnProcesar = document.getElementById('btn-procesar-ia');
-    
-    if (!archivoInput.files[0]) {
-        alert('Por favor selecciona un archivo.');
+    const formElement = document.getElementById('form-importar-ia');
+
+    if (!inputFiles.files || inputFiles.files.length === 0) {
+        alert('Por favor selecciona al menos una imagen del menú.');
         return;
     }
 
@@ -648,11 +649,14 @@ async function enviarMenuConIA(event) {
         return;
     }
 
-    const formData = new FormData();
-    formData.append('menuFile', archivoInput.files[0]);
+    // Usamos el formulario completo para que empaque todas las imágenes seleccionadas (multiple)
+    const formData = new FormData(formElement);
     formData.append('restaurante_id', RESTAURANTE_ID);
-    btnProcesar.innerText = '🤖 Analizando menú con IA... (Esto puede tomar unos segundos)';
-    btnProcesar.disabled = true;
+
+    if (btnProcesar) {
+        btnProcesar.innerText = '🤖 Analizando menú con IA... (Esto puede tomar unos segundos)';
+        btnProcesar.disabled = true;
+    }
 
     try {
         const respuesta = await fetch('/api/importar-menu', {
@@ -662,19 +666,21 @@ async function enviarMenuConIA(event) {
 
         const resultado = await respuesta.json();
 
-        if (respuesta.ok) {
+        if (respuesta.ok && resultado.success) {
             alert('¡Menú importado y guardado con éxito por la IA!');
+            formElement.reset(); // Limpia los archivos seleccionados y destraba el formulario
             location.reload(); // Recarga para ver los nuevos productos en el panel
         } else {
             alert('Error: ' + (resultado.error || 'No se pudo procesar el archivo.'));
-            btnProcesar.innerText = 'Procesar Menú con IA 🚀';
-            btnProcesar.disabled = false;
         }
     } catch (error) {
         console.error(error);
         alert('Ocurrió un error de conexión con el servidor.');
-        btnProcesar.innerText = 'Procesar Menú con IA 🚀';
-        btnProcesar.disabled = false;
+    } finally {
+        if (btnProcesar) {
+            btnProcesar.innerText = 'Procesar Menú con IA 🚀';
+            btnProcesar.disabled = false;
+        }
     }
 }
 
