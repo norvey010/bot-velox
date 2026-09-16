@@ -286,51 +286,55 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
             return res.status(400).json({ error: "Faltan el archivo del menú o el ID del restaurante." });
         }
 
-        let mensajesOpenAI = [];
+        let textoExtraido = "";
 
-        // Si es PDF, intentamos extraer su texto plano obligatoriamente
+        // Intentamos extraer texto con pdf-parse por si es un PDF de texto real
         if (file.mimetype === 'application/pdf') {
             try {
                 const parseFunction = pdfParse.default || pdfParse;
                 const pdfData = await parseFunction(file.buffer);
-                const textoExtraido = pdfData.text || "";
-
-                if (textoExtraido.trim().length > 20) {
-                    mensajesOpenAI = [
-                        {
-                            role: "system",
-                            content: "Eres un experto analista gastronómico y extractor de datos. Analiza el siguiente texto de menú y extrae todos los platos, categorías y precios. Devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. No inventes precios si no se ven, usa 0."
-                        },
-                        {
-                            role: "user",
-                            content: `Aquí está el texto completo del menú:\n\n${textoExtraido}`
-                        }
-                    ];
-                }
+                textoExtraido = pdfData.text || "";
             } catch (errPdf) {
-                console.log("Error leyendo PDF con pdf-parse");
+                console.log("PDF sin texto digital directo.");
             }
         }
 
-        // Si no es PDF o el PDF era una imagen escaneada sin texto, procesamos solo si es una imagen real (JPEG/PNG)
-        if (mensajesOpenAI.length === 0) {
-            if (file.mimetype === 'application/pdf') {
-                return res.status(400).json({ error: "Este PDF es una imagen escaneada. Por favor, tómale una captura o sube el menú en formato de imagen (JPG o PNG)." });
-            }
+        let mensajesOpenAI = [];
 
-            const base64Data = file.buffer.toString('base64');
+        // Si el PDF tiene texto real suficiente, lo procesamos por texto
+        if (file.mimetype === 'application/pdf' && textoExtraido.trim().length >= 30) {
             mensajesOpenAI = [
                 {
                     role: "system",
-                    content: "Eres un experto analista gastronómico. Extrae todos los platos, categorías y precios de esta imagen de menú. Devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. No inventes precios si no se ven, usa 0."
+                    content: "Eres un experto analista gastronómico y extractor de datos. Analiza el texto del menú y extrae todos los platos, categorías y precios. Devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. No inventes precios si no se ven, usa 0."
+                },
+                {
+                    role: "user",
+                    content: `Aquí está el texto completo del menú:\n\n${textoExtraido}`
+                }
+            ];
+        } else {
+            // ¡AQUÍ ESTÁ LA CLAVE! Si es un PDF escaneado o una imagen, usamos el formato compatible
+            // Convertimos el buffer a base64 para enviarlo a GPT-4o-mini
+            const base64Data = file.buffer.toString('base64');
+            
+            // Si es PDF escaneado, lo tratamos como documento/imagen para que la IA lo lea de forma visual
+            const mimeTipoEnvio = file.mimetype === 'application/pdf' ? 'application/pdf' : file.mimetype;
+
+            mensajesOpenAI = [
+                {
+                    role: "system",
+                    content: "Eres un experto analista gastronómico y extractor de datos visuales. Lee detalladamente este menú (puede ser un documento PDF escaneado o una imagen) y extrae todos los platos, categorías y precios. Devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. No inventes precios si no se ven, usa 0."
                 },
                 {
                     role: "user",
                     content: [
-                        { type: "text", text: "Extrae todo el menú de esta imagen en el formato JSON solicitado:" },
+                        { type: "text", text: "Extrae absolutamente todos los productos, categorías y precios de este menú:" },
                         {
                             type: "image_url",
-                            image_url: { url: `data:${file.mimetype};base64,${base64Data}` }
+                            image_url: { 
+                                url: `data:image/jpeg;base64,${base64Data}` 
+                            }
                         }
                     ]
                 }
@@ -381,7 +385,6 @@ app.post('/api/importar-menu', upload.single('menuFile'), async (req, res) => {
         res.status(500).json({ error: "Hubo un error al procesar el archivo con Inteligencia Artificial." });
     }
 });
-
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
