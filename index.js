@@ -286,7 +286,6 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
             return res.status(400).json({ error: "Faltan las imágenes del menú o el ID del restaurante." });
         }
 
-        // Preparamos el contenido de los mensajes con todas las imágenes que haya subido el usuario
         let contenidoMensaje = [
             { type: "text", text: "Aquí están las páginas o secciones completas de este menú. Analiza todas las imágenes en conjunto y extrae absolutamente todos los platos, categorías y precios sin repetir. Devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. Usa 0 si no hay precio." }
         ];

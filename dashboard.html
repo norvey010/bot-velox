@@ -256,7 +256,34 @@ cargarPedidos();
     if (seccion === 'menu-ia') cargarVistaPreviaEditorIA();
     if (seccion === 'configuracion') cargarConfiguracion();
 }
+document.getElementById('formImportar').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btnProcesar = document.getElementById('btnProcesar'); // el botón de enviar
+    btnProcesar.disabled = true;
+    btnProcesar.innerText = "Analizando menú con IA...";
 
+    const formData = new FormData(this);
+
+    try {
+        const respuesta = await fetch('/api/importar-menu', {
+            method: 'POST',
+            body: formData
+        });
+        const resultado = await respuesta.json();
+
+        if (resultado.success) {
+            alert("¡Menú importado y guardado con éxito por la IA!");
+            this.reset(); // <--- ESTO LIMPIA EL INPUT Y EVITA QUE SE QUEDE PEGADO
+        } else {
+            alert("Error: " + (resultado.error || "No se pudo procesar"));
+        }
+    } catch (err) {
+        alert("Hubo un error de conexión.");
+    } finally {
+        btnProcesar.disabled = false;
+        btnProcesar.innerText = "Procesar Menú con IA 🚀";
+    }
+});
   // --- MÓDULO PEDIDOS ---
 async function cargarPedidos() {
     if (!RESTAURANTE_ID) return;
