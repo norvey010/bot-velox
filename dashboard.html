@@ -639,26 +639,20 @@ async function enviarMenuConIA(event) {
     const btnProcesar = document.getElementById('btn-procesar-ia');
     const formElement = document.getElementById('form-importar-ia');
     
-    // Capturamos el ID del input oculto o de la variable global de la sesión
-    const inputRestauranteId = document.getElementById('ai-restaurante-id');
-    let restauranteIdActual = inputRestauranteId ? inputRestauranteId.value : null;
-
-    if (!restauranteIdActual && typeof RESTAURANTE_ID !== 'undefined') {
-        restauranteIdActual = RESTAURANTE_ID;
-    }
-
+    // Usamos directamente la variable global RESTAURANTE_ID que se carga al iniciar sesión
     if (!inputFiles.files || inputFiles.files.length === 0) {
         alert('Por favor selecciona al menos una imagen del menú.');
         return;
     }
 
-    if (!restauranteIdActual) {
-        alert('Cargando sesión del restaurante... Vuelve a hacer clic en procesar en un segundito.');
+    if (typeof RESTAURANTE_ID === 'undefined' || !RESTAURANTE_ID) {
+        alert('Cargando datos del restaurante... Por favor recarga la página.');
         return;
     }
 
     const formData = new FormData(formElement);
-    formData.set('restaurante_id', restauranteIdActual);
+    // Inyectamos el ID directamente desde la variable global
+    formData.set('restaurante_id', RESTAURANTE_ID);
 
     if (btnProcesar) {
         btnProcesar.innerText = '🤖 Analizando menú con IA... (Esto puede tomar unos segundos)';
