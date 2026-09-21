@@ -459,25 +459,39 @@
       document.getElementById('form-producto').reset();
       document.getElementById('prod-id').value = '';
     }
-function abrirMenuEnVivo() {
-    // 1. Busca el slug directamente del input oculto que ya usa tu formulario en la misma página
-    const inputRestauranteId = document.getElementById('ai-restaurante-id');
-    let slugRestaurante = inputRestauranteId ? inputRestauranteId.value : null;
+async function abrirMenuEnVivo() {
+    try {
+        // 1. Obtenemos la sesión activa del usuario desde Supabase
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+            alert("Por favor inicia sesión de nuevo para continuar.");
+            return;
+        }
 
-    // 2. Si no está en el input, revisa si está guardado en el localStorage de la sesión
-    if (!slugRestaurante) {
-        slugRestaurante = localStorage.getItem('slug_negocio') || localStorage.getItem('restaurante_slug');
-    }
+        const userId = session.user.id;
 
-    // 3. Si por alguna razón sigue vacío, usamos el del restaurante actual o mostramos una alerta amigable
-    if (!slugRestaurante) {
-        alert("Por favor espera a que carguen los datos del restaurante.");
-        return;
+        // 2. Consultamos la base de datos para traer el slug del restaurante de este usuario
+        // (Nota: Si tu tabla de restaurantes se llama diferente o la columna cambia, me avisas y lo adaptamos)
+        const { data: restaurante, error: dbError } = await supabase
+            .from('restaurantes') 
+            .select('slug') 
+            .eq('user_id', userId)
+            .single();
+
+        if (dbError || !restaurante || !restaurante.slug) {
+            alert("No encontramos el restaurante asociado a tu cuenta.");
+            return;
+        }
+
+        // 3. ¡Listo! Abrimos el menú en vivo con el slug real de la base de datos
+        const urlMenu = `https://bot-velox-production.up.railway.app/menu.html?slug=${restaurante.slug.trim()}`;
+        window.open(urlMenu, '_blank');
+
+    } catch (err) {
+        console.error("Error al abrir el menú:", err);
+        alert("Ocurrió un error al intentar abrir el menú en vivo.");
     }
-    
-    // Abre el menú en vivo directo y sin preguntar nada
-    const urlMenu = `https://bot-velox-production.up.railway.app/menu.html?slug=${slugRestaurante.trim()}`;
-    window.open(urlMenu, '_blank');
 }
     // --- MÓDULO MENÚ IA (Múltiples imágenes dinámicas) ---
     async function enviarMenuConIA(event) {
