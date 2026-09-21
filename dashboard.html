@@ -460,8 +460,18 @@
       document.getElementById('prod-id').value = '';
     }
 function abrirMenuEnVivo() {
-    const slugRestaurante = localStorage.getItem('slug_negocio') || 'cangrebuerger'; 
-    const urlMenu = `https://bot-velox-production.up.railway.app/menu.html?slug=${slugRestaurante}`;
+    let slugRestaurante = localStorage.getItem('slug_negocio') || localStorage.getItem('restaurante_slug') || localStorage.getItem('slug');
+    
+    if (!slugRestaurante && typeof RESTAURANTE_SLUG !== 'undefined') {
+        slugRestaurante = RESTAURANTE_SLUG;
+    }
+
+    if (!slugRestaurante) {
+        slugRestaurante = prompt("Ingresa el identificador (slug) de tu restaurante para abrir el menú:");
+        if (!slugRestaurante) return;
+    }
+    
+    const urlMenu = `https://bot-velox-production.up.railway.app/menu.html?slug=${slugRestaurante.trim()}`;
     window.open(urlMenu, '_blank');
 }
     // --- MÓDULO MENÚ IA (Múltiples imágenes dinámicas) ---
