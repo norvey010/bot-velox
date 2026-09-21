@@ -461,27 +461,24 @@
     }
 async function abrirMenuEnVivo() {
     try {
-        // 1. Obtenemos el usuario autenticado usando supabaseClient
-        const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-        
-        if (authError || !user) {
-            alert("Por favor inicia sesión de nuevo.");
+        if (!RESTAURANTE_ID) {
+            alert("Aún se están cargando los datos del restaurante. Espera un segundo.");
             return;
         }
 
-        // 2. Consultamos la tabla de restaurantes usando el ID del usuario
-        const { data: restaurante, error: dbError } = await supabaseClient
+        // Consultamos directamente el slug usando el ID del restaurante que ya tenemos cargado
+        const { data: restaurante, error } = await supabaseClient
             .from('restaurantes')
             .select('slug')
-            .eq('user_id', user.id)
+            .eq('id', RESTAURANTE_ID)
             .single();
 
-        if (dbError || !restaurante || !restaurante.slug) {
-            alert("No encontramos el restaurante asociado a esta cuenta.");
+        if (error || !restaurante || !restaurante.slug) {
+            alert("No encontramos el enlace (slug) de este restaurante.");
             return;
         }
 
-        // 3. Abrimos la pestaña con el slug real del negocio al instante
+        // Abrimos la pestaña con el slug real al instante
         const urlMenu = `https://bot-velox-production.up.railway.app/menu.html?slug=${restaurante.slug.trim()}`;
         window.open(urlMenu, '_blank');
 
