@@ -356,11 +356,17 @@ const productosParaSupabase = listaProductos.map(p => ({
     }
 });
 function obtenerImagenDinamicaInteligente(nombreProducto) {
-    // Limpiamos el nombre del plato para que sirva de búsqueda web (quitamos espacios y tildes)
-    const queryLimpia = encodeURIComponent(nombreProducto.trim().toLowerCase());
-    
-    // Genera una imagen dinámica de alta calidad basada en el nombre exacto del plato
-    return `https://loremflickr.com/500/500/${queryLimpia},food?lock=${Math.floor(Math.random() * 1000)}`;
+    // Usamos un hash matemático basado en las letras del nombre del producto 
+    // para que siempre le toque la misma foto bonita al mismo plato, ¡sin fallar nunca!
+    let hash = 0;
+    const str = nombreProducto || "comida";
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idFoto = Math.abs(hash) % 70; // Selecciona un número seguro entre 0 y 70 de un catálogo estable
+
+    // Retorna una URL de imagen de alta calidad que carga siempre al instante
+    return `https://picsum.photos/id/${idFoto + 10}/500/500`;
 }
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
