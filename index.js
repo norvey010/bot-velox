@@ -325,12 +325,13 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
         }
 
         const productosParaSupabase = listaProductos.map(p => ({
-            restaurante_id: restaurante_id,
-            categoria: p.categoria || "General",
-            nombre: p.nombre,
-            precio: Number(p.precio) || 0,
-            descripcion: p.descripcion || ""
-        }));
+    restaurante_id: restaurante_id,
+    categoria: p.categoria || "General",
+    nombre: p.nombre,
+    precio: Number(p.precio) || 0,
+    descripcion: p.descripcion || "",
+    imagen_url: p.imagen_url || obtenerImagenPorDefecto(p.nombre, p.categoria) // 👈 ¡Esta es la clave mágica!
+}));
 
         const { error: insertError } = await supabase
             .from('productos')
@@ -354,6 +355,21 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
         res.status(500).json({ error: "Hubo un error al procesar las imágenes con Inteligencia Artificial." });
     }
 });
+function obtenerImagenPorDefecto(nombreProducto, categoria) {
+    const texto = (nombreProducto + " " + categoria).toLowerCase();
+
+    if (texto.includes('hamburguesa') || texto.includes('burger')) {
+        return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500';
+    } else if (texto.includes('salchipapa') || texto.includes('papas')) {
+        return 'https://images.unsplash.com/photo-1585109649139-366815a0d713?w=500';
+    } else if (texto.includes('pizza')) {
+        return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500';
+    } else if (texto.includes('bebida') || texto.includes('gaseosa') || texto.includes('jugo') || texto.includes('cerveza')) {
+        return 'https://images.unsplash.com/photo-1437418747212-8d9709afab22?w=500';
+    } else {
+        return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500';
+    }
+}
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
