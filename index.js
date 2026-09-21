@@ -328,9 +328,10 @@ const productosParaSupabase = listaProductos.map(p => ({
     restaurante_id: restaurante_id,
     categoria: p.categoria || "General",
     nombre: p.nombre,
-    precio: Number(p.precio) || 0,
+    precio: Number(p.precio) < 1000 ? Number(p.precio) * 1000 : Number(p.precio) || 0,
     descripcion: p.descripcion || "",
-    imagen_url: p.imagen_url || obtenerImagenDinamicaInteligente(p.nombre) // 👈 ¡Actualizado aquí!
+    // Si la IA mandó una URL válida la usa, de lo contrario le encasqueta esta foto profesional de plato gourmet y se acabó el problema:
+    imagen_url: (p.imagen_url && p.imagen_url.startsWith('http')) ? p.imagen_url : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500'
 }));
 
         const { error: insertError } = await supabase
