@@ -324,13 +324,13 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
             return res.status(400).json({ error: "No se pudieron detectar productos claros en las imágenes." });
         }
 
-        const productosParaSupabase = listaProductos.map(p => ({
+const productosParaSupabase = listaProductos.map(p => ({
     restaurante_id: restaurante_id,
     categoria: p.categoria || "General",
     nombre: p.nombre,
     precio: Number(p.precio) || 0,
     descripcion: p.descripcion || "",
-    imagen_url: p.imagen_url || obtenerImagenPorDefecto(p.nombre, p.categoria) // 👈 ¡Esta es la clave mágica!
+    imagen_url: p.imagen_url || obtenerImagenDinamicaInteligente(p.nombre) // 👈 ¡Actualizado aquí!
 }));
 
         const { error: insertError } = await supabase
@@ -355,20 +355,12 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
         res.status(500).json({ error: "Hubo un error al procesar las imágenes con Inteligencia Artificial." });
     }
 });
-function obtenerImagenPorDefecto(nombreProducto, categoria) {
-    const texto = (nombreProducto + " " + categoria).toLowerCase();
-
-    if (texto.includes('hamburguesa') || texto.includes('burger')) {
-        return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500';
-    } else if (texto.includes('salchipapa') || texto.includes('papas')) {
-        return 'https://images.unsplash.com/photo-1585109649139-366815a0d713?w=500';
-    } else if (texto.includes('pizza')) {
-        return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500';
-    } else if (texto.includes('bebida') || texto.includes('gaseosa') || texto.includes('jugo') || texto.includes('cerveza')) {
-        return 'https://images.unsplash.com/photo-1437418747212-8d9709afab22?w=500';
-    } else {
-        return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500';
-    }
+function obtenerImagenDinamicaInteligente(nombreProducto) {
+    // Limpiamos el nombre del plato para que sirva de búsqueda web (quitamos espacios y tildes)
+    const queryLimpia = encodeURIComponent(nombreProducto.trim().toLowerCase());
+    
+    // Genera una imagen dinámica de alta calidad basada en el nombre exacto del plato
+    return `https://loremflickr.com/500/500/${queryLimpia},food?lock=${Math.floor(Math.random() * 1000)}`;
 }
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
