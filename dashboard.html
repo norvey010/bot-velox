@@ -173,6 +173,14 @@
     </div>
     <button type="submit" id="btn-procesar-ia" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition">Procesar Menú con IA 🚀</button>
 </form>
+<!-- Botón de acceso directo al Menú en Vivo -->
+<div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg text-center mt-6">
+    <h5 class="text-white font-bold mb-2">¿Quieres ver cómo va quedando tu carta?</h5>
+    <p class="text-slate-400 text-sm mb-4">Abre una pestaña nueva con el menú digital tal cual como lo verá el cliente final.</p>
+    <button onclick="abrirMenuEnVivo()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-6 rounded-lg transition">
+        👁️ Ver Menú Digital en Vivo
+    </button>
+</div>
     </div>
 </section>
     <!-- SECCIÓN 3: CONFIGURACIÓN RESTAURANTE -->
@@ -451,7 +459,11 @@
       document.getElementById('form-producto').reset();
       document.getElementById('prod-id').value = '';
     }
-
+function abrirMenuEnVivo() {
+    const slugRestaurante = localStorage.getItem('slug_negocio') || 'cangrebuerger'; 
+    const urlMenu = `https://bot-velox-production.up.railway.app/menu.html?slug=${slugRestaurante}`;
+    window.open(urlMenu, '_blank');
+}
     // --- MÓDULO MENÚ IA (Múltiples imágenes dinámicas) ---
     async function enviarMenuConIA(event) {
       event.preventDefault();
