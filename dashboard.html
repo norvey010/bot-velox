@@ -460,17 +460,22 @@
       document.getElementById('prod-id').value = '';
     }
 function abrirMenuEnVivo() {
-    let slugRestaurante = localStorage.getItem('slug_negocio') || localStorage.getItem('restaurante_slug') || localStorage.getItem('slug');
-    
-    if (!slugRestaurante && typeof RESTAURANTE_SLUG !== 'undefined') {
-        slugRestaurante = RESTAURANTE_SLUG;
+    // 1. Busca el slug directamente del input oculto que ya usa tu formulario en la misma página
+    const inputRestauranteId = document.getElementById('ai-restaurante-id');
+    let slugRestaurante = inputRestauranteId ? inputRestauranteId.value : null;
+
+    // 2. Si no está en el input, revisa si está guardado en el localStorage de la sesión
+    if (!slugRestaurante) {
+        slugRestaurante = localStorage.getItem('slug_negocio') || localStorage.getItem('restaurante_slug');
     }
 
+    // 3. Si por alguna razón sigue vacío, usamos el del restaurante actual o mostramos una alerta amigable
     if (!slugRestaurante) {
-        slugRestaurante = prompt("Ingresa el identificador (slug) de tu restaurante para abrir el menú:");
-        if (!slugRestaurante) return;
+        alert("Por favor espera a que carguen los datos del restaurante.");
+        return;
     }
     
+    // Abre el menú en vivo directo y sin preguntar nada
     const urlMenu = `https://bot-velox-production.up.railway.app/menu.html?slug=${slugRestaurante.trim()}`;
     window.open(urlMenu, '_blank');
 }
