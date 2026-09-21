@@ -461,30 +461,27 @@
     }
 async function abrirMenuEnVivo() {
     try {
-        // 1. Obtenemos la sesión activa del usuario desde Supabase
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // 1. Buscamos el usuario actual en la sesión activa
+        const { data: { user } } = await supabase.auth.getUser();
         
-        if (sessionError || !session) {
-            alert("Por favor inicia sesión de nuevo para continuar.");
+        if (!user) {
+            alert("Por favor inicia sesión de nuevo.");
             return;
         }
 
-        const userId = session.user.id;
-
-        // 2. Consultamos la base de datos para traer el slug del restaurante de este usuario
-        // (Nota: Si tu tabla de restaurantes se llama diferente o la columna cambia, me avisas y lo adaptamos)
-        const { data: restaurante, error: dbError } = await supabase
-            .from('restaurantes') 
-            .select('slug') 
-            .eq('user_id', userId)
+        // 2. Consultamos directamente la tabla de restaurantes usando el ID del usuario
+        const { data: restaurante, error } = await supabase
+            .from('restaurantes')
+            .select('slug')
+            .eq('user_id', user.id)
             .single();
 
-        if (dbError || !restaurante || !restaurante.slug) {
-            alert("No encontramos el restaurante asociado a tu cuenta.");
+        if (error || !restaurante || !restaurante.slug) {
+            alert("No encontramos un restaurante asociado a esta cuenta.");
             return;
         }
 
-        // 3. ¡Listo! Abrimos el menú en vivo con el slug real de la base de datos
+        // 3. Abrimos la pestaña con el slug real del negocio
         const urlMenu = `https://bot-velox-production.up.railway.app/menu.html?slug=${restaurante.slug.trim()}`;
         window.open(urlMenu, '_blank');
 
