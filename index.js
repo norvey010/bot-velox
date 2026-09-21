@@ -356,36 +356,8 @@ const productosParaSupabase = listaProductos.map(p => ({
     }
 });
 function obtenerImagenDinamicaInteligente(nombreProducto) {
-    const texto = (nombreProducto || "comida").trim().toLowerCase();
-    
-    // Lista ampliada con decenas de fotos reales de alta calidad de diferentes tipos de comida (rápida, italiana, carnes, postres, asiática)
-    const catalogoComida = [
-        "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500", // Hamburguesa
-        "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500", // Pizza
-        "https://images.unsplash.com/photo-1585109649139-366815a0d713?w=500", // Salchipapa/Papas
-        "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500", // Plato restaurante
-        "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=500", // Ensalada/Gourmet
-        "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500", // Pasta
-        "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=500", // Comida rápida
-        "https://images.unsplash.com/photo-1550547660-d9450f859349?w=500", // Perro caliente/Sándwich
-        "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=500", // Arroz/Asados
-        "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=500", // Pollo frito
-        "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=500", // Pancakes/Desayuno
-        "https://images.unsplash.com/photo-1543353071-873f17a7a088?w=500", // Comida asiática/Bowl
-        "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=500", // Postre/Dulce
-        "https://images.unsplash.com/photo-1544025162-d76694265947?w=500", // Carnes a la parrilla
-        "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=500"  // Tacos/Mexicana
-    ];
-
-    // Algoritmo de dispersión (Hash): Convierte el nombre del plato en un número único único
-    let hash = 0;
-    for (let i = 0; i < texto.length; i++) {
-        hash = texto.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    
-    // Selecciona una posición aleatoria pero FIJA para ese plato basada en su nombre
-    const index = Math.abs(hash) % catalogoComida.length;
-    return catalogoComida[index];
+    // Foto estandarizada de alta calidad: un plato de restaurante gourmet apetitoso que nunca falla
+    return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500';
 }
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
