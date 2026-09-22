@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Menú Digital | Velox</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -143,17 +146,19 @@ async function cargarMenu() {
     var elNombre = document.getElementById('nombre-restaurante');
     if (elNombre) elNombre.innerText = restData.nombre_restaurante;
 
+    // Forzamos la consulta de productos ordenada por ID para evitar datos cacheados
     let { data: productos, error: resProd } = await supabaseClient
         .from('productos')
         .select('*')
-        .eq('restaurante_id', ID_RESTAURANTE_ACTUAL);
+        .eq('restaurante_id', ID_RESTAURANTE_ACTUAL)
+        .order('id', { ascending: true });
 
     if (resProd || !productos) {
         contenedor.innerHTML = '<p class="text-center text-red-400 py-6">No se pudieron cargar los productos.</p>';
         return;
     }
 
-    todosLosProductos = productos;
+    todosLosProductos = productos; 
 
     // Extraer categorías únicas para los botones superiores
     const categoriasSet = new Set();
