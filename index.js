@@ -334,11 +334,22 @@ const productosParaSupabase = listaProductos.map(p => ({
     imagen_url: (p.imagen_url && p.imagen_url.startsWith('http')) ? p.imagen_url : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500'
 }));
 
-        const { error: insertError } = await supabase
-            .from('productos')
-            .insert(productosParaSupabase);
+        // 1. Borramos el menú anterior de este restaurante para evitar unificación
+    const { error: deleteError } = await supabaseClient
+        .from('productos')
+        .delete()
+        .eq('restaurante_id', restaurante_id);
 
-        if (insertError) throw insertError;
+    if (deleteError) {
+        console.error("Error al limpiar productos antiguos:", deleteError);
+    }
+
+    // 2. Insertamos el nuevo menú procesado por la IA
+    const { error: insertError } = await supabaseClient
+        .from('productos')
+        .insert(productosParaSupabase);
+
+    if (insertError) throw insertError;
 
         const { data: restData } = await supabase
             .from('restaurantes')
