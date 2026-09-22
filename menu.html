@@ -190,32 +190,32 @@ function renderizarProductos(listaProds) {
         html += `
             <div class="mb-8">
                 <h2 class="text-xl font-bold text-amber-400 border-b border-slate-700 pb-2 mb-4 uppercase tracking-wide">${categoria}</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="space-y-3">
         `;
 
         lista.forEach(producto => {
-            // Imagen inteligente: si no tiene, usa la elegante por defecto
+            // Imagen inteligente o respaldo elegante por defecto
             const imagenFinal = (producto.imagen_url && producto.imagen_url.startsWith('http')) 
                 ? producto.imagen_url 
                 : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500';
 
             html += `
-                <div class="bg-slate-800 rounded-xl p-4 border border-slate-700 flex flex-col justify-between shadow-lg">
-                    <!-- Cuadro de imagen obligatorio: se dibuja siempre para todos los productos -->
-                    <div class="w-full h-40 bg-slate-900 rounded-lg overflow-hidden mb-3 border border-slate-700/50">
+                <div class="bg-slate-800 rounded-xl p-3 border border-slate-700 flex items-center gap-3 shadow-lg">
+                    <!-- Cuadro de imagen miniatura OBLIGATORIO al lado izquierdo -->
+                    <div class="w-20 h-20 flex-shrink-0 bg-slate-900 rounded-lg overflow-hidden border border-slate-700/50">
                         <img src="${imagenFinal}" alt="${producto.nombre}" class="w-full h-full object-cover">
                     </div>
                     
-                    <div>
-                        <h3 class="font-bold text-white text-lg">${producto.nombre}</h3>
-                        <p class="text-xs text-slate-400 mt-1 line-clamp-2">${producto.descripcion || 'Sin descripción'}</p>
-                    </div>
-                    
-                    <div class="mt-4 flex items-center justify-between">
-                        <span class="font-bold text-emerald-400 text-base">$${Number(producto.precio).toLocaleString()}</span>
-                        <button onclick="agregarAlCarrito(${producto.id}, '${producto.nombre.replace(/'/g, "\\'")}', ${producto.precio})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-4 rounded-lg text-xs transition">
-                            + Agregar
-                        </button>
+                    <!-- Información del producto -->
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-bold text-white text-base truncate">${producto.nombre}</h3>
+                        <p class="text-xs text-slate-400 mt-0.5 line-clamp-2">${producto.descripcion || 'Sin descripción'}</p>
+                        <div class="mt-2 flex items-center justify-between">
+                            <span class="font-bold text-emerald-400 text-sm">$${Number(producto.precio).toLocaleString()}</span>
+                            <button onclick="agregarAlCarrito(${producto.id}, '${producto.nombre.replace(/'/g, "\\'")}', ${producto.precio})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-3 rounded-lg text-xs transition">
+                                + Agregar
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
