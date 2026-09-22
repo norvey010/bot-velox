@@ -213,7 +213,7 @@ function renderizarProductos(listaProds) {
                     
                     <div class="mt-4 flex items-center justify-between">
                         <span class="font-bold text-emerald-400 text-base">$${Number(producto.precio).toLocaleString()}</span>
-                        <button onclick='agregarAlCarrito(${JSON.stringify(producto)})' class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-4 rounded-lg text-xs transition">
+                        <button onclick="agregarAlCarrito(${producto.id}, '${producto.nombre.replace(/'/g, "\\'")}', ${producto.precio})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-4 rounded-lg text-xs transition">
                             + Agregar
                         </button>
                     </div>
