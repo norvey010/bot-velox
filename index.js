@@ -286,10 +286,9 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
             return res.status(400).json({ error: "Faltan las imágenes del menú o el ID del restaurante." });
         }
 
-        let contenidoMensaje = [
-            { type: "text", text: "Aquí están las páginas o secciones completas de este menú. Analiza todas las imágenes en conjunto y extrae absolutamente todos los platos, categorías y precios sin repetir. Devuélvelos estrictamente en un JSON con la estructura: { \"productos\": [ { \"categoria\": \"Nombre Categoría\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\" } ] }. Usa 0 si no hay precio." }
-        ];
-
+       let contenidoMensaje = [
+    { type: "text", text: "Analiza detalladamente este menú. Extrae cada plato respetando estrictamente las siguientes reglas:\n1. CATEGORÍAS: Usa nombres de categorías claros y separados según el menú (ej: 'Pollo Broaster', 'Pollo Frito', etc.). NUNCA agrupes todo en una sola categoría genérica de 'Combos'.\n2. PRECIOS Y COMBOS: Si un plato tiene una opción sola y una opción con gaseosa, crea un ítem separado para cada uno con su nombre exacto (ej: 'Especial 6 Personas' y 'Especial 6 Personas + Gaseosa 1.5Lt') asegurándote de asignar el precio correcto y real que figura al lado de cada opción en la imagen, sin mezclar valores.\nDevuélvelo estrictamente en un JSON con la estructura: {\"productos\": [{\"categoria\": \"Nombre Categoria\", \"nombre\": \"Nombre Plato\", \"precio\": 15000, \"descripcion\": \"Detalle opcional\"}]}. Usa 0 si no hay precio." }
+];
         for (const file of files) {
             if (!file.mimetype.startsWith('image/')) {
                 return res.status(400).json({ error: "Todos los archivos deben ser imágenes (JPG, PNG)." });
