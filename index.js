@@ -335,7 +335,7 @@ const productosParaSupabase = listaProductos.map(p => ({
 }));
 
         // 1. Borramos el menú anterior de este restaurante para evitar unificación
-    const { error: deleteError } = await supabaseClient
+    const { error: deleteError } = await supabase
         .from('productos')
         .delete()
         .eq('restaurante_id', restaurante_id);
@@ -345,7 +345,7 @@ const productosParaSupabase = listaProductos.map(p => ({
     }
 
     // 2. Insertamos el nuevo menú procesado por la IA
-    const { error: insertError } = await supabaseClient
+    const { error: insertError } = await supabase
         .from('productos')
         .insert(productosParaSupabase);
 
