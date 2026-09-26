@@ -203,18 +203,25 @@ function renderizarProductos(listaProds) {
                 ? producto.imagen_url 
                 : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500';
 
-            const catMayus = (producto.categoria || '').toUpperCase();
+            // Leemos las opciones que la IA extrajo y guardó en Supabase (puede venir como Array o String)
             let listaOpciones = [];
-
-            // Si es una pizza, le inyectamos los sabores reales exactos de ese menú (los que traía Rodeo en la foto)
-            if (catMayus.includes('PIZZA')) {
-                listaOpciones = ["Hawaiana", "Champiñones", "Carnes", "Mexicana", "Criolla", "Ranchera", "Texana", "California", "Venezolana", "Tropical", "Miel Mostaza", "BBQ"];
+            if (producto.opciones) {
+                if (Array.isArray(producto.opciones)) {
+                    listaOpciones = producto.opciones;
+                } else if (typeof producto.opciones === 'string') {
+                    try { 
+                        listaOpciones = JSON.parse(producto.opciones); 
+                    } catch(e) { 
+                        listaOpciones = producto.opciones.split(',').map(op => op.trim()); 
+                    }
+                }
             }
 
             let botonHtml = '';
             let selectorHtml = '';
 
-            if (listaOpciones.length > 0) {
+            // Si la IA encontró opciones reales para este producto, activamos el botón inteligente universal
+            if (listaOpciones && listaOpciones.length > 0) {
                 let optionsHtml = '';
                 listaOpciones.forEach(op => {
                     optionsHtml += `<option value="${op}">${op}</option>`;
@@ -222,7 +229,7 @@ function renderizarProductos(listaProds) {
 
                 selectorHtml = `
                     <div id="selector-${producto.id}" class="hidden mt-3 pt-3 border-t border-slate-700/60">
-                        <label class="block text-xs text-amber-400 font-bold mb-1">Elige tu sabor:</label>
+                        <label class="block text-xs text-amber-400 font-bold mb-1">Elige una opción:</label>
                         <select id="opcion-${producto.id}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white mb-2">
                             ${optionsHtml}
                         </select>
@@ -238,6 +245,7 @@ function renderizarProductos(listaProds) {
                     </button>
                 `;
             } else {
+                // Producto normal sin opciones necesarias
                 botonHtml = `
                     <button onclick="agregarAlCarrito(${producto.id}, '${producto.nombre.replace(/'/g, "\\'")}', ${producto.precio})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-3 rounded-lg text-xs transition">
                         + Agregar

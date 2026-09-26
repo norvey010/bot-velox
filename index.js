@@ -286,10 +286,27 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
             return res.status(400).json({ error: "Faltan las imágenes del menú o el ID del restaurante." });
         }
 
-      let contenidoMensaje = [
+    let contenidoMensaje = [
     { 
         type: "text", 
-        text: "Analiza detalladamente este menú. Extrae ABSOLUTAMENTE TODOS los platos, porciones y combos sin dejar ninguno por fuera. Sigue estas reglas estrictas:\n1. CATEGORÍAS OBLIGATORIAS: Asigna a cada plato la categoría principal a la que pertenece según la sección del menú (ej: 'Pollo Broaster', 'Pizza', 'Hamburguesa'). ESTÁ PROHIBIDO crear una categoría nueva o pestaña llamada 'Combos', 'Promociones' o 'Combo #1'. Si un combo pertenece a una sección, su categoría DEBE ser esa sección principal.\n2. NOMBRES Y PRECIOS: Extrae el nombre completo del plato o tamaño (ej: 'Personal', 'Familiar 2', '1 Pollo') y su precio real exacto.\n3. MODIFICADORES Y OPCIONES: Si el producto requiere que el cliente elija algo (ej: los sabores de una pizza extraídos de la sección 'Sabores', o tipos de gaseosa/adiciones de un combo), inclúyelos en un arreglo llamado 'opciones'. Si no requiere elecciones, omite la llave o déjala vacía.\nDevuélvelo estrictamente en un JSON con esta estructura exacta:\n{\n  \"productos\": [\n    {\n      \"categoria\": \"Nombre de la Seccion Principal\",\n      \"nombre\": \"Nombre del Plato o Combo\",\n      \"precio\": 20000,\n      \"descripcion\": \"Detalles o ingredientes\",\n      \"opciones\": [\"Sabor 1\", \"Sabor 2\"] // Opcional, solo si el producto exige elección\n    }\n  ]\n}." 
+        text: "Eres un experto procesando menús de restaurantes en Colombia. Analiza la imagen y extrae todos los productos.\n\n" +
+              "REGLAS OBLIGATORIAS:\n" +
+              "1. CERO PESTAÑAS DE COMBOS: Queda estrictamente prohibido crear una categoría llamada 'Combos', 'Promociones' o 'Especiales'. Si un combo es de hamburguesa, su categoría DEBE ser 'Hamburguesa'. Si es de lasaña, su categoría DEBE ser 'Lasaña'. Si es de pollo, su categoría DEBE ser 'Pollo Broaster'.\n" +
+              "2. NOMBRES REALES:Extrae el nombre real y completo del menú (ej: 'COMBO LASAÑA' o 'HAMBURGUESA SUPER ESPECIAL').\n" +
+              "3. DESCRIPCIÓN OBLIGATORIA: En el campo 'descripcion', extrae exactamente los ingredientes o acompañamientos que aparecen escritos (ej: 'Papa francesa y gaseosa 350 ml'). No lo dejes vacío.\n" +
+              "4. OPCIONES UNIVERSALES: Si el menú muestra sabores o tipos de bebidas, agrégalos en el arreglo 'opciones'. Si no hay, déjalo vacío [].\n\n" +
+              "Devuélvelo estrictamente en formato JSON válido:\n" +
+              "{\n" +
+              "  \"productos\": [\n" +
+              "    {\n" +
+              "      \"categoria\": \"Hamburguesa\",\n" +
+              "      \"nombre\": \"HAMBURGUESA SUPER ESPECIAL\",\n" +
+              "      \"precio\": 22000,\n" +
+              "      \"descripcion\": \"Con papa francesa y gaseosa\",\n" +
+              "      \"opciones\": []\n" +
+              "    }\n" +
+              "  ]\n" +
+              "}"
     }
 ];
         for (const file of files) {
