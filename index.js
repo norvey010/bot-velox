@@ -286,23 +286,25 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
             return res.status(400).json({ error: "Faltan las imágenes del menú o el ID del restaurante." });
         }
 
-    let contenidoMensaje = [
+   let contenidoMensaje = [
     { 
         type: "text", 
-        text: "Eres un experto procesando menús de restaurantes. Analiza la imagen y extrae los productos unificando variantes para evitar duplicados en la pantalla.\n\n" +
-              "REGLAS ESTRICTAS DE UNIFICACIÓN:\n" +
-              "1. CERO DUPLICADOS POR ADICIONALES: Si un plato base (ej: 'Personal' a $19.000) tiene una versión con bebida o adicional (ej: 'Personal + Gaseosa' a $20.000), NO CREES DOS PRODUCTOS SEPARADOS. Crea un solo producto base ('Personal' con su precio base) y pon la variante de la gaseosa o tamaño dentro de un arreglo llamado 'opciones' (ej: ['Solo plato', 'Con Gaseosa 250ml']).\n" +
-              "2. NOMBRES Y PRECIOS: Extrae el nombre limpio del plato o tamaño y su precio base exacto.\n" +
-              "3. DESCRIPCIÓN: Extrae los ingredientes textuales de la carta.\n\n" +
-              "Devuélvelo estrictamente en formato JSON válido con esta estructura:\n" +
+        text: "Eres un experto procesando menús de restaurantes en Colombia. Analiza la imagen detalladamente y extrae ABSOLUTAMENTE TODOS los platos, porciones y combos sin omitir ninguno.\n\n" +
+              "INSTRUCCIONES CLAVE:\n" +
+              "1. CATEGORÍAS: Ubica cada producto en su sección correspondiente (ej: Arroz Paisa). No crees categorías independientes de 'Combos'.\n" +
+              "2. NOMBRES EXACTOS: Extrae el nombre fiel de la carta (ej: 'PERSONAL', '2 PERSONAS', 'FAMILIAR 4 PERSONAS').\n" +
+              "3. PRECIOS EXACTOS: Pon el valor numérico exacto que aparece en la imagen para ese producto.\n" +
+              "4. DESCRIPCIÓN OBLIGATORIA: Extrae fielmente los ingredientes o lo que incluye el plato (ej: 'Pollo, carne, chicharrón, maíz tierno, maduro, salchichas, papas a la francesa').\n" +
+              "5. OPCIONES: Deja el arreglo 'opciones' en blanco [] a menos que el menú indique explícitamente una lista abierta de sabores o modificadores.\n\n" +
+              "Devuélvelo estrictamente en formato JSON válido:\n" +
               "{\n" +
               "  \"productos\": [\n" +
               "    {\n" +
               "      \"categoria\": \"Arroz Paisa\",\n" +
-              "      \"nombre\": \"Personal\",\n" +
+              "      \"nombre\": \"PERSONAL\",\n" +
               "      \"precio\": 19000,\n" +
-              "      \"descripcion\": \"Pollo, carne, chicharrón, maduro, papas\",\n" +
-              "      \"opciones\": [\"Solo plato\", \"Con Gaseosa 250ml\"]\n" +
+              "      \"descripcion\": \"Pollo, carne, chicharrón, maíz, maduro, salchichas, papas\",\n" +
+              "      \"opciones\": []\n" +
               "    }\n" +
               "  ]\n" +
               "}"
