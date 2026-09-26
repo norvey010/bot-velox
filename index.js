@@ -289,20 +289,20 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
     let contenidoMensaje = [
     { 
         type: "text", 
-        text: "Eres un experto procesando menús de restaurantes en Colombia. Analiza la imagen y extrae todos los productos.\n\n" +
+        text: "Eres un experto procesando menús de restaurantes en Colombia. Analiza la imagen detalladamente y extrae todos los productos.\n\n" +
               "REGLAS OBLIGATORIAS:\n" +
-              "1. CERO PESTAÑAS DE COMBOS: Queda estrictamente prohibido crear una categoría llamada 'Combos', 'Promociones' o 'Especiales'. Si un combo es de hamburguesa, su categoría DEBE ser 'Hamburguesa'. Si es de lasaña, su categoría DEBE ser 'Lasaña'. Si es de pollo, su categoría DEBE ser 'Pollo Broaster'.\n" +
-              "2. NOMBRES REALES:Extrae el nombre real y completo del menú (ej: 'COMBO LASAÑA' o 'HAMBURGUESA SUPER ESPECIAL').\n" +
-              "3. DESCRIPCIÓN OBLIGATORIA: En el campo 'descripcion', extrae exactamente los ingredientes o acompañamientos que aparecen escritos (ej: 'Papa francesa y gaseosa 350 ml'). No lo dejes vacío.\n" +
-              "4. OPCIONES UNIVERSALES: Si el menú muestra sabores o tipos de bebidas, agrégalos en el arreglo 'opciones'. Si no hay, déjalo vacío [].\n\n" +
+              "1. CATEGORÍAS PRINCIPALES: Asigna a cada producto la categoría de la sección donde se encuentra (ej: Arroz Chino, Hamburguesa, etc.). Evita crear pestañas sueltas de 'Combos' si pertenecen a una sección específica, pero respeta la estructura general de la carta.\n" +
+              "2. NOMBRES TEXTUALES DEL MENÚ: Extrae el nombre **exacto y fiel** tal como aparece escrito en la carta (si en el menú dice 'Combo 1' o 'Promoción 2', ponlo tal cual, y complementa los detalles en la descripción).\n" +
+              "3. DESCRIPCIÓN OBLIGATORIA: En el campo 'descripcion', extrae exactamente los ingredientes o lo que incluye el plato según el texto del menú (ej: 'Arroz chino, costillas BBQ y papa a la francesa'). No lo dejes vacío.\n" +
+              "4. OPCIONES UNIVERSALES: Si el menú muestra variantes, tamaños o modificadores, agrégalos en el arreglo 'opciones'. Si no hay, déjalo vacío [].\n\n" +
               "Devuélvelo estrictamente en formato JSON válido:\n" +
               "{\n" +
               "  \"productos\": [\n" +
               "    {\n" +
-              "      \"categoria\": \"Hamburguesa\",\n" +
-              "      \"nombre\": \"HAMBURGUESA SUPER ESPECIAL\",\n" +
-              "      \"precio\": 22000,\n" +
-              "      \"descripcion\": \"Con papa francesa y gaseosa\",\n" +
+              "      \"categoria\": \"Arroz Chino\",\n" +
+              "      \"nombre\": \"Combo 1\",\n" +
+              "      \"precio\": 20000,\n" +
+              "      \"descripcion\": \"Arroz chino, presa de pollo y papa a la francesa\",\n" +
               "      \"opciones\": []\n" +
               "    }\n" +
               "  ]\n" +
