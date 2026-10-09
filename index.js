@@ -34,7 +34,7 @@ Notas: {detalle}
 FORMATO FIN DE ORDEN:
 [NUEVO_PEDIDO]
 Items: {detalle}
-Total: ${monto}
+Total: {monto}
 Dirección: {dir}
 Pago: {metodo}
 [/NUEVO_PEDIDO]`;
