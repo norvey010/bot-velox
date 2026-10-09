@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Menú Digital | Velox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+    /* Ocultar barra de desplazamiento en la barra de categorías */
+    .scrollbar-none::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-none {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>
+</head>
+
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-24">
+
+    <!-- HEADER -->
+    <header class="bg-slate-800 border-b border-slate-700 p-4 sticky top-0 z-40">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div>
+                <h1 id="nombre-restaurante" class="text-xl font-bold text-white">Menú Digital</h1>
+                <p class="text-xs text-emerald-400 flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Pedidos directos a cocina
+                </p>
+            </div>
+        </div>
+    </header>
+<!-- Barra de Categorías Deslizante -->
+<div class="max-w-md mx-auto px-4 pt-4">
+    <div id="contenedor-categorias" class="flex gap-2 overflow-x-auto whitespace-nowrap pb-2 scrollbar-none">
+        <button onclick="filtrarCategoria('TODOS')" class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950 transition shadow">🌟 Todos</button>
+    </div>
+</div>
+    <!-- CATÁLOGO -->
+    <main class="max-w-md mx-auto p-4 space-y-4" id="contenedor-menu">
+        <p class="text-center text-slate-400 py-10" id="estado-carga">Cargando catálogo...</p>
+    </main>
+
+    <!-- BARRA CARRITO -->
+    <div id="barra-carrito" class="fixed bottom-4 left-4 right-4 max-w-md mx-auto hidden z-40">
+        <button onclick="abrirModalPedido()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 px-5 rounded-2xl shadow-xl flex items-center justify-between">
+            <span class="bg-slate-950/20 px-3 py-1 rounded-lg text-sm" id="cant-items">0 ítems</span>
+            <span>Ver Pedido 🚀</span>
+            <span id="total-carrito">$0</span>
+        </button>
+    </div>
+
+   <!-- MODAL -->
+<div id="modal-pedido" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100">
+        <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+            <h3 class="text-xl font-bold text-white">Finalizar Pedido 🛒</h3>
+            <button onclick="cerrarModalPedido()" class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
+        </div>
+
+        <!-- 1. LISTA DE PRODUCTOS DEL CARRITO (¡Esto es lo que faltaba agregar!) -->
+        <div class="mb-4">
+            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tus productos:</h4>
+            <div id="lista-items-carrito" class="max-h-40 overflow-y-auto space-y-2 pr-1">
+                <!-- Aquí se pintan los platos dinámicamente con JS -->
+            </div>
+            <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-800 font-bold">
+                <span class="text-sm text-slate-300">Total a Pagar:</span>
+                <span id="total-modal-carrito" class="text-emerald-400 text-base">$0</span>
+            </div>
+        </div>
+
+        <!-- 2. FORMULARIO DE DATOS DE ENVÍO -->
+        <form id="form-confirmar-pedido" onsubmit="confirmarYEnviarPedido(event)" class="space-y-3">
+            <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Dirección de Entrega *</label>
+                <input type="text" id="input-direccion" required placeholder="Ej: Calle 45 # 10-20" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Método de Pago *</label>
+                <select id="select-pago" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm">
+                    <option value="Efectivo">Efectivo contra entrega</option>
+                    <option value="Transferencia (Nequi / Daviplata)">Transferencia (Nequi / Daviplata)</option>
+                    <option value="Datáfono">Datáfono al entregar</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Notas especiales</label>
+                <textarea id="input-notas" rows="2" placeholder="Ej: Sin cebolla..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm resize-none"></textarea>
+            </div>
+            <div class="pt-2 flex gap-3">
+                <button type="button" onclick="cerrarModalPedido()" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl text-sm transition">Cancelar</button>
+                <button type="submit" class="w-2/3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl text-sm transition">Confirmar Pedido 🚀</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+    <script>
+        var SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
+        var SUPABASE_KEY = 'sb_publishable_6YqFb_vPKTOFJZ9sp8AUzw_4aNLkH-l';
+        var supabaseClient = null;
+        var cart = [];
+        var numeroWhatsAppRestaurante = '';
+        var ID_RESTAURANTE_ACTUAL = null;
+
+        if (window.supabase && window.supabase.createClient) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+
+       let todosLosProductos = [];
+
+async function cargarMenu() {
+    var contenedor = document.getElementById('contenedor-menu');
+    var contenedorCategorias = document.getElementById('contenedor-categorias');
+    var urlParams = new URLSearchParams(window.location.search);
+    var clienteSlug = urlParams.get('slug') || urlParams.get('r');
+
+    if (!clienteSlug) {
+        contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error: No se especificó el restaurante.</p>';
+        return;
+    }
+
+    if (!supabaseClient && window.supabase) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+
+    let { data: restData, error: restError } = await supabaseClient
+        .from('restaurantes')
+        .select('*')
+        .eq('slug', clienteSlug)
+        .maybeSingle();
+
+    if (restError || !restData) {
+        contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Restaurante no encontrado.</p>';
+        return;
+    }
+
+    ID_RESTAURANTE_ACTUAL = restData.id;
+    window.RESTAURANTE_ACTUAL = restData;
+    var elNombre = document.getElementById('nombre-restaurante');
+    if (elNombre) elNombre.innerText = restData.nombre_restaurante;
+
+    // Forzamos la consulta de productos ordenada por ID para evitar datos cacheados
+    let { data: productos, error: resProd } = await supabaseClient
+        .from('productos')
+        .select('*')
+        .eq('restaurante_id', ID_RESTAURANTE_ACTUAL)
+        .order('id', { ascending: true });
+
+    if (resProd || !productos) {
+        contenedor.innerHTML = '<p class="text-center text-red-400 py-6">No se pudieron cargar los productos.</p>';
+        return;
+    }
+
+    todosLosProductos = productos; 
+
+    // Extraer categorías únicas para los botones superiores
+    const categoriasSet = new Set();
+    productos.forEach(p => categoriasSet.add(p.categoria || 'General'));
+    
+    let botonesHtml = `<button onclick="filtrarCategoria('TODOS')" class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-slate-950 transition shadow whitespace-nowrap">🌟 Todos</button>`;
+    categoriasSet.forEach(cat => {
+        botonesHtml += `<button onclick="filtrarCategoria('${cat}')" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition shadow whitespace-nowrap">${cat}</button>`;
+    });
+    if (contenedorCategorias) contenedorCategorias.innerHTML = botonesHtml;
+
+    renderizarProductos(todosLosProductos);
+}
+
+function renderizarProductos(listaProds) {
+    var contenedor = document.getElementById('contenedor-menu');
+    
+    if (!listaProds || listaProds.length === 0) {
+        contenedor.innerHTML = `<p class="text-center text-slate-400 p-6">No hay productos disponibles.</p>`;
+        return;
+    }
+
+    const productosPorCategoria = {};
+    listaProds.forEach(prod => {
+        const cat = prod.categoria || 'General';
+        if (!productosPorCategoria[cat]) {
+            productosPorCategoria[cat] = [];
+        }
+        productosPorCategoria[cat].push(prod);
+    });
+
+    var html = '';
+    for (const [categoria, lista] of Object.entries(productosPorCategoria)) {
+        html += `
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-amber-400 border-b border-slate-700 pb-2 mb-4 uppercase tracking-wide">${categoria}</h2>
+                <div class="space-y-3">
+        `;
+
+        lista.forEach(producto => {
+            const imagenFinal = (producto.imagen_url && producto.imagen_url.startsWith('http')) 
+                ? producto.imagen_url 
+                : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500';
+
+            // Leemos las opciones que la IA extrajo y guardó en Supabase (puede venir como Array o String)
+            let listaOpciones = [];
+            if (producto.opciones) {
+                if (Array.isArray(producto.opciones)) {
+                    listaOpciones = producto.opciones;
+                } else if (typeof producto.opciones === 'string') {
+                    try { 
+                        listaOpciones = JSON.parse(producto.opciones); 
+                    } catch(e) { 
+                        listaOpciones = producto.opciones.split(',').map(op => op.trim()); 
+                    }
+                }
+            }
+
+            let botonHtml = '';
+            let selectorHtml = '';
+
+            // Si la IA encontró opciones reales para este producto, activamos el botón inteligente universal
+            if (listaOpciones && listaOpciones.length > 0) {
+                let optionsHtml = '';
+                listaOpciones.forEach(op => {
+                    optionsHtml += `<option value="${op}">${op}</option>`;
+                });
+
+                selectorHtml = `
+                    <div id="selector-${producto.id}" class="hidden mt-3 pt-3 border-t border-slate-700/60">
+                        <label class="block text-xs text-amber-400 font-bold mb-1">Elige una opción:</label>
+                        <select id="opcion-${producto.id}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white mb-2">
+                            ${optionsHtml}
+                        </select>
+                        <button onclick="agregarConOpcionUniversal(${producto.id}, '${producto.nombre.replace(/'/g, "\\'")}', ${producto.precio})" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-1.5 rounded-lg text-xs transition">
+                            Confirmar y Agregar 🚀
+                        </button>
+                    </div>
+                `;
+
+                botonHtml = `
+                    <button onclick="toggleSelector(${producto.id})" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-1 px-3 rounded-lg text-xs transition">
+                        Elegir Opciones ➔
+                    </button>
+                `;
+            } else {
+                // Producto normal sin opciones necesarias
+                botonHtml = `
+                    <button onclick="agregarAlCarrito(${producto.id}, '${producto.nombre.replace(/'/g, "\\'")}', ${producto.precio})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-3 rounded-lg text-xs transition">
+                        + Agregar
+                    </button>
+                `;
+            }
+
+            html += `
+                <div class="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-20 h-20 flex-shrink-0 bg-slate-900 rounded-lg overflow-hidden border border-slate-700/50">
+                            <img src="${imagenFinal}" alt="${producto.nombre}" class="w-full h-full object-cover">
+                        </div>
+                        
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-bold text-white text-base truncate">${producto.nombre}</h3>
+                            <p class="text-xs text-slate-400 mt-0.5 line-clamp-2">${producto.descripcion || 'Sin descripción'}</p>
+                            <div class="mt-2 flex items-center justify-between">
+                                <span class="font-bold text-emerald-400 text-sm">$${Number(producto.precio).toLocaleString()}</span>
+                                ${botonHtml}
+                            </div>
+                        </div>
+                    </div>
+                    ${selectorHtml}
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+    }
+
+    contenedor.innerHTML = html;
+}
+
+function filtrarCategoria(categoriaElegida) {
+    if (categoriaElegida === 'TODOS') {
+        renderizarProductos(todosLosProductos);
+    } else {
+        const filtrados = todosLosProductos.filter(p => (p.categoria || 'General') === categoriaElegida);
+        renderizarProductos(filtrados);
+    }
+}
+
+function toggleSelector(id) {
+    var selector = document.getElementById('selector-' + id);
+    if (selector) {
+        selector.classList.toggle('hidden');
+    }
+}
+
+function agregarConOpcionUniversal(id, nombreBase, precio) {
+    var selectOpcion = document.getElementById('opcion-' + id);
+    var opcionElegida = selectOpcion ? selectOpcion.value : '';
+    
+    var nombreCompleto = nombreBase + (opcionElegida ? ' (' + opcionElegida + ')' : '');
+    
+    var item = cart.find(function(i) { return i.nombre === nombreCompleto; });
+    if (item) {
+        item.cantidad++;
+    } else {
+        cart.push({ id: id, nombre: nombreCompleto, precio: precio, cantidad: 1 });
+    }
+    
+    actualizarBarraCarrito();
+    toggleSelector(id);
+}
+function filtrarCategoria(categoriaElegida) {
+    if (categoriaElegida === 'TODOS') {
+        renderizarProductos(todosLosProductos);
+    } else {
+        const filtrados = todosLosProductos.filter(p => (p.categoria || 'General') === categoriaElegida);
+        renderizarProductos(filtrados);
+    }
+}
+
+function toggleSelector(id) {
+    var selector = document.getElementById('selector-' + id);
+    if (selector) {
+        selector.classList.toggle('hidden');
+    }
+}
+
+function agregarConOpcionUniversal(id, nombreBase, precio) {
+    var selectOpcion = document.getElementById('opcion-' + id);
+    var opcionElegida = selectOpcion ? selectOpcion.value : '';
+    
+    var nombreCompleto = nombreBase + (opcionElegida ? ' (' + opcionElegida + ')' : '');
+    
+    var item = cart.find(function(i) { return i.nombre === nombreCompleto; });
+    if (item) {
+        item.cantidad++;
+    } else {
+        cart.push({ id: id, nombre: nombreCompleto, precio: precio, cantidad: 1 });
+    }
+    
+    actualizarBarraCarrito();
+    toggleSelector(id);
+}
+        function agregarAlCarrito(id, nombre, precio) {
+            var item = cart.find(function(i) { return i.id === id; });
+            if (item) {
+                item.cantidad++;
+            } else {
+                cart.push({ id: id, nombre: nombre, precio: precio, cantidad: 1 });
+            }
+            actualizarBarraCarrito();
+        }
+
+        function actualizarBarraCarrito() {
+            var barra = document.getElementById('barra-carrito');
+            var cantItems = document.getElementById('cant-items');
+            var totalCarrito = document.getElementById('total-carrito');
+
+            var totalCantidad = 0;
+            var totalPrecio = 0;
+            for (var i = 0; i < cart.length; i++) {
+                totalCantidad += cart[i].cantidad;
+                totalPrecio += (cart[i].precio * cart[i].cantidad);
+            }
+
+            if (totalCantidad > 0) {
+                barra.classList.remove('hidden');
+                cantItems.innerText = totalCantidad + (totalCantidad === 1 ? ' ítem' : ' ítems');
+                totalCarrito.innerText = '$' + totalPrecio.toLocaleString('es-CO');
+            } else {
+                barra.classList.add('hidden');
+            }
+        }
+
+       function abrirModalPedido() {
+    if (cart.length === 0) return;
+    
+    var modal = document.getElementById('modal-pedido');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    // Renderizar los items dentro del modal
+    renderizarCarritoModal();
+}
+
+function renderizarCarritoModal() {
+    // Busca o crea un contenedor para los items dentro de tu modal de pedido
+    var contenedorItems = document.getElementById('lista-items-carrito');
+    var totalModal = document.getElementById('total-modal-carrito');
+    
+    if (!contenedorItems) return;
+
+    let html = '';
+    let totalGeneral = 0;
+
+    cart.forEach((item, index) => {
+        let subtotal = item.precio * item.cantidad;
+        totalGeneral += subtotal;
+
+        html += `
+            <div class="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-slate-700/50 mb-2">
+                <div class="flex-1 pr-2">
+                    <h4 class="text-white font-bold text-sm">${item.nombre}</h4>
+                    <p class="text-emerald-400 text-xs font-semibold">$${item.precio.toLocaleString('es-CO')} c/u</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="cambiarCantidadItem(${index}, -1)" class="w-7 h-7 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold flex items-center justify-center">-</button>
+                    <span class="text-white text-sm font-bold w-5 text-center">${item.cantidad}</span>
+                    <button onclick="cambiarCantidadItem(${index}, 1)" class="w-7 h-7 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold flex items-center justify-center">+</button>
+                    <button onclick="eliminarItemCarrito(${index})" class="ml-2 text-red-400 hover:text-red-300 text-xs p-1">🗑️</button>
+                </div>
+            </div>
+        `;
+    });
+
+    contenedorItems.innerHTML = html;
+    if (totalModal) totalModal.innerText = '$' + totalGeneral.toLocaleString('es-CO');
+}
+
+function cambiarCantidadItem(index, delta) {
+    cart[index].cantidad += delta;
+    if (cart[index].cantidad <= 0) {
+        cart.splice(index, 1);
+    }
+    actualizarBarraCarrito();
+    renderizarCarritoModal();
+    
+    // Si el carrito se quedó vacío, cerrar el modal automáticamente
+    if (cart.length === 0) {
+        cerrarModalPedido();
+    }
+}
+
+function eliminarItemCarrito(index) {
+    cart.splice(index, 1);
+    actualizarBarraCarrito();
+    renderizarCarritoModal();
+    
+    if (cart.length === 0) {
+        cerrarModalPedido();
+    }
+}
+
+        function cerrarModalPedido() {
+            var modal = document.getElementById('modal-pedido');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+    async function confirmarYEnviarPedido(event) {
+    event.preventDefault();
+
+    var direccion = document.getElementById('input-direccion').value;
+    var metodoPago = document.getElementById('select-pago').value;
+    var notas = document.getElementById('input-notas').value;
+
+    if (cart.length === 0) return;
+
+    var total = 0;
+    var detalles = [];
+    for (var i = 0; i < cart.length; i++) {
+        total += (cart[i].precio * cart[i].cantidad);
+        detalles.push(cart[i].cantidad + ' x ' + cart[i].nombre);
+    }
+    var detallePedido = detalles.join(', ');
+
+    // Validamos que ya tengamos los datos del restaurante cargados en memoria
+    if (!window.RESTAURANTE_ACTUAL || !window.RESTAURANTE_ACTUAL.id) {
+        alert("⚠️ Error: No se encontró el restaurante en el sistema.");
+        return;
+    }
+
+    var restauranteData = window.RESTAURANTE_ACTUAL;
+    var telefonoNegocio = "";
+    var nombreNegocio = restauranteData.nombre_restaurante || "Restaurante";
+
+    var telefonoCrudo = restauranteData.telefono || "";
+    
+    if (telefonoCrudo) {
+        let telLimpio = String(telefonoCrudo).replace(/\D/g, '');
+        if (telLimpio.length === 10) {
+            telefonoNegocio = "57" + telLimpio;
+        } else {
+            telefonoNegocio = telLimpio;
+        }
+    }
+
+    if (!telefonoNegocio) {
+        alert("⚠️ Error: El restaurante no tiene un número de WhatsApp configurado.");
+        return;
+    }
+
+    try {
+        // 2. Guarda el pedido en la base de datos usando el ID real
+        var resPedido = await supabaseClient.from('pedidos').insert([{
+            restaurante_id: restauranteData.id,
+            cliente_nombre: 'Anónimo',
+            cliente_telefono: 'Sin teléfono',
+            direccion: direccion,
+            detalle: detallePedido,
+            items: detallePedido,
+            total: total,
+            estado: 'Pendiente',
+            metodo_pago: metodoPago,
+            notas: notas || ''
+        }]);
+
+        if (resPedido.error) {
+            console.error("Error de Supabase:", resPedido.error);
+            alert("Error al guardar: " + resPedido.error.message);
+            return;
+        }
+
+        // 3. Arma el mensaje estructurado para WhatsApp
+        var mensajeWhatsapp = `*NUEVO PEDIDO - ${nombreNegocio}*\n\n` +
+            `• *Dirección:* ${direccion}\n` +
+            `• *Pedido:* ${detallePedido}\n` +
+            `• *Total:* $ ${total.toLocaleString('es-CO')}\n` +
+            `• *Pago:* ${metodoPago}\n` +
+            (notas ? `• *Notas:* ${notas}\n` : '') +
+            `\n\n[/NUEVO_PEDIDO]`;
+
+        var linkFinal = 'https://wa.me/' + telefonoNegocio + '?text=' + encodeURIComponent(mensajeWhatsapp);
+
+        // 4. Limpia el carrito y abre el WhatsApp correcto
+        cart = [];
+        if (typeof actualizarBarraCarrito === 'function') actualizarBarraCarrito();
+        if (typeof cerrarModalPedido === 'function') cerrarModalPedido();
+
+        window.location.href = linkFinal;
+        return;
+
+    } catch (err) {
+        console.error("Error inesperado:", err);
+        alert("Error inesperado: " + err.message);
+    }
+}
+        window.cargarMenu = cargarMenu;
+        window.onload = function() {
+            cargarMenu();
+        };
+    </script>
+</body>
+</html>

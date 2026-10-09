@@ -1,0 +1,94 @@
+// Configuración de conexión con Supabase (Variables públicas de tu proyecto)
+const SUPABASE_URL = "https://ozailviyimrjmebrilbp.supabase.co"; // Reemplaza con tu URL de Supabase
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96YWlsdml5aW1yam1lYnJpbGJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMTA5MTEsImV4cCI6MjEwMDY4NjkxMX0.rkWEtTGV4uFB_w62sC-vygZoLbfEgx_KKTSd9oS-5CM"; // Reemplaza con tu anon key de Supabase
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+document.getElementById('form-registro').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const btn = document.getElementById('btnRegistrar');
+  btn.disabled = true;
+  btn.innerText = "Procesando registro...";
+
+  // Capturar los valores del formulario
+  const nombreRestaurante = document.getElementById('nombreRestaurante')?.value;
+  const nombreEncargado = document.getElementById('nombreEncargado')?.value;
+  const telefono = document.getElementById('telefono')?.value;
+  const email = document.getElementById('email')?.value;
+  const password = document.getElementById('password')?.value;
+  const plan = document.getElementById('plan')?.value;
+
+  // Generar slug único combinando el nombre y el tiempo actual
+const slug = (nombreRestaurante
+  ? nombreRestaurante.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '')
+  : 'restaurante') + '-' + Date.now();
+
+  try {
+    // 1. Crear el usuario en Auth de Supabase
+    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+      email: email,
+      password: password
+    });
+
+    if (authError) throw authError;
+
+    // 2. Insertar el perfil del negocio en la tabla 'restaurantes'
+    const { error: dbError } = await supabaseClient
+      .from('restaurantes')
+      .insert([{
+        id_usuario: authData.user?.id,
+        nombre_restaurante: nombreRestaurante,
+        nombre_encargado: nombreEncargado,
+        telefono: telefono,
+        email: email,
+        plan_seleccionado: plan,
+        estado_cuenta: plan === 'prueba' ? 'prueba_activa' : 'pendiente_pago',
+        slug: slug
+      }]);
+
+    if (dbError) throw dbError;
+
+    // Iniciar sesión automáticamente con el correo y contraseña recién ingresados
+    const { error: loginError } = await supabaseClient.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+   if (loginError) {
+            alert("¡Cuenta creada con éxito! Pero hubo un problema al iniciar sesión automáticamente.");
+            window.location.href = 'index.html';
+            return;
+        }
+
+        // Si todo va bien, directos al dashboard
+        window.location.href = 'dashboard.html';
+        
+  } catch (err) {
+    console.error("Error durante el registro:", err);
+    alert("Ocurrió un error al registrar la cuenta: " + err.message);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = "Crear Cuenta y Continuar";
+    }
+  }
+  });
+ function togglePasswordVisibility() {
+    const passwordInput = document.getElementById('password');
+    const eyeOpenIcon = document.getElementById('icon-eye-open');
+    const eyeClosedIcon = document.getElementById('icon-eye-closed');
+    
+    if (passwordInput.type === 'password') {
+        // Cambiar el tipo de input a 'text' para mostrar la contraseña
+        passwordInput.type = 'text';
+        // Mostrar ícono de ojo cerrado, ocultar el abierto
+        eyeOpenIcon.style.display = 'none';
+        eyeClosedIcon.style.display = 'block';
+    } else {
+        // Cambiar el tipo de input a 'password' para ocultar la contraseña
+        passwordInput.type = 'password';
+        // Mostrar ícono de ojo abierto, ocultar el cerrado
+        eyeOpenIcon.style.display = 'block';
+        eyeClosedIcon.style.display = 'none';
+    }
+}
