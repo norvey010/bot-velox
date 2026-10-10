@@ -317,7 +317,7 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
             ],
             response_format: { type: "json_object" }
         });
-
+console.log("RESPUESTA CRUDA DE LA IA:", JSON.stringify(completionMenu.choices[0].message.content, null, 2));
         const resultadoIA = JSON.parse(completionMenu.choices[0].message.content);
         const listaProductos = resultadoIA.productos || Object.values(resultadoIA)[0];
 
