@@ -292,7 +292,7 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
         let messagesContent = [
             {
                 type: "text",
-                text: "Eres un experto procesando menús de restaurantes en Colombia. Analiza las imágenes detalladamente y extrae ABSOLUTAMENTE TODOS los platos, porciones y combos sin omitir ninguno.\n\nINSTRUCCIONES CLAVE:\n1. CATEGORÍAS: Ubica cada producto en su sección correspondiente (ej: Arroz Paisa).\n2. NOMBRES EXACTOS: Extrae el nombre fiel de la carta.\n3. PRECIOS EXACTOS: Pon el valor numérico exacto.\n4. DESCRIPCIÓN OBLIGATORIA: Ingredientes o lo que incluye.\n5. OPCIONES: Deja el arreglo en blanco [].\n\nDevuélvelo estrictamente en formato JSON válido con la estructura: { \"productos\": [ { \"categoria\": \"...\", \"nombre\": \"...\", \"precio\": 000, \"descripcion\": \"...\", \"opciones\": [] } ] }"
+               text: "Eres un experto procesando menús de restaurantes en Colombia. Analiza las imágenes detalladamente y extrae ABSOLUTAMENTE TODOS los platos, porciones y combos sin omitir ninguno.\n\nINSTRUCCIONES CLAVE:\n1. CATEGORÍAS: Ubica cada producto en su sección correspondiente (ej: Arroz Paisa).\n2. NOMBRES EXACTOS: Extrae el nombre fiel de la carta.\n3. PRECIOS EXACTOS: Pon el valor numérico exacto.\n4. DESCRIPCIÓN OBLIGATORIA: Ingredientes o lo que incluye.\n5. COMBOS Y BEBIDAS: Si un plato tiene una variante de combo con bebida (ej: '+ 1 Gaseosa 250ml'), agrégala dentro de las opciones de ese plato o como una variante, en lugar de crear un producto totalmente independiente.\n6. OPCIONES DE SABOR: Si el menú incluye opciones de bebidas personales para los combos, extráelas únicamente de la sección de bebidas individuales (ej: gaseosas personales, latas, 250ml o 400ml). EXCLÚYASE bebidas familiares de 1.5L, 2L, malteadas o cervezas a menos que el combo lo indique.\n\nDevuélvelo estrictamente en formato JSON válido con la estructura: { \"productos\": [ { \"categoria\": \"...\", \"nombre\": \"...\", \"precio\": 000, \"descripcion\": \"...\", \"opciones\": [...] } ] }"
             }
         ];
 
@@ -331,7 +331,8 @@ app.post('/api/importar-menu', upload.array('menuFile', 10), async (req, res) =>
             nombre: p.nombre,
             precio: Number(p.precio) < 1000 ? Number(p.precio) * 1000 : Number(p.precio) || 0,
             descripcion: p.descripcion || "",
-            imagen_url: (p.imagen_url && p.imagen_url.startsWith('http')) ? p.imagen_url : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500'
+            imagen_url: (p.imagen_url && p.imagen_url.startsWith('http')) ? p.imagen_url : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500',
+            opciones: p.opciones || [],
         }));
 
         // 1. Borramos el menú anterior de este restaurante
