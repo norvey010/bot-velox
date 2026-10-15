@@ -276,7 +276,7 @@ function renderizarProductos(listaProds) {
             const requierePersonalizacion = listaOpciones.length > 0 || detectarGaseosa(textoProducto) || detectarPizzaPorElegir(textoProducto);
             const textoBoton = requierePersonalizacion ? 'Elegir sabores' : '+ Agregar';
             const botonHtml = `
-                <button type="button" onclick="iniciarPersonalizacion(${JSON.stringify(String(producto.id))})" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-red-950/30">
+                <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-red-950/30">
                     ${textoBoton}
                 </button>
             `;
@@ -305,6 +305,9 @@ function renderizarProductos(listaProds) {
     }
 
     contenedor.innerHTML = html;
+    contenedor.querySelectorAll('[data-action="personalizar"]').forEach(boton => {
+        boton.addEventListener('click', () => iniciarPersonalizacion(boton.dataset.productId));
+    });
 }
 function filtrarCategoria(categoriaElegida) {
     document.querySelectorAll('#contenedor-categorias [data-categoria]').forEach(boton => {
