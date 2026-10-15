@@ -183,12 +183,7 @@ async function cargarMenu() {
     categoriasSet.forEach(cat => {
         botonesHtml += `<button type="button" data-categoria="${escaparHtml(cat)}" class="shrink-0 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap">${escaparHtml(cat)}</button>`;
     });
-    if (contenedorCategorias) {
-        contenedorCategorias.innerHTML = botonesHtml;
-        contenedorCategorias.querySelectorAll('[data-categoria]').forEach(boton => {
-            boton.addEventListener('click', () => filtrarCategoria(boton.dataset.categoria));
-        });
-    }
+    if (contenedorCategorias) contenedorCategorias.innerHTML = botonesHtml;
 
     renderizarProductos(todosLosProductos);
 }
@@ -305,9 +300,6 @@ function renderizarProductos(listaProds) {
     }
 
     contenedor.innerHTML = html;
-    contenedor.querySelectorAll('[data-action="personalizar"]').forEach(boton => {
-        boton.addEventListener('click', () => iniciarPersonalizacion(boton.dataset.productId));
-    });
 }
 function filtrarCategoria(categoriaElegida) {
     document.querySelectorAll('#contenedor-categorias [data-categoria]').forEach(boton => {
@@ -449,6 +441,24 @@ function confirmarPersonalizacion(event) {
     actualizarBarraCarrito();
     cerrarModalPersonalizar();
 }
+
+// Delegación de eventos: los botones siguen funcionando aunque se redibujen las tarjetas.
+document.addEventListener('click', event => {
+    const elemento = event.target instanceof Element ? event.target : null;
+    const botonProducto = elemento?.closest('#contenedor-menu [data-action="personalizar"]');
+    if (botonProducto) {
+        event.preventDefault();
+        iniciarPersonalizacion(botonProducto.dataset.productId);
+        return;
+    }
+
+    const botonCategoria = elemento?.closest('#contenedor-categorias [data-categoria]');
+    if (botonCategoria) {
+        event.preventDefault();
+        filtrarCategoria(botonCategoria.dataset.categoria);
+    }
+});
+
         function agregarAlCarrito(id, nombre, precio) {
             var item = cart.find(function(i) { return i.id === id; });
             if (item) {
