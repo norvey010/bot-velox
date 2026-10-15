@@ -292,7 +292,7 @@ function renderizarProductos(listaProds) {
                     <div class="p-4 flex flex-col flex-1">
                         <div class="flex-1">
                             <h3 class="font-extrabold text-white text-lg leading-snug">${producto.nombre}</h3>
-                            <p class="text-sm text-slate-400 mt-1.5 leading-relaxed">${producto.descripcion || 'Sin descripción'}</p>
+                            <p class="text-sm text-slate-400 mt-1.5 leading-relaxed lowercase">${producto.descripcion || 'Sin descripción'}</p>
                         </div>
                         <div class="mt-5 flex items-center justify-between gap-2">
                             <span class="font-extrabold text-amber-400 text-xl">$${Number(producto.precio).toLocaleString('es-CO')}</span>
