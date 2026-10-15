@@ -55,7 +55,22 @@
         </button>
     </div>
 
-   <!-- MODAL -->
+   <!-- MODAL DE PERSONALIZACIÓN DE PRODUCTO -->
+<div id="modal-personalizar" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-[60]" role="dialog" aria-modal="true" aria-labelledby="titulo-personalizar">
+    <form id="form-personalizar" onsubmit="confirmarPersonalizacion(event)" class="bg-[#111214] border border-red-950/70 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-start gap-4 mb-5 border-b border-slate-800 pb-4">
+            <div><p class="text-xs uppercase tracking-widest text-amber-400 font-bold">Personaliza tu pedido</p><h3 id="titulo-personalizar" class="text-xl font-extrabold text-white mt-1">Elige cómo lo quieres</h3><p id="nombre-personalizar" class="text-sm text-slate-400 mt-1"></p></div>
+            <button type="button" onclick="cerrarModalPersonalizar()" aria-label="Cerrar" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+        <div id="campos-personalizar" class="space-y-4"></div>
+        <div class="mt-6 flex gap-3">
+            <button type="button" onclick="cerrarModalPersonalizar()" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl text-sm font-semibold">Cancelar</button>
+            <button type="submit" class="w-2/3 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-sm">Agregar al pedido</button>
+        </div>
+    </form>
+</div>
+
+   <!-- MODAL DE CONFIRMACIÓN DEL PEDIDO -->
 <div id="modal-pedido" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
     <div class="bg-[#111214] border border-red-950/70 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100">
         <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
@@ -252,39 +267,14 @@ function renderizarProductos(listaProds) {
                 }
             }
 
-            let botonHtml = '';
-            let selectorHtml = '';
-
-            if (listaOpciones && listaOpciones.length > 0) {
-                let optionsHtml = '';
-                listaOpciones.forEach(op => {
-                    optionsHtml += `<option value="${op}">${op}</option>`;
-                });
-
-                selectorHtml = `
-                    <div id="selector-${producto.id}" class="hidden mt-4 pt-3 border-t border-slate-700/60">
-                        <label class="block text-xs text-amber-400 font-bold mb-1">Elige una opción:</label>
-                        <select id="opcion-${producto.id}" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white mb-2">
-                            ${optionsHtml}
-                        </select>
-                        <button onclick="agregarConOpcionUniversal(${producto.id}, '${producto.nombre.replace(/'/g, "\\'")}', ${producto.precio})" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl text-sm transition">
-                            Confirmar y Agregar 🚀
-                        </button>
-                    </div>
-                `;
-
-                botonHtml = `
-                    <button onclick="toggleSelector(${producto.id})" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-xl text-sm transition shadow-lg shadow-red-950/30">
-                        Elegir Opciones ➔
-                    </button>
-                `;
-            } else {
-                botonHtml = `
-                    <button onclick="agregarAlCarrito(${producto.id}, '${producto.nombre.replace(/'/g, "\\'")}', ${producto.precio})" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-xl text-sm transition shadow-lg shadow-red-950/30">
-                        + Agregar
-                    </button>
-                `;
-            }
+            const textoProducto = normalizarTexto(`${producto.categoria || ''} ${producto.nombre || ''} ${producto.descripcion || ''}`);
+            const requierePersonalizacion = listaOpciones.length > 0 || detectarGaseosa(textoProducto) || detectarPizzaPorElegir(textoProducto);
+            const textoBoton = requierePersonalizacion ? 'Personalizar' : '+ Agregar';
+            const botonHtml = `
+                <button onclick="iniciarPersonalizacion(${JSON.stringify(String(producto.id))})" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-xl text-sm transition shadow-lg shadow-red-950/30">
+                    ${textoBoton}
+                </button>
+            `;
 
             html += `
                 <div class="group bg-[#111214] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-col">
@@ -298,7 +288,6 @@ function renderizarProductos(listaProds) {
                             <span class="font-extrabold text-amber-400 text-xl">$${Number(producto.precio).toLocaleString('es-CO')}</span>
                             ${botonHtml}
                         </div>
-                    ${selectorHtml}
                     </div>
                 </div>
             `;
@@ -321,60 +310,130 @@ function filtrarCategoria(categoriaElegida) {
     }
 }
 
-function toggleSelector(id) {
-    var selector = document.getElementById('selector-' + id);
-    if (selector) {
-        selector.classList.toggle('hidden');
-    }
+function normalizarTexto(valor) {
+    return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
-function agregarConOpcionUniversal(id, nombreBase, precio) {
-    var selectOpcion = document.getElementById('opcion-' + id);
-    var opcionElegida = selectOpcion ? selectOpcion.value : '';
-    
-    var nombreCompleto = nombreBase + (opcionElegida ? ' (' + opcionElegida + ')' : '');
-    
-    var item = cart.find(function(i) { return i.nombre === nombreCompleto; });
-    if (item) {
-        item.cantidad++;
-    } else {
-        cart.push({ id: id, nombre: nombreCompleto, precio: precio, cantidad: 1 });
+function obtenerOpcionesProducto(producto) {
+    if (Array.isArray(producto.opciones)) return producto.opciones.filter(Boolean);
+    if (typeof producto.opciones === 'string') {
+        try {
+            const parsed = JSON.parse(producto.opciones);
+            if (Array.isArray(parsed)) return parsed.filter(Boolean);
+        } catch (error) {
+            return producto.opciones.split(',').map(op => op.trim()).filter(Boolean);
+        }
     }
-    
+    return [];
+}
+
+function detectarGaseosa(texto) {
+    if (/\b(gaseosas?|refrescos?)\b/.test(texto)) return true;
+    const esCombo = /\b(combo|combos|incluye|con)\b/.test(texto);
+    return esCombo && /\b(bebidas?|sodas?|coca[- ]?cola|colombiana|postobon|manzana|uva)\b/.test(texto);
+}
+
+function detectarPizzaPorElegir(texto) {
+    return /pizza/.test(texto) && /\b(porcion(?:es)?|personal|a eleccion|elige|elegir|sabor(?:es)?|especialidad(?:es)?|mitad)\b/.test(texto);
+}
+
+function escaparHtml(valor) {
+    return String(valor || '').replace(/[&<>"']/g, caracter => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[caracter]);
+}
+
+let productoPersonalizacionActual = null;
+
+function iniciarPersonalizacion(id) {
+    const producto = todosLosProductos.find(p => String(p.id) === String(id));
+    if (!producto) return;
+
+    const opciones = obtenerOpcionesProducto(producto);
+    const texto = normalizarTexto(`${producto.categoria || ''} ${producto.nombre || ''} ${producto.descripcion || ''}`);
+    const requiereGaseosa = detectarGaseosa(texto);
+    const requiereSaborPizza = opciones.length === 0 && detectarPizzaPorElegir(texto);
+    const requiereEleccion = opciones.length > 0 || requiereGaseosa || requiereSaborPizza;
+
+    if (!requiereEleccion) {
+        agregarAlCarrito(producto.id, producto.nombre, producto.precio);
+        return;
+    }
+
+    productoPersonalizacionActual = { producto, opciones, requiereGaseosa, requiereSaborPizza, texto };
+    document.getElementById('nombre-personalizar').textContent = producto.nombre;
+    const campos = document.getElementById('campos-personalizar');
+    let html = '';
+
+    if (opciones.length > 0) {
+        const opcionesHtml = opciones.map(op => `<option value="${escaparHtml(op)}">${escaparHtml(op)}</option>`).join('');
+        const esPizza = /pizza/.test(texto);
+        html += `<div><label for="opcion-personalizar" class="mb-2 block text-sm font-semibold text-slate-200">${esPizza ? 'Elige el sabor o especialidad' : 'Elige una opción'}</label><select id="opcion-personalizar" required class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white"><option value="" disabled selected>Selecciona una opción</option>${opcionesHtml}</select></div>`;
+    } else if (requiereSaborPizza) {
+        html += `<div><label for="especialidad-pizza" class="mb-2 block text-sm font-semibold text-slate-200">¿Qué especialidad o ingredientes prefieres?</label><input id="especialidad-pizza" type="text" required maxlength="120" placeholder="Ej.: pollo con champiñones" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500"></div>`;
+    }
+
+    if (requiereGaseosa) {
+        const etiquetaBebida = /\b(gaseosas?|refrescos?)\b/.test(texto) ? '¿De qué sabor prefieres la gaseosa?' : '¿Qué sabor de bebida prefieres?';
+        html += `<div><label for="sabor-gaseosa" class="mb-2 block text-sm font-semibold text-slate-200">${etiquetaBebida}</label><select id="sabor-gaseosa" required onchange="actualizarCampoOtroSabor()" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white"><option value="" disabled selected>Selecciona el sabor</option><option>Manzana</option><option>Uva</option><option>Colombiana</option><option>Coca-Cola</option><option>Otro sabor</option></select><input id="otro-sabor-gaseosa" type="text" maxlength="60" placeholder="Escribe el sabor" class="hidden mt-3 w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500"></div>`;
+    }
+
+    html += `<div><label for="nota-personalizacion" class="mb-2 block text-sm font-semibold text-slate-200">Nota adicional <span class="font-normal text-slate-500">(opcional)</span></label><textarea id="nota-personalizacion" rows="2" maxlength="180" placeholder="Ej.: sin cebolla" class="w-full resize-none rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500"></textarea></div>`;
+    campos.innerHTML = html;
+
+    const modal = document.getElementById('modal-personalizar');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => campos.querySelector('select, input')?.focus(), 50);
+}
+
+function actualizarCampoOtroSabor() {
+    const select = document.getElementById('sabor-gaseosa');
+    const input = document.getElementById('otro-sabor-gaseosa');
+    if (!select || !input) return;
+    const esOtro = select.value === 'Otro sabor';
+    input.classList.toggle('hidden', !esOtro);
+    input.required = esOtro;
+    if (!esOtro) input.value = '';
+}
+
+function cerrarModalPersonalizar() {
+    const modal = document.getElementById('modal-personalizar');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    productoPersonalizacionActual = null;
+}
+
+function confirmarPersonalizacion(event) {
+    event.preventDefault();
+    if (!productoPersonalizacionActual) return;
+
+    const { producto, requiereGaseosa, requiereSaborPizza } = productoPersonalizacionActual;
+    const selecciones = [];
+    const opcion = document.getElementById('opcion-personalizar')?.value;
+    if (opcion) selecciones.push(opcion);
+
+    if (requiereSaborPizza) {
+        const especialidad = document.getElementById('especialidad-pizza').value.trim();
+        if (especialidad) selecciones.push(`Especialidad: ${especialidad}`);
+    }
+
+    if (requiereGaseosa) {
+        const sabor = document.getElementById('sabor-gaseosa').value;
+        const saborOtro = document.getElementById('otro-sabor-gaseosa').value.trim();
+        selecciones.push(`Gaseosa: ${sabor === 'Otro sabor' ? saborOtro : sabor}`);
+    }
+
+    const nota = document.getElementById('nota-personalizacion').value.trim();
+    if (nota) selecciones.push(`Nota: ${nota}`);
+
+    const nombreCompleto = `${producto.nombre}${selecciones.length ? ` (${selecciones.join(' · ')})` : ''}`;
+    const item = cart.find(i => i.id === producto.id && i.nombre === nombreCompleto);
+    if (item) item.cantidad++;
+    else cart.push({ id: producto.id, nombre: nombreCompleto, precio: Number(producto.precio), cantidad: 1 });
+
     actualizarBarraCarrito();
-    toggleSelector(id);
-}
-function filtrarCategoria(categoriaElegida) {
-    if (categoriaElegida === 'TODOS') {
-        renderizarProductos(todosLosProductos);
-    } else {
-        const filtrados = todosLosProductos.filter(p => (p.categoria || 'General') === categoriaElegida);
-        renderizarProductos(filtrados);
-    }
-}
-
-function toggleSelector(id) {
-    var selector = document.getElementById('selector-' + id);
-    if (selector) {
-        selector.classList.toggle('hidden');
-    }
-}
-
-function agregarConOpcionUniversal(id, nombreBase, precio) {
-    var selectOpcion = document.getElementById('opcion-' + id);
-    var opcionElegida = selectOpcion ? selectOpcion.value : '';
-    
-    var nombreCompleto = nombreBase + (opcionElegida ? ' (' + opcionElegida + ')' : '');
-    
-    var item = cart.find(function(i) { return i.nombre === nombreCompleto; });
-    if (item) {
-        item.cantidad++;
-    } else {
-        cart.push({ id: id, nombre: nombreCompleto, precio: precio, cantidad: 1 });
-    }
-    
-    actualizarBarraCarrito();
-    toggleSelector(id);
+    cerrarModalPersonalizar();
 }
         function agregarAlCarrito(id, nombre, precio) {
             var item = cart.find(function(i) { return i.id === id; });
@@ -435,7 +494,7 @@ function renderizarCarritoModal() {
         html += `
             <div class="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-slate-700/50 mb-2">
                 <div class="flex-1 pr-2">
-                    <h4 class="text-white font-bold text-sm">${item.nombre}</h4>
+                    <h4 class="text-white font-bold text-sm">${escaparHtml(item.nombre)}</h4>
                     <p class="text-amber-400 text-xs font-semibold">$${item.precio.toLocaleString('es-CO')} c/u</p>
                 </div>
                 <div class="flex items-center gap-2">
