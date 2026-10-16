@@ -308,7 +308,7 @@ REGLAS OBLIGATORIAS:
 - Copia cada nombre y toda descripción/ingrediente legible completa, en el mismo orden. No omitas ingredientes aunque parezcan obvios (incluidos chorizo y tocineta); no acortes palabras ("plancha" no es "planch"), no resumas y no uses puntos suspensivos.
 - Incluye todos los productos, tamaños, porciones, combos, ingredientes y precios visibles. No inventes datos ni deduzcas ingredientes. Si un dato no es legible, usa cadena vacía para texto o 0 para precio; nunca lo adivines.
 - El precio debe ser el valor numérico impreso, sin símbolo de moneda ni separadores de miles. No conviertas ni multipliques el precio.
-- Usa el encabezado de sección como categoría. Cada tamaño/presentación con precio debe quedar como producto visible independiente, con ese precio. Asigna a cada tamaño un mismo "familia" únicamente cuando la carta confirme que pertenece al mismo producto base (por ejemplo, Personal, Mediana y Familiar bajo Pizzas usan familia "Pizzas"). Para una opción listada junto a un producto, inclúyela en sus "opciones". Si la carta pone el catálogo de sabores/variantes en otra parte, devuélvelo una sola vez en el arreglo raíz "variantes" con esa misma familia (por ejemplo, cada sabor de pizza con familia "Pizzas"); no lo conviertas en productos vendibles ni repitas la lista por cada tamaño. No cruces familias distintas ni adivines asociaciones. Si la relación no es clara, deja familia vacía y no vincules.
+- Usa el encabezado de sección como categoría. Cada tamaño/presentación con precio debe quedar como producto visible independiente, con ese precio. Asigna a cada tamaño un mismo "familia" únicamente cuando la carta confirme que pertenece al mismo producto base (por ejemplo, Personal, Mediana y Familiar bajo Pizzas usan familia "Pizzas"). Para una opción listada junto a un producto, inclúyela en sus "opciones". Si la carta pone el catálogo de sabores/variantes en otra parte, devuélvelo una sola vez en el arreglo raíz "variantes" con esa misma familia y el encabezado correspondiente en "categoria" (por ejemplo, cada sabor de pizza con familia y categoria "Pizzas"); no lo conviertas en productos vendibles ni repitas la lista por cada tamaño. No cruces familias distintas ni adivines asociaciones. Si la relación no es clara, deja familia vacía y no vincules.
 - En "opciones" y "variantes" incluye solo elecciones explícitas que el cliente debe escoger: sabores, especialidades, tipos, ingredientes seleccionables o acompañamientos. Para cada una devuelve grupo (por ejemplo, "Sabor"), nombre y descripción literal completa; descripción vacía si no aparece. Excluye tamaños como Personal, Mediana y Familiar, precios base, encabezados y categorías. Si no hay variantes explícitas, usa [].
 - Revisa visualmente cada imagen completa antes de responder. Devuelve únicamente el JSON solicitado, sin texto adicional.`;
 
@@ -379,12 +379,13 @@ REGLAS OBLIGATORIAS:
                                     type: "object",
                                     additionalProperties: false,
                                     properties: {
+                                        categoria: { type: "string" },
                                         familia: { type: "string" },
                                         grupo: { type: "string" },
                                         nombre: { type: "string" },
                                         descripcion: { type: "string" }
                                     },
-                                    required: ["familia", "grupo", "nombre", "descripcion"]
+                                    required: ["categoria", "familia", "grupo", "nombre", "descripcion"]
                                 }
                             }
                         },
@@ -404,21 +405,44 @@ REGLAS OBLIGATORIAS:
         // Vincula listas de variantes separadas con cada presentación vendible
         // solo cuando la IA asignó explícitamente la misma familia.
         const normalizarFamilia = valor => String(valor || "").trim().toLocaleLowerCase("es")
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ")
+            .split(" ").map(palabra => palabra.endsWith("s") ? palabra.slice(0, -1) : palabra).join(" ");
         const variantesPorFamilia = new Map();
+        const variantesPorCategoria = new Map();
         for (const variante of Array.isArray(resultadoParcial.variantes) ? resultadoParcial.variantes : []) {
             const familia = normalizarFamilia(variante.familia);
+            const categoria = normalizarFamilia(variante.categoria);
             const nombre = String(variante.nombre || "").trim();
-            if (!familia || !nombre) continue;
-            if (!variantesPorFamilia.has(familia)) variantesPorFamilia.set(familia, []);
-            variantesPorFamilia.get(familia).push({
+            if (!nombre) continue;
+            const opcion = {
                 grupo: String(variante.grupo || "Variante").trim(),
                 nombre,
                 descripcion: String(variante.descripcion || "").trim()
-            });
+            };
+            if (familia) {
+                if (!variantesPorFamilia.has(familia)) variantesPorFamilia.set(familia, []);
+                variantesPorFamilia.get(familia).push(opcion);
+            }
+            if (categoria) {
+                if (!variantesPorCategoria.has(categoria)) variantesPorCategoria.set(categoria, []);
+                variantesPorCategoria.get(categoria).push(opcion);
+            }
         }
 
-        const productosParaSupabase = todosLosProductos.map(p => ({
+        const parecePresentacionPorTamano = nombre => /\b(?:personal|individual|pequeñ[ao]|chic[ao]|mediana?|grande|familiar|junior|mini|porción|porcion|media|entera|\d{2,3}\s*cm)\b/i.test(String(nombre || ""));
+
+        const productosParaSupabase = todosLosProductos.map(p => {
+            const opcionesDirectas = Array.isArray(p.opciones) ? p.opciones : [];
+            const opcionesFamilia = variantesPorFamilia.get(normalizarFamilia(p.familia)) || [];
+            const opcionesCategoria = opcionesFamilia.length === 0 && parecePresentacionPorTamano(p.nombre)
+                ? (variantesPorCategoria.get(normalizarFamilia(p.categoria)) || [])
+                : [];
+            const opciones = [...opcionesDirectas, ...opcionesFamilia, ...opcionesCategoria]
+                .filter((opcion, indice, lista) => {
+                    const llave = `${String(opcion.grupo || "").toLocaleLowerCase("es")}|${String(opcion.nombre || "").toLocaleLowerCase("es")}`;
+                    return lista.findIndex(item => `${String(item.grupo || "").toLocaleLowerCase("es")}|${String(item.nombre || "").toLocaleLowerCase("es")}` === llave) === indice;
+                });
+            return {
             restaurante_id: restaurante_id,
             categoria: p.categoria || "General",
             nombre: p.nombre,
@@ -427,12 +451,9 @@ REGLAS OBLIGATORIAS:
             // Sin foto real, no asignamos una imagen genérica repetida. El menú
             // mostrará un visual local según la categoría, sin llamadas pagas.
             ...(p.imagen_url && p.imagen_url.startsWith('http') ? { imagen_url: p.imagen_url } : {}),
-            opciones: [...(Array.isArray(p.opciones) ? p.opciones : []), ...(variantesPorFamilia.get(normalizarFamilia(p.familia)) || [])]
-                .filter((opcion, indice, lista) => {
-                    const llave = `${String(opcion.grupo || "").toLocaleLowerCase("es")}|${String(opcion.nombre || "").toLocaleLowerCase("es")}`;
-                    return lista.findIndex(item => `${String(item.grupo || "").toLocaleLowerCase("es")}|${String(item.nombre || "").toLocaleLowerCase("es")}` === llave) === indice;
-                }),
-        }));
+            opciones
+            };
+        });
 
         // 1. Borramos el menú anterior de este restaurante
         const { error: deleteError } = await supabase
@@ -463,6 +484,8 @@ REGLAS OBLIGATORIAS:
         return res.json({ 
             success: true, 
             count: productosParaSupabase.length,
+            productosConVariantes: productosParaSupabase.filter(p => Array.isArray(p.opciones) && p.opciones.length > 0).length,
+            variantesVinculadas: productosParaSupabase.reduce((total, producto) => total + producto.opciones.length, 0),
             slug: restData ? restData.slug : null 
         });
 

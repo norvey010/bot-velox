@@ -558,7 +558,12 @@ async function abrirMenuEnVivo() {
         const resultado = await respuesta.json();
 
         if (respuesta.ok && resultado.success) {
-          alert('¡Menú importado y guardado con éxito por la IA!');
+          const mensajeVariantes = typeof resultado.productosConVariantes === 'number'
+            ? (resultado.productosConVariantes > 0
+              ? ` Se asociaron variantes a ${resultado.productosConVariantes} productos.`
+              : ' Atención: no se detectaron variantes para elegir. Revisa que la foto incluya claramente esa lista.')
+            : ' El servidor no devolvió el diagnóstico de variantes; comprueba que Railway tenga la última versión.';
+          alert('¡Menú importado y guardado con éxito por la IA!' + mensajeVariantes);
           formElement.reset(); 
           cambiarSeccion('productos'); // Te lleva directo a ver los productos nuevos
         } else {
