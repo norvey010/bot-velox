@@ -254,21 +254,8 @@ function renderizarProductos(listaProds) {
         lista.forEach(producto => {
             const visualProducto = obtenerVisualProducto(producto);
 
-            let listaOpciones = [];
-            if (producto.opciones) {
-                if (Array.isArray(producto.opciones)) {
-                    listaOpciones = producto.opciones;
-                } else if (typeof producto.opciones === 'string') {
-                    try { 
-                        listaOpciones = JSON.parse(producto.opciones); 
-                    } catch(e) { 
-                        listaOpciones = producto.opciones.split(',').map(op => op.trim()); 
-                    }
-                }
-            }
-
-            const textoProducto = normalizarTexto(`${producto.categoria || ''} ${producto.nombre || ''} ${producto.descripcion || ''}`);
-            const requierePersonalizacion = listaOpciones.length > 0 || detectarGaseosa(textoProducto) || detectarPizzaPorElegir(textoProducto);
+            const personalizacion = obtenerPersonalizacionProducto(producto);
+            const requierePersonalizacion = personalizacion.selectores.length > 0;
             const textoBoton = requierePersonalizacion ? 'Elegir sabores' : '+ Agregar';
             const botonHtml = `
                 <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-red-950/30">
@@ -343,6 +330,63 @@ function detectarPizzaPorElegir(texto) {
     return /pizza/.test(texto) && /\b(porcion(?:es)?|personal|a eleccion|elige|elegir|sabor(?:es)?|especialidad(?:es)?|mitad)\b/.test(texto);
 }
 
+const SABORES_GASEOSA_PREDETERMINADOS = ['Manzana', 'Uva', 'Colombiana', 'Coca-Cola', 'Pepsi', 'Sprite', 'Naranja'];
+
+function obtenerSaboresPizzaDeCategoria(producto) {
+    const categoria = normalizarTexto(producto.categoria || '');
+    return [...new Set(todosLosProductos
+        .filter(otro => String(otro.id) !== String(producto.id))
+        .filter(otro => {
+            const categoriaOtro = normalizarTexto(otro.categoria || '');
+            const textoOtro = normalizarTexto(`${otro.nombre || ''} ${otro.descripcion || ''}`);
+            if (categoria && categoriaOtro !== categoria) return false;
+            return /pizza/.test(categoria) || /pizza/.test(textoOtro);
+        })
+        .map(otro => String(otro.nombre || '').trim())
+        .filter(Boolean))];
+}
+
+function opcionesParecenSaboresGaseosa(opciones) {
+    return opciones.some(opcion => /manzana|uva|colombiana|coca|pepsi|sprite|7up|postobon|naranja|soda|bretaña/i.test(opcion));
+}
+
+function obtenerSaboresGaseosaDeMenu() {
+    const opciones = todosLosProductos
+        .filter(producto => /bebida/.test(normalizarTexto(producto.categoria || '')))
+        .map(producto => String(producto.nombre || '').trim())
+        .filter(nombre => opcionesParecenSaboresGaseosa([nombre]));
+    return [...new Set(opciones)];
+}
+
+function obtenerPersonalizacionProducto(producto) {
+    const opcionesBd = obtenerOpcionesProducto(producto);
+    const texto = normalizarTexto(`${producto.categoria || ''} ${producto.nombre || ''} ${producto.descripcion || ''}`);
+    const esPizzaPorElegir = detectarPizzaPorElegir(texto);
+    const requiereGaseosa = detectarGaseosa(texto);
+    const opcionesPizza = esPizzaPorElegir
+        ? (opcionesBd.length ? opcionesBd : obtenerSaboresPizzaDeCategoria(producto))
+        : [];
+    const opcionesProducto = opcionesBd.length && !esPizzaPorElegir ? opcionesBd : [];
+    const opcionesBebidaMenu = obtenerSaboresGaseosaDeMenu();
+    const opcionesGaseosa = requiereGaseosa
+        ? (opcionesParecenSaboresGaseosa(opcionesBd)
+            ? opcionesBd
+            : (opcionesBebidaMenu.length ? opcionesBebidaMenu : SABORES_GASEOSA_PREDETERMINADOS))
+        : [];
+    const selectores = [];
+
+    if (opcionesPizza.length) {
+        selectores.push({ etiqueta: 'Sabor o especialidad', opciones: opcionesPizza });
+    } else if (opcionesProducto.length) {
+        selectores.push({ etiqueta: 'Opción', opciones: opcionesProducto });
+    }
+    if (opcionesGaseosa.length) {
+        selectores.push({ etiqueta: 'Sabor de gaseosa', opciones: opcionesGaseosa });
+    }
+
+    return { selectores };
+}
+
 function escaparHtml(valor) {
     return String(valor || '').replace(/[&<>"']/g, caracter => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -355,52 +399,28 @@ function iniciarPersonalizacion(id) {
     const producto = todosLosProductos.find(p => String(p.id) === String(id));
     if (!producto) return;
 
-    const opciones = obtenerOpcionesProducto(producto);
-    const texto = normalizarTexto(`${producto.categoria || ''} ${producto.nombre || ''} ${producto.descripcion || ''}`);
-    const requiereGaseosa = detectarGaseosa(texto);
-    const requiereSaborPizza = opciones.length === 0 && detectarPizzaPorElegir(texto);
-    const requiereEleccion = opciones.length > 0 || requiereGaseosa || requiereSaborPizza;
+    const personalizacion = obtenerPersonalizacionProducto(producto);
+    const requiereEleccion = personalizacion.selectores.length > 0;
 
     if (!requiereEleccion) {
         agregarAlCarrito(producto.id, producto.nombre, producto.precio);
         return;
     }
 
-    productoPersonalizacionActual = { producto, opciones, requiereGaseosa, requiereSaborPizza, texto };
+    productoPersonalizacionActual = { producto, selectores: personalizacion.selectores };
     document.getElementById('nombre-personalizar').textContent = producto.nombre;
     const campos = document.getElementById('campos-personalizar');
-    let html = '';
-
-    if (opciones.length > 0) {
-        const opcionesHtml = opciones.map(op => `<option value="${escaparHtml(op)}">${escaparHtml(op)}</option>`).join('');
-        const esPizza = /pizza/.test(texto);
-        html += `<div><label for="opcion-personalizar" class="mb-2 block text-sm font-semibold text-slate-200">${esPizza ? 'Elige el sabor o especialidad' : 'Elige una opción'}</label><select id="opcion-personalizar" required class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white"><option value="" disabled selected>Selecciona una opción</option>${opcionesHtml}</select></div>`;
-    } else if (requiereSaborPizza) {
-        html += `<div><label for="especialidad-pizza" class="mb-2 block text-sm font-semibold text-slate-200">¿Qué especialidad o ingredientes prefieres?</label><input id="especialidad-pizza" type="text" required maxlength="120" placeholder="Ej.: pollo con champiñones" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500"></div>`;
-    }
-
-    if (requiereGaseosa) {
-        const etiquetaBebida = /\b(gaseosas?|refrescos?)\b/.test(texto) ? '¿De qué sabor prefieres la gaseosa?' : '¿Qué sabor de bebida prefieres?';
-        html += `<div><label for="sabor-gaseosa" class="mb-2 block text-sm font-semibold text-slate-200">${etiquetaBebida}</label><select id="sabor-gaseosa" required onchange="actualizarCampoOtroSabor()" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white"><option value="" disabled selected>Selecciona el sabor</option><option>Manzana</option><option>Uva</option><option>Colombiana</option><option>Coca-Cola</option><option>Otro sabor</option></select><input id="otro-sabor-gaseosa" type="text" maxlength="60" placeholder="Escribe el sabor" class="hidden mt-3 w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500"></div>`;
-    }
-
-    html += `<div><label for="nota-personalizacion" class="mb-2 block text-sm font-semibold text-slate-200">Nota adicional <span class="font-normal text-slate-500">(opcional)</span></label><textarea id="nota-personalizacion" rows="2" maxlength="180" placeholder="Ej.: sin cebolla" class="w-full resize-none rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500"></textarea></div>`;
+    const html = personalizacion.selectores.map((selector, index) => {
+        const idCampo = `opcion-personalizar-${index}`;
+        const opcionesHtml = selector.opciones.map(op => `<option value="${escaparHtml(op)}">${escaparHtml(op)}</option>`).join('');
+        return `<div><label for="${idCampo}" class="mb-2 block text-sm font-semibold text-slate-200">${escaparHtml(selector.etiqueta)}</label><select id="${idCampo}" data-etiqueta="${escaparHtml(selector.etiqueta)}" required class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white"><option value="" disabled selected>Selecciona una opción</option>${opcionesHtml}</select></div>`;
+    }).join('');
     campos.innerHTML = html;
 
     const modal = document.getElementById('modal-personalizar');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    setTimeout(() => campos.querySelector('select, input')?.focus(), 50);
-}
-
-function actualizarCampoOtroSabor() {
-    const select = document.getElementById('sabor-gaseosa');
-    const input = document.getElementById('otro-sabor-gaseosa');
-    if (!select || !input) return;
-    const esOtro = select.value === 'Otro sabor';
-    input.classList.toggle('hidden', !esOtro);
-    input.required = esOtro;
-    if (!esOtro) input.value = '';
+    setTimeout(() => campos.querySelector('select')?.focus(), 50);
 }
 
 function cerrarModalPersonalizar() {
@@ -414,24 +434,9 @@ function confirmarPersonalizacion(event) {
     event.preventDefault();
     if (!productoPersonalizacionActual) return;
 
-    const { producto, requiereGaseosa, requiereSaborPizza } = productoPersonalizacionActual;
-    const selecciones = [];
-    const opcion = document.getElementById('opcion-personalizar')?.value;
-    if (opcion) selecciones.push(opcion);
-
-    if (requiereSaborPizza) {
-        const especialidad = document.getElementById('especialidad-pizza').value.trim();
-        if (especialidad) selecciones.push(`Especialidad: ${especialidad}`);
-    }
-
-    if (requiereGaseosa) {
-        const sabor = document.getElementById('sabor-gaseosa').value;
-        const saborOtro = document.getElementById('otro-sabor-gaseosa').value.trim();
-        selecciones.push(`Gaseosa: ${sabor === 'Otro sabor' ? saborOtro : sabor}`);
-    }
-
-    const nota = document.getElementById('nota-personalizacion').value.trim();
-    if (nota) selecciones.push(`Nota: ${nota}`);
+    const { producto } = productoPersonalizacionActual;
+    const selecciones = Array.from(document.querySelectorAll('#campos-personalizar select[required]'))
+        .map(select => `${select.dataset.etiqueta}: ${select.value}`);
 
     const nombreCompleto = `${producto.nombre}${selecciones.length ? ` (${selecciones.join(' · ')})` : ''}`;
     const item = cart.find(i => i.id === producto.id && i.nombre === nombreCompleto);
