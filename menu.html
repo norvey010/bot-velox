@@ -256,7 +256,7 @@ function renderizarProductos(listaProds) {
 
             const personalizacion = obtenerPersonalizacionProducto(producto);
             const requierePersonalizacion = personalizacion.selectores.length > 0;
-            const textoBoton = requierePersonalizacion ? 'Elegir sabores' : '+ Agregar';
+            const textoBoton = requierePersonalizacion ? textoBotonPersonalizacion(personalizacion.selectores) : '+ Agregar';
             const botonHtml = `
                 <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-red-950/30">
                     ${textoBoton}
@@ -308,17 +308,26 @@ function normalizarTexto(valor) {
 }
 
 function obtenerOpcionesProducto(producto) {
-    if (Array.isArray(producto.opciones)) return producto.opciones.map(opcion => {
-        if (typeof opcion === 'string' || typeof opcion === 'number') return String(opcion).trim();
-        if (opcion && typeof opcion === 'object') return String(opcion.nombre || opcion.nombre_opcion || opcion.valor || opcion.label || '').trim();
-        return '';
-    }).filter(Boolean);
+    const normalizarOpcion = opcion => {
+        if (typeof opcion === 'string' || typeof opcion === 'number') {
+            return { grupo: 'Variante', nombre: String(opcion).trim(), descripcion: '' };
+        }
+        if (opcion && typeof opcion === 'object') {
+            return {
+                grupo: String(opcion.grupo || opcion.tipo || opcion.categoria || 'Variante').trim(),
+                nombre: String(opcion.nombre || opcion.nombre_opcion || opcion.valor || opcion.label || '').trim(),
+                descripcion: String(opcion.descripcion || opcion.detalle || '').trim()
+            };
+        }
+        return null;
+    };
+    if (Array.isArray(producto.opciones)) return producto.opciones.map(normalizarOpcion).filter(opcion => opcion && opcion.nombre);
     if (typeof producto.opciones === 'string') {
         try {
             const parsed = JSON.parse(producto.opciones);
             if (Array.isArray(parsed)) return obtenerOpcionesProducto({ opciones: parsed });
         } catch (error) {
-            return producto.opciones.split(',').map(op => op.trim()).filter(Boolean);
+            return producto.opciones.split(',').map(normalizarOpcion).filter(opcion => opcion && opcion.nombre);
         }
     }
     return [];
@@ -345,10 +354,16 @@ function esEtiquetaOpcion(texto) {
 
 function opcionesValidasProducto(producto) {
     const categorias = new Set(todosLosProductos.map(p => normalizarTexto(p.categoria || '')).filter(Boolean));
-    return [...new Set(obtenerOpcionesProducto(producto).map(quitarTamanoDeOpcion).filter(op => {
-        const normalizada = normalizarTexto(op);
-        return normalizada && !esOpcionDeTamano(op) && !esEtiquetaOpcion(op) && !categorias.has(normalizada);
-    }))];
+    const unicas = new Map();
+    obtenerOpcionesProducto(producto).forEach(opcion => {
+        const nombre = quitarTamanoDeOpcion(opcion.nombre);
+        const normalizada = normalizarTexto(nombre);
+        if (!normalizada || esOpcionDeTamano(nombre) || esEtiquetaOpcion(nombre) || categorias.has(normalizada)) return;
+        const grupo = opcion.grupo || 'Variante';
+        const llave = `${normalizarTexto(grupo)}|${normalizada}`;
+        if (!unicas.has(llave)) unicas.set(llave, { grupo, nombre, descripcion: opcion.descripcion || '' });
+    });
+    return [...unicas.values()];
 }
 
 function productoMencionaBebida(texto) {
@@ -369,17 +384,29 @@ function obtenerPersonalizacionProducto(producto) {
     const mencionaBebidaDelMenu = bebidasDisponibles.some(bebida => bebida.length >= 3 && texto.includes(normalizarTexto(bebida)));
     const esComboConBebida = /\b(?:combo|combos|incluye|con)\b/.test(texto)
         && (productoMencionaBebida(texto) || mencionaBebidaDelMenu);
-    const opcionesBebida = esComboConBebida ? bebidasDisponibles : [];
-    const selectores = [];
-
-    if (opcionesProducto.length) {
-        selectores.push({ etiqueta: 'Elige una opción', opciones: opcionesProducto });
+    const grupos = new Map();
+    opcionesProducto.forEach(opcion => {
+        const grupo = opcion.grupo || 'Variante';
+        if (!grupos.has(grupo)) grupos.set(grupo, []);
+        grupos.get(grupo).push(opcion);
+    });
+    if (esComboConBebida && bebidasDisponibles.length) {
+        grupos.set('Bebida', bebidasDisponibles.map(nombre => ({ grupo: 'Bebida', nombre, descripcion: '' })));
     }
-    if (opcionesBebida.length) {
-        selectores.push({ etiqueta: 'Bebida incluida', opciones: opcionesBebida });
-    }
+    const selectores = [...grupos.entries()].map(([grupo, opciones]) => ({
+        etiqueta: /^(sabor|sabores|especialidad|especialidades)$/i.test(normalizarTexto(grupo)) ? 'Elige un sabor' : `Elige ${grupo.toLowerCase()}`,
+        grupo,
+        opciones
+    }));
 
     return { selectores };
+}
+
+function textoBotonPersonalizacion(selectores) {
+    if (selectores.length && selectores.every(selector => /^(sabor|sabores|especialidad|especialidades)$/i.test(normalizarTexto(selector.grupo)))) {
+        return 'Elegir sabores';
+    }
+    return selectores.length > 1 ? 'Elegir opciones' : 'Elegir variante';
 }
 
 function escaparHtml(valor) {
@@ -407,8 +434,11 @@ function iniciarPersonalizacion(id) {
     const campos = document.getElementById('campos-personalizar');
     const html = personalizacion.selectores.map((selector, index) => {
         const idCampo = `opcion-personalizar-${index}`;
-        const opcionesHtml = selector.opciones.map(op => `<option value="${escaparHtml(op)}">${escaparHtml(op)}</option>`).join('');
-        return `<div><label for="${idCampo}" class="mb-2 block text-sm font-semibold text-slate-200">${escaparHtml(selector.etiqueta)}</label><select id="${idCampo}" data-etiqueta="${escaparHtml(selector.etiqueta)}" required class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white"><option value="" disabled selected>Selecciona una opción</option>${opcionesHtml}</select></div>`;
+        const opcionesHtml = selector.opciones.map((opcion, opcionIndex) => {
+            const texto = opcion.descripcion ? `${opcion.nombre} — ${opcion.descripcion}` : opcion.nombre;
+            return `<option value="${opcionIndex}">${escaparHtml(texto)}</option>`;
+        }).join('');
+        return `<div><label for="${idCampo}" class="mb-2 block text-sm font-semibold text-slate-200">${escaparHtml(selector.etiqueta)}</label><select id="${idCampo}" data-selector-index="${index}" required class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white"><option value="" disabled selected>Selecciona una opción</option>${opcionesHtml}</select></div>`;
     }).join('');
     campos.innerHTML = html;
 
@@ -429,9 +459,13 @@ function confirmarPersonalizacion(event) {
     event.preventDefault();
     if (!productoPersonalizacionActual) return;
 
-    const { producto } = productoPersonalizacionActual;
-    const selecciones = Array.from(document.querySelectorAll('#campos-personalizar select[required]'))
-        .map(select => `${select.dataset.etiqueta}: ${select.value}`);
+    const { producto, selectores } = productoPersonalizacionActual;
+    const selecciones = Array.from(document.querySelectorAll('#campos-personalizar select[required]')).map(select => {
+        const selector = selectores[Number(select.dataset.selectorIndex)];
+        const opcion = selector?.opciones[Number(select.value)];
+        if (!selector || !opcion) return '';
+        return `${selector.grupo}: ${opcion.nombre}${opcion.descripcion ? ` — ${opcion.descripcion}` : ''}`;
+    }).filter(Boolean);
 
     const nombreCompleto = `${producto.nombre}${selecciones.length ? ` (${selecciones.join(' · ')})` : ''}`;
     const item = cart.find(i => i.id === producto.id && i.nombre === nombreCompleto);
