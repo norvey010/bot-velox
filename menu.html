@@ -308,11 +308,15 @@ function normalizarTexto(valor) {
 }
 
 function obtenerOpcionesProducto(producto) {
-    if (Array.isArray(producto.opciones)) return producto.opciones.filter(Boolean);
+    if (Array.isArray(producto.opciones)) return producto.opciones.map(opcion => {
+        if (typeof opcion === 'string' || typeof opcion === 'number') return String(opcion).trim();
+        if (opcion && typeof opcion === 'object') return String(opcion.nombre || opcion.nombre_opcion || opcion.valor || opcion.label || '').trim();
+        return '';
+    }).filter(Boolean);
     if (typeof producto.opciones === 'string') {
         try {
             const parsed = JSON.parse(producto.opciones);
-            if (Array.isArray(parsed)) return parsed.filter(Boolean);
+            if (Array.isArray(parsed)) return obtenerOpcionesProducto({ opciones: parsed });
         } catch (error) {
             return producto.opciones.split(',').map(op => op.trim()).filter(Boolean);
         }
@@ -320,68 +324,59 @@ function obtenerOpcionesProducto(producto) {
     return [];
 }
 
-function detectarGaseosa(texto) {
-    if (/\b(gaseosas?|refrescos?)\b/.test(texto)) return true;
-    const esCombo = /\b(combo|combos|incluye|con)\b/.test(texto);
-    return esCombo && /\b(bebidas?|sodas?|coca[- ]?cola|colombiana|postobon|manzana|uva)\b/.test(texto);
+function esOpcionDeTamano(opcion) {
+    const texto = normalizarTexto(opcion).trim();
+    return /^(?:tamano\s*[:=-]?\s*)?(?:mini|pequena|pequeno|chica|chico|mediana|mediano|grande|familiar|personal|individual|junior|kids|infantil|regular|mediano|gigante|jumbo|extra grande|xl|xxl|(?:\d+(?:[.,]\d+)?\s*)(?:ml|l|lt|litro(?:s)?|gr|g|kg|cm| pulgadas?))$/i.test(texto)
+        || /^(?:tamano\s*[:=-]?\s*)?(?:pequena|chica|mediana|grande|familiar|personal|individual|jumbo|extra grande|xl|xxl)\s*\(.*\)$/i.test(texto);
 }
 
-function detectarPizzaPorElegir(texto) {
-    return /pizza/.test(texto) && /\b(porcion(?:es)?|personal|a eleccion|elige|elegir|sabor(?:es)?|especialidad(?:es)?|mitad)\b/.test(texto);
+function quitarTamanoDeOpcion(opcion) {
+    return String(opcion || '').trim()
+        .replace(/\s*[-(]?\s*\d+(?:[.,]\d+)?\s*(?:ml|l|lt|litros?|gr|g|kg|cm|pulgadas?)\)?\s*$/i, '')
+        .replace(/\s*[-–(]?\s*(?:tamaño\s*[:=-]?\s*)?(?:mini|pequeñ[ao]s?|chic[ao]s?|median[ao]s?|grandes?|familiar(?:es)?|personal(?:es)?|individual(?:es)?|junior|kids|infantil(?:es)?|regular|gigante|jumbo|extra grande|xl|xxl)\)?\s*$/i, '')
+        .replace(/^\s*(?:tamaño\s*[:=-]?\s*)?(?:mini|pequeñ[ao]s?|chic[ao]s?|median[ao]s?|grandes?|familiar(?:es)?|personal(?:es)?|individual(?:es)?|junior|kids|infantil(?:es)?|regular|gigante|jumbo|extra grande|xl|xxl)\s*[-–:]\s*/i, '')
+        .replace(/^\s*(?:tamaño\s*[:=-]?\s*)?(?:mini|pequeñ[ao]s?|chic[ao]s?|median[ao]s?|grandes?|familiar(?:es)?|personal(?:es)?|individual(?:es)?|junior|kids|infantil(?:es)?|regular|gigante|jumbo|extra grande|xl|xxl)\s+/i, '')
+        .replace(/[\s,;:–-]+$/, '').trim();
 }
 
-const SABORES_GASEOSA_PREDETERMINADOS = ['Manzana', 'Uva', 'Colombiana', 'Coca-Cola', 'Pepsi', 'Sprite', 'Naranja'];
+function esEtiquetaOpcion(texto) {
+    return /^(?:opciones?|variantes?|sabores?|ingredientes?|acompanamientos?|tamanos?|categorias?|elige|selecciona|a eleccion)$/i.test(normalizarTexto(texto).trim());
+}
 
-function obtenerSaboresPizzaDeCategoria(producto) {
-    const categoria = normalizarTexto(producto.categoria || '');
+function opcionesValidasProducto(producto) {
+    const categorias = new Set(todosLosProductos.map(p => normalizarTexto(p.categoria || '')).filter(Boolean));
+    return [...new Set(obtenerOpcionesProducto(producto).map(quitarTamanoDeOpcion).filter(op => {
+        const normalizada = normalizarTexto(op);
+        return normalizada && !esOpcionDeTamano(op) && !esEtiquetaOpcion(op) && !categorias.has(normalizada);
+    }))];
+}
+
+function productoMencionaBebida(texto) {
+    return /\b(?:gaseosa|gaseosas|refresco|refrescos|bebida|bebidas|soda|sodas|jugo|jugos|limonada|limonadas|agua|aguas|cerveza|cervezas)\b/.test(texto);
+}
+
+function obtenerBebidasDisponibles() {
     return [...new Set(todosLosProductos
-        .filter(otro => String(otro.id) !== String(producto.id))
-        .filter(otro => {
-            const categoriaOtro = normalizarTexto(otro.categoria || '');
-            const textoOtro = normalizarTexto(`${otro.nombre || ''} ${otro.descripcion || ''}`);
-            if (categoria && categoriaOtro !== categoria) return false;
-            return /pizza/.test(categoria) || /pizza/.test(textoOtro);
-        })
-        .map(otro => String(otro.nombre || '').trim())
-        .filter(Boolean))];
-}
-
-function opcionesParecenSaboresGaseosa(opciones) {
-    return opciones.some(opcion => /manzana|uva|colombiana|coca|pepsi|sprite|7up|postobon|naranja|soda|bretaña/i.test(opcion));
-}
-
-function obtenerSaboresGaseosaDeMenu() {
-    const opciones = todosLosProductos
-        .filter(producto => /bebida/.test(normalizarTexto(producto.categoria || '')))
-        .map(producto => String(producto.nombre || '').trim())
-        .filter(nombre => opcionesParecenSaboresGaseosa([nombre]));
-    return [...new Set(opciones)];
+        .filter(producto => /\b(?:bebidas?|gaseosas?|refrescos?|jugos?|limonadas?|aguas?|cervezas?)\b/.test(normalizarTexto(producto.categoria || '')))
+        .map(producto => quitarTamanoDeOpcion(producto.nombre))
+        .filter(nombre => nombre && !esOpcionDeTamano(nombre)))];
 }
 
 function obtenerPersonalizacionProducto(producto) {
-    const opcionesBd = obtenerOpcionesProducto(producto);
-    const texto = normalizarTexto(`${producto.categoria || ''} ${producto.nombre || ''} ${producto.descripcion || ''}`);
-    const esPizzaPorElegir = detectarPizzaPorElegir(texto);
-    const requiereGaseosa = detectarGaseosa(texto);
-    const opcionesPizza = esPizzaPorElegir
-        ? (opcionesBd.length ? opcionesBd : obtenerSaboresPizzaDeCategoria(producto))
-        : [];
-    const opcionesProducto = opcionesBd.length && !esPizzaPorElegir ? opcionesBd : [];
-    const opcionesBebidaMenu = obtenerSaboresGaseosaDeMenu();
-    const opcionesGaseosa = requiereGaseosa
-        ? (opcionesParecenSaboresGaseosa(opcionesBd)
-            ? opcionesBd
-            : (opcionesBebidaMenu.length ? opcionesBebidaMenu : SABORES_GASEOSA_PREDETERMINADOS))
-        : [];
+    const opcionesProducto = opcionesValidasProducto(producto);
+    const texto = normalizarTexto(`${producto.nombre || ''} ${producto.descripcion || ''}`);
+    const bebidasDisponibles = obtenerBebidasDisponibles();
+    const mencionaBebidaDelMenu = bebidasDisponibles.some(bebida => bebida.length >= 3 && texto.includes(normalizarTexto(bebida)));
+    const esComboConBebida = /\b(?:combo|combos|incluye|con)\b/.test(texto)
+        && (productoMencionaBebida(texto) || mencionaBebidaDelMenu);
+    const opcionesBebida = esComboConBebida ? bebidasDisponibles : [];
     const selectores = [];
 
-    if (opcionesPizza.length) {
-        selectores.push({ etiqueta: 'Sabor o especialidad', opciones: opcionesPizza });
-    } else if (opcionesProducto.length) {
-        selectores.push({ etiqueta: 'Opción', opciones: opcionesProducto });
+    if (opcionesProducto.length) {
+        selectores.push({ etiqueta: 'Elige una opción', opciones: opcionesProducto });
     }
-    if (opcionesGaseosa.length) {
-        selectores.push({ etiqueta: 'Sabor de gaseosa', opciones: opcionesGaseosa });
+    if (opcionesBebida.length) {
+        selectores.push({ etiqueta: 'Bebida incluida', opciones: opcionesBebida });
     }
 
     return { selectores };
