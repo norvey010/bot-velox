@@ -308,7 +308,8 @@ REGLAS OBLIGATORIAS:
 - Copia cada nombre y toda descripción/ingrediente legible completa, en el mismo orden. No omitas ingredientes aunque parezcan obvios (incluidos chorizo y tocineta); no acortes palabras ("plancha" no es "planch"), no resumas y no uses puntos suspensivos.
 - Incluye todos los productos, tamaños, porciones, combos, ingredientes y precios visibles. No inventes datos ni deduzcas ingredientes. Si un dato no es legible, usa cadena vacía para texto o 0 para precio; nunca lo adivines.
 - El precio debe ser el valor numérico impreso, sin símbolo de moneda ni separadores de miles. No conviertas ni multipliques el precio.
-- Usa el encabezado de sección como categoría. Cada tamaño/presentación con precio debe quedar como producto visible independiente, con ese precio. Asigna a cada tamaño un mismo "familia" únicamente cuando la carta confirme que pertenece al mismo producto base (por ejemplo, Personal, Mediana y Familiar bajo Pizzas usan familia "Pizzas"). Para una opción listada junto a un producto, inclúyela en sus "opciones". Si la carta pone el catálogo de sabores/variantes en otra parte, devuélvelo una sola vez en el arreglo raíz "variantes" con esa misma familia y el encabezado correspondiente en "categoria" (por ejemplo, cada sabor de pizza con familia y categoria "Pizzas"); no lo conviertas en productos vendibles ni repitas la lista por cada tamaño. No cruces familias distintas ni adivines asociaciones. Si la relación no es clara, deja familia vacía y no vincules.
+- Usa el encabezado de sección como categoría del producto principal, no crees una categoría "Combos" ni "Combo Broaster". El combo hereda la categoría del plato que lo protagoniza: combo de hamburguesa → Hamburguesas; combo de pollo/broaster → Pollo a la Broaster; combo de perro → Perros. Conserva el nombre del combo como nombre del producto. Si el encabezado es genérico ("Combos"), clasifica cada producto por su nombre y descripción; usa la categoría correspondiente existente en la carta. Solo si no se puede identificar el plato principal, usa "Otros".
+- Cada tamaño/presentación con precio debe quedar como producto visible independiente, con ese precio. Asigna a cada tamaño un mismo "familia" únicamente cuando la carta confirme que pertenece al mismo producto base (por ejemplo, Personal, Mediana y Familiar bajo Pizzas usan familia "Pizzas"). Para una opción listada junto a un producto, inclúyela en sus "opciones". Si la carta pone el catálogo de sabores/variantes en otra parte, devuélvelo una sola vez en el arreglo raíz "variantes" con esa misma familia y el encabezado correspondiente en "categoria" (por ejemplo, cada sabor de pizza con familia y categoria "Pizzas"); no lo conviertas en productos vendibles ni repitas la lista por cada tamaño. No cruces familias distintas ni adivines asociaciones. Si la relación no es clara, deja familia vacía y no vincules.
 - En "opciones" y "variantes" incluye solo elecciones explícitas que el cliente debe escoger: sabores, especialidades, tipos, ingredientes seleccionables o acompañamientos. Para cada una devuelve grupo (por ejemplo, "Sabor"), nombre y descripción literal completa; descripción vacía si no aparece. Excluye tamaños como Personal, Mediana y Familiar, precios base, encabezados y categorías. Si no hay variantes explícitas, usa [].
 - Revisa visualmente cada imagen completa antes de responder. Devuelve únicamente el JSON solicitado, sin texto adicional.`;
 
@@ -430,6 +431,29 @@ REGLAS OBLIGATORIAS:
         }
 
         const parecePresentacionPorTamano = nombre => /\b(?:personal|individual|pequeñ[ao]|chic[ao]|mediana?|grande|familiar|junior|mini|porción|porcion|media|entera|\d{2,3}\s*cm)\b/i.test(String(nombre || ""));
+        const categoriasBase = [...new Set(todosLosProductos.map(p => String(p.categoria || "").trim()).filter(Boolean))];
+        const resolverCategoriaCombo = producto => {
+            const categoriaOriginal = String(producto.categoria || "General").trim();
+            const categoriaNormalizada = normalizarFamilia(categoriaOriginal);
+            if (!/\bcombos?\b/.test(categoriaNormalizada)) return categoriaOriginal;
+            const texto = normalizarFamilia(`${categoriaOriginal} ${producto.nombre || ""} ${producto.descripcion || ""}`);
+            const tipos = [
+                { patron: /\bperros?\b|hot\s?dog/, categorias: /\bperros?\b|hot\s?dog/, canonica: "Perros" },
+                { patron: /\bhamburguesas?\b|\bburger\b/, categorias: /\bhamburguesas?\b|\bburger\b/, canonica: "Hamburguesas" },
+                { patron: /\bpollo\b|\bbroaster\b|\balitas?\b|\bnuggets?\b/, categorias: /\bpollo\b|\bbroaster\b|\balitas?\b/, canonica: "Pollo a la Broaster" },
+                { patron: /\bpizzas?\b/, categorias: /\bpizzas?\b/, canonica: "Pizzas" },
+                { patron: /\blasagna\b|\blasana\b/, categorias: /\blasagna\b|\blasana\b/, canonica: "Lasaña" },
+                { patron: /\barepas?\b/, categorias: /\barepas?\b/, canonica: "Arepas" },
+                { patron: /\bsalchipapas?\b/, categorias: /\bsalchipapas?\b/, canonica: "Salchipapas" },
+                { patron: /\b(?:sandwich|emparedado)\b/, categorias: /\b(?:sandwich|emparedado)\b/, canonica: "Sándwiches" },
+                { patron: /\b(?:tacos?|burritos?)\b/, categorias: /\b(?:tacos?|burritos?)\b/, canonica: "Mexicanos" },
+                { patron: /\b(?:pescado|mariscos?)\b/, categorias: /\b(?:pescado|mariscos?)\b/, canonica: "Pescados y mariscos" },
+                { patron: /\b(?:bebidas?|gaseosas?|jugos?|limonadas?)\b/, categorias: /\b(?:bebidas?|gaseosas?|jugos?|limonadas?)\b/, canonica: "Bebidas" }
+            ];
+            const tipo = tipos.find(item => item.patron.test(texto));
+            if (!tipo) return "Otros";
+            return categoriasBase.find(categoria => !/\bcombos?\b/.test(normalizarFamilia(categoria)) && tipo.categorias.test(normalizarFamilia(categoria))) || tipo.canonica;
+        };
 
         const productosParaSupabase = todosLosProductos.map(p => {
             const opcionesDirectas = Array.isArray(p.opciones) ? p.opciones : [];
@@ -444,7 +468,7 @@ REGLAS OBLIGATORIAS:
                 });
             return {
             restaurante_id: restaurante_id,
-            categoria: p.categoria || "General",
+            categoria: resolverCategoriaCombo(p),
             nombre: p.nombre,
             precio: Number(p.precio) < 1000 ? Number(p.precio) * 1000 : Number(p.precio) || 0,
             descripcion: p.descripcion || "",

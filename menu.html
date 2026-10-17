@@ -173,11 +173,14 @@ async function cargarMenu() {
         return;
     }
 
-    todosLosProductos = productos; 
+    todosLosProductos = productos.map(producto => ({
+        ...producto,
+        categoria: resolverCategoriaCombo(producto, productos)
+    }));
 
     // Extraer categorías únicas para los botones superiores
     const categoriasSet = new Set();
-    productos.forEach(p => categoriasSet.add(p.categoria || 'General'));
+    todosLosProductos.forEach(p => categoriasSet.add(p.categoria || 'General'));
     
     let botonesHtml = `<button type="button" data-categoria="TODOS" class="shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold bg-red-600 text-white transition shadow whitespace-nowrap">🌟 Todos</button>`;
     categoriasSet.forEach(cat => {
@@ -236,7 +239,7 @@ function renderizarProductos(listaProds) {
 
     const productosPorCategoria = {};
     listaProds.forEach(prod => {
-        const cat = prod.categoria || 'General';
+        const cat = resolverCategoriaCombo(prod, todosLosProductos);
         if (!productosPorCategoria[cat]) {
             productosPorCategoria[cat] = [];
         }
@@ -247,7 +250,7 @@ function renderizarProductos(listaProds) {
     for (const [categoria, lista] of Object.entries(productosPorCategoria)) {
         html += `
             <div class="mb-8">
-                <h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-amber-400">✦</span> ${categoria}</h2>
+                <h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-amber-400">✦</span> ${escaparHtml(categoria)}</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         `;
 
@@ -298,13 +301,41 @@ function filtrarCategoria(categoriaElegida) {
     if (categoriaElegida === 'TODOS') {
         renderizarProductos(todosLosProductos);
     } else {
-        const filtrados = todosLosProductos.filter(p => (p.categoria || 'General') === categoriaElegida);
+        const filtrados = todosLosProductos.filter(p => resolverCategoriaCombo(p, todosLosProductos) === categoriaElegida);
         renderizarProductos(filtrados);
     }
 }
 
 function normalizarTexto(valor) {
     return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function resolverCategoriaCombo(producto, productosMenu = todosLosProductos) {
+    const categoriaOriginal = String(producto.categoria || 'General').trim();
+    const texto = normalizarTexto(`${categoriaOriginal} ${producto.nombre || ''} ${producto.descripcion || ''}`);
+    if (!/\bcombos?\b/.test(normalizarTexto(categoriaOriginal))) return categoriaOriginal;
+
+    const tipos = [
+        { patron: /\b(?:perro(?:s)?(?: caliente(?:s)?)?|hot\s?dog)\b/, categorias: /\b(?:perros?|hot\s?dogs?)\b/, canonica: 'Perros' },
+        { patron: /\b(?:hamburguesas?|burgers?)\b/, categorias: /\b(?:hamburguesas?|burgers?)\b/, canonica: 'Hamburguesas' },
+        { patron: /\b(?:pollo|broaster|alitas?|nuggets?)\b/, categorias: /\b(?:pollo|broaster|alitas?)\b/, canonica: 'Pollo a la Broaster' },
+        { patron: /\bpizzas?\b/, categorias: /\bpizzas?\b/, canonica: 'Pizzas' },
+        { patron: /\b(?:lasagna|lasana)\b/, categorias: /\b(?:lasagna|lasana)\b/, canonica: 'Lasaña' },
+        { patron: /\barepas?\b/, categorias: /\barepas?\b/, canonica: 'Arepas' },
+        { patron: /\bsalchipapas?\b/, categorias: /\bsalchipapas?\b/, canonica: 'Salchipapas' },
+        { patron: /\b(?:sandwich|sandwiches|emparedado)\b/, categorias: /\b(?:sandwich|emparedado)\b/, canonica: 'Sándwiches' },
+        { patron: /\b(?:tacos?|burritos?)\b/, categorias: /\b(?:tacos?|burritos?)\b/, canonica: 'Mexicanos' },
+        { patron: /\b(?:pescado|mariscos?)\b/, categorias: /\b(?:pescado|mariscos?)\b/, canonica: 'Pescados y mariscos' },
+        { patron: /\b(?:bebidas?|gaseosas?|jugos?|limonadas?)\b/, categorias: /\b(?:bebidas?|gaseosas?|jugos?|limonadas?)\b/, canonica: 'Bebidas' }
+    ];
+    const tipo = tipos.find(item => item.patron.test(texto));
+    if (!tipo) return 'Otros';
+
+    const categoriasExistentes = [...new Set(productosMenu.map(p => String(p.categoria || '').trim()).filter(Boolean))];
+    const categoriaExistente = categoriasExistentes.find(categoria =>
+        !/\bcombos?\b/.test(normalizarTexto(categoria)) && tipo.categorias.test(normalizarTexto(categoria))
+    );
+    return categoriaExistente || tipo.canonica;
 }
 
 function obtenerOpcionesProducto(producto) {
