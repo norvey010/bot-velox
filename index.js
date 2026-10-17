@@ -333,8 +333,13 @@ REGLAS OBLIGATORIAS:
             });
         }
 
+        // Modelo de visión eficiente para importaciones de alto volumen.
+        // Se puede cambiar desde Railway con OPENAI_MENU_MODEL si se necesita
+        // volver temporalmente al modelo anterior durante una comparación.
+        const modeloImportacionMenu = process.env.OPENAI_MENU_MODEL || "gpt-5.6-luna";
         const response = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: modeloImportacionMenu,
+            reasoning_effort: "none",
             temperature: 0,
             messages: [{ role: "user", content: messagesContent }],
             response_format: {
@@ -396,14 +401,30 @@ REGLAS OBLIGATORIAS:
                     }
                 }
             },
-            max_tokens: 4096
+            max_completion_tokens: 4096
         });
 
-        const resultadoParcial = JSON.parse(response.choices[0].message.content);
-        let todosLosProductos = [];
-        if (resultadoParcial.productos && Array.isArray(resultadoParcial.productos)) {
-            todosLosProductos = resultadoParcial.productos;
+        const eleccion = response.choices?.[0];
+        const contenidoRespuesta = eleccion?.message?.content;
+        if (!contenidoRespuesta || eleccion.finish_reason === "length") {
+            throw new Error("La respuesta de IA quedó vacía o incompleta; no se reemplazó el menú actual.");
         }
+        const resultadoParcial = JSON.parse(contenidoRespuesta);
+        if (!Array.isArray(resultadoParcial.productos) || resultadoParcial.productos.length === 0) {
+            throw new Error("La IA no encontró productos legibles; se conserva el menú actual.");
+        }
+        if (resultadoParcial.productos.some(producto => !String(producto.nombre || "").trim())) {
+            throw new Error("La extracción devolvió productos sin nombre; se conserva el menú actual.");
+        }
+        const uso = response.usage || {};
+        console.info("Uso OpenAI importar-menu:", JSON.stringify({
+            restaurante_id,
+            model: response.model || modeloImportacionMenu,
+            prompt_tokens: uso.prompt_tokens ?? null,
+            completion_tokens: uso.completion_tokens ?? null,
+            total_tokens: uso.total_tokens ?? null
+        }));
+        const todosLosProductos = resultadoParcial.productos;
 
         // Vincula listas de variantes separadas con cada presentación vendible
         // solo cuando la IA asignó explícitamente la misma familia.
