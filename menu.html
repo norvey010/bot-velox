@@ -18,6 +18,19 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
     }
+    .velox-option-list {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(248, 113, 113, .55) rgba(15, 23, 42, .7);
+    }
+    .velox-option-list::-webkit-scrollbar { width: 6px; }
+    .velox-option-list::-webkit-scrollbar-track { background: rgba(15, 23, 42, .7); border-radius: 999px; }
+    .velox-option-list::-webkit-scrollbar-thumb { background: rgba(248, 113, 113, .55); border-radius: 999px; }
+    .velox-option:has(input:checked) {
+        border-color: rgba(248, 113, 113, .85);
+        background: linear-gradient(115deg, rgba(127, 29, 29, .46), rgba(30, 30, 34, .96));
+        box-shadow: inset 0 0 0 1px rgba(248, 113, 113, .14), 0 8px 22px rgba(127, 29, 29, .12);
+    }
+    .velox-option:has(input:checked) .velox-option-title { color: #fbbf24; }
 </style>
 </head>
 
@@ -57,10 +70,11 @@
 
    <!-- MODAL DE PERSONALIZACIÓN DE PRODUCTO -->
 <div id="modal-personalizar" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-[60]" role="dialog" aria-modal="true" aria-labelledby="titulo-personalizar">
-    <form id="form-personalizar" onsubmit="confirmarPersonalizacion(event)" class="bg-[#111214] border border-red-950/70 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-start gap-4 mb-5 border-b border-slate-800 pb-4">
-            <div><p class="text-xs uppercase tracking-widest text-amber-400 font-bold">Personaliza tu pedido</p><h3 id="titulo-personalizar" class="text-xl font-extrabold text-white mt-1">Elige cómo lo quieres</h3><p id="nombre-personalizar" class="text-sm text-slate-400 mt-1"></p></div>
-            <button type="button" onclick="cerrarModalPersonalizar()" aria-label="Cerrar" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+    <form id="form-personalizar" onsubmit="confirmarPersonalizacion(event)" class="relative bg-[#101114] border border-red-900/50 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-[0_24px_80px_rgba(0,0,0,.65)] text-slate-100 max-h-[90vh] overflow-y-auto">
+        <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-red-500/80 to-transparent"></div>
+        <div class="flex justify-between items-start gap-4 mb-5 border-b border-white/10 pb-4">
+            <div><p class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[.18em] text-amber-400 font-extrabold"><span class="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,.9)]"></span>Personaliza tu pedido</p><h3 id="titulo-personalizar" class="text-xl font-extrabold text-white mt-2">Elige cómo lo quieres</h3><p id="nombre-personalizar" class="text-sm text-slate-400 mt-1"></p></div>
+            <button type="button" onclick="cerrarModalPersonalizar()" aria-label="Cerrar" class="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:border-red-400/50 hover:bg-red-500/10 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div id="campos-personalizar" class="space-y-4"></div>
         <div class="mt-6 flex gap-3">
@@ -497,18 +511,23 @@ function iniciarPersonalizacion(id) {
     const campos = document.getElementById('campos-personalizar');
     const html = personalizacion.selectores.map((selector, index) => {
         const idCampo = `opcion-personalizar-${index}`;
-        const opcionesHtml = selector.opciones.map((opcion, opcionIndex) => {
-            const texto = opcion.descripcion ? `${opcion.nombre} — ${opcion.descripcion}` : opcion.nombre;
-            return `<option value="${opcionIndex}">${escaparHtml(texto)}</option>`;
-        }).join('');
-        return `<div><label for="${idCampo}" class="mb-2 block text-sm font-semibold text-slate-200">${escaparHtml(selector.etiqueta)}</label><select id="${idCampo}" data-selector-index="${index}" required class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white"><option value="" disabled selected>Selecciona una opción</option>${opcionesHtml}</select></div>`;
+        const opcionesHtml = selector.opciones.map((opcion, opcionIndex) => `
+            <label class="velox-option flex cursor-pointer items-start gap-3 rounded-xl border border-slate-700/70 bg-[#17191d] px-3.5 py-3 transition hover:border-red-500/60 hover:bg-[#1d1a1c]">
+                <input type="radio" name="${idCampo}" data-selector-index="${index}" value="${opcionIndex}" required class="mt-0.5 h-4 w-4 shrink-0 accent-red-500 focus:ring-2 focus:ring-red-400/50">
+                <span class="min-w-0 flex-1">
+                    <span class="velox-option-title block text-sm font-bold leading-snug text-slate-100 transition">${escaparHtml(opcion.nombre)}</span>
+                    ${opcion.descripcion ? `<span class="mt-1 block text-xs leading-relaxed text-slate-400">${escaparHtml(opcion.descripcion)}</span>` : ''}
+                </span>
+            </label>
+        `).join('');
+        return `<section aria-labelledby="${idCampo}-label"><h4 id="${idCampo}-label" class="mb-2.5 flex items-center gap-2 text-sm font-bold text-slate-200"><span class="h-5 w-1 rounded-full bg-gradient-to-b from-red-500 to-amber-400"></span>${escaparHtml(selector.etiqueta)}</h4><div class="velox-option-list max-h-[42vh] space-y-2 overflow-y-auto rounded-2xl border border-white/5 bg-black/15 p-2">${opcionesHtml}</div></section>`;
     }).join('');
-    campos.innerHTML = html;
+    campos.innerHTML = `<p class="mb-4 rounded-xl border border-amber-400/15 bg-amber-400/[.06] px-3.5 py-2.5 text-xs leading-relaxed text-slate-300">Selecciona una opción para cada grupo y luego agrégala al pedido.</p>${html}`;
 
     const modal = document.getElementById('modal-personalizar');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    setTimeout(() => campos.querySelector('select')?.focus(), 50);
+    setTimeout(() => campos.querySelector('input[type="radio"]')?.focus(), 50);
 }
 
 function cerrarModalPersonalizar() {
@@ -523,9 +542,9 @@ function confirmarPersonalizacion(event) {
     if (!productoPersonalizacionActual) return;
 
     const { producto, selectores } = productoPersonalizacionActual;
-    const selecciones = Array.from(document.querySelectorAll('#campos-personalizar select[required]')).map(select => {
-        const selector = selectores[Number(select.dataset.selectorIndex)];
-        const opcion = selector?.opciones[Number(select.value)];
+    const selecciones = Array.from(document.querySelectorAll('#campos-personalizar input[type="radio"][required]:checked')).map(input => {
+        const selector = selectores[Number(input.dataset.selectorIndex)];
+        const opcion = selector?.opciones[Number(input.value)];
         if (!selector || !opcion) return '';
         return `${selector.grupo}: ${opcion.nombre}${opcion.descripcion ? ` — ${opcion.descripcion}` : ''}`;
     }).filter(Boolean);
