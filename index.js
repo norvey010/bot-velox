@@ -27,7 +27,7 @@ REGLAS:
 Notas: {detalle}
 [/ACTUALIZAR_PEDIDO]
 
-2. [NUEVO_PEDIDO]: Si el mensaje contiene esta etiqueta, acepta y confirma con entusiasmo, da el total y avisa que fue enviado.
+2. [NUEVO_PEDIDO]: Genera el bloque estructurado para guardar el pedido, incluyendo en Items exactamente el producto y la variante elegida. En el texto visible al cliente, confirma en una sola frase que el pedido fue recibido y enviado e informa el total. No repitas ni enumeres productos, ingredientes, descripciones o variantes en esa confirmación. Nunca elimines esos datos del bloque [NUEVO_PEDIDO].
 
 3. MENÚ: Entrega siempre el enlace oficial proporcionado. Si insisten por texto, toma la orden.
 
@@ -170,16 +170,19 @@ app.post('/webhook', async (req, res) => {
                         { role: 'system', content: systemPromptDinamico },
                         ...historialRecortado
                     ],
-                    temperature: 0.7
+                    temperature: 0.2
                 });
 
                 const aiResponse = completion.choices[0].message.content;
                 console.log(`🤖 Respuesta IA: ${aiResponse}`);
                 
-                // Guardamos la respuesta del asistente en el historial
-                historiales[numeroRemitente].push({ role: "assistant", content: aiResponse });
-                
                 const matchPedido = aiResponse.match(/\[NUEVO_PEDIDO\]([\s\S]*?)\[\/NUEVO_PEDIDO\]/);
+                const totalConfirmacionMatch = matchPedido?.[1].match(/Total:\s*(.+)/i);
+                // La confirmación visible no repite ingredientes ni variantes; esos datos siguen en Items para cocina.
+                const respuestaWhatsApp = matchPedido
+                    ? `¡Listo! Recibimos tu pedido y ya fue enviado al restaurante.${totalConfirmacionMatch ? ` Total: ${totalConfirmacionMatch[1].trim()}.` : ''}`
+                    : aiResponse;
+                historiales[numeroRemitente].push({ role: "assistant", content: respuestaWhatsApp });
 
                 if (matchPedido) {
                     try {
@@ -264,7 +267,7 @@ app.post('/webhook', async (req, res) => {
                         messaging_product: 'whatsapp',
                         to: numeroRemitente,
                         type: 'text',
-                        text: { body: aiResponse }
+                        text: { body: respuestaWhatsApp }
                     },
                     headers: {
                         'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`,

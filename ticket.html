@@ -17,7 +17,8 @@
         .bold { font-weight: bold; }
         .line { border-bottom: 1px dashed #000; margin: 8px 0; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        td, th { text-align: left; vertical-align: top; padding: 2px 0; }
+        td, th { text-align: left; vertical-align: top; padding: 3px 0; }
+        #ticket-items td { white-space: pre-wrap; overflow-wrap: anywhere; }
         .total { font-size: 16px; margin-top: 10px; }
         .btn-print {
             display: block;
@@ -60,8 +61,7 @@
     <table>
         <thead>
             <tr>
-                <th>CANT/PRODUCTO</th>
-                <th style="text-align: right;">VALOR</th>
+                <th>PRODUCTOS Y VARIANTES</th>
             </tr>
         </thead>
         <tbody id="ticket-items">
@@ -88,8 +88,20 @@
         document.getElementById('ticket-cliente').innerText = urlParams.get('cliente') || 'Cliente General';
         document.getElementById('ticket-tel').innerText = urlParams.get('telefono') || 'N/A';
         document.getElementById('ticket-dir').innerText = urlParams.get('direccion') || 'Recoge en Local';
-        document.getElementById('ticket-total').innerText = urlParams.get('total') || '0';
+        const total = Number(urlParams.get('total') || 0);
+        document.getElementById('ticket-total').innerText = total.toLocaleString('es-CO');
         document.getElementById('ticket-pago').innerText = urlParams.get('pago') || 'Pendiente';
+
+        const detalle = urlParams.get('items') || 'Sin detalle del pedido';
+        const ticketItems = document.getElementById('ticket-items');
+        const productos = detalle.split(/,\s*(?=\d+\s*x\s)/i).filter(Boolean);
+        for (const producto of productos) {
+            const fila = document.createElement('tr');
+            const celda = document.createElement('td');
+            celda.textContent = producto;
+            fila.appendChild(celda);
+            ticketItems.appendChild(fila);
+        }
 
         // Lanzar la ventana de impresión automáticamente al abrir en celular/PC
         window.onload = () => {

@@ -631,11 +631,15 @@ async function abrirMenuEnVivo() {
         iframe.style.display = 'none';
         document.body.appendChild(iframe);
       }
-      const url = `ticket.html?cliente=${encodeURIComponent(p.cliente_nombre || '')}` +
-                  `&tel=${encodeURIComponent(p.cliente_telefono || '')}` +
-                  `&dir=${encodeURIComponent(p.cliente_direccion || '')}` +
-                  `&total=${p.total || 0}` +
-                  `&pago=${encodeURIComponent(p.metodo_pago || '')}`;
+      const parametros = new URLSearchParams({
+        cliente: p.cliente_nombre || '',
+        telefono: p.cliente_telefono || '',
+        direccion: p.direccion || p.cliente_direccion || '',
+        items: p.items || p.detalle || '',
+        total: String(p.total || 0),
+        pago: p.metodo_pago || ''
+      });
+      const url = `ticket.html?${parametros.toString()}`;
       iframe.src = url;
     }
 
