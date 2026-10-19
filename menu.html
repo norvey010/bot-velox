@@ -366,20 +366,35 @@ function obtenerMetadataFamiliaCombo(producto) {
 
 function resolverFamiliaCombo(producto) {
     const familiaGuardada = obtenerMetadataFamiliaCombo(producto);
+    const detectarFamiliaPrincipal = texto => {
+        const normalizado = normalizarTexto(texto);
+        const familias = [
+            { patron: /\b(?:arroces|arroz(?:\s+(?:chino|paisa|mixto|especial|con pollo|tres delicias))?)\b/, nombre: 'Arroces' },
+            { patron: /\b(?:perros?|hot\s?dog)\b/, nombre: 'Perros' },
+            { patron: /\b(?:hamburguesas?|burgers?)\b/, nombre: 'Hamburguesas' },
+            { patron: /\bpizzas?\b/, nombre: 'Pizzas' },
+            { patron: /\b(?:lasagna|lasana)\b/, nombre: 'Lasaña' },
+            { patron: /\barepas?\b/, nombre: 'Arepas' },
+            { patron: /\bsalchipapas?\b/, nombre: 'Salchipapas' },
+            { patron: /\b(?:sandwiches?|emparedados?)\b/, nombre: 'Sándwiches' },
+            { patron: /\b(?:tacos?|burritos?)\b/, nombre: 'Mexicanos' },
+            { patron: /\b(?:pollo|broaster|alitas?|nuggets?)\b/, nombre: 'Pollo a la Broaster' },
+            { patron: /\b(?:pescado|marisco)\b/, nombre: 'Pescados y mariscos' }
+        ];
+        return familias.find(familia => familia.patron.test(normalizado))?.nombre || '';
+    };
+
+    // Si el título identifica el plato principal, tiene prioridad sobre la descripción.
+    const familiaPorNombre = detectarFamiliaPrincipal(producto.nombre);
+    if (familiaPorNombre) return familiaPorNombre;
+
+    // En títulos genéricos (Combo 1/Promoción 4), agrupa por el primer plato de la descripción.
+    const primerComponente = String(producto.descripcion || '').split(/[,;+]/, 1)[0];
+    const familiaPorInicioDescripcion = detectarFamiliaPrincipal(primerComponente);
+    if (familiaPorInicioDescripcion) return familiaPorInicioDescripcion;
+
     if (familiaGuardada && normalizarTexto(familiaGuardada) !== 'otros') return familiaGuardada;
-    const texto = normalizarTexto(`${producto._categoriaOriginal || producto.categoria || ''} ${producto.nombre || ''} ${producto.descripcion || ''}`);
-    const familias = [
-        { patron: /\b(?:perro(?:s)?(?: caliente(?:s)?)?|hot\s?dog)\b/, nombre: 'Perros' },
-        { patron: /\b(?:hamburguesas?|burgers?)\b/, nombre: 'Hamburguesas' },
-        { patron: /\b(?:pollo|broaster|alitas?|nuggets?)\b/, nombre: 'Pollo a la Broaster' },
-        { patron: /\bpizzas?\b/, nombre: 'Pizzas' },
-        { patron: /\b(?:lasagna|lasana)\b/, nombre: 'Lasaña' },
-        { patron: /\barepas?\b/, nombre: 'Arepas' },
-        { patron: /\bsalchipapas?\b/, nombre: 'Salchipapas' },
-        { patron: /\b(?:sandwich|emparedado)\b/, nombre: 'Sándwiches' },
-        { patron: /\b(?:tacos?|burritos?)\b/, nombre: 'Mexicanos' }
-    ];
-    return familias.find(familia => familia.patron.test(texto))?.nombre || 'Otros';
+    return detectarFamiliaPrincipal(producto.descripcion) || 'Otros';
 }
 
 function obtenerOpcionesProducto(producto) {

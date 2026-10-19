@@ -319,7 +319,7 @@ REGLAS OBLIGATORIAS:
 - Copia cada nombre y toda descripción/ingrediente legible completa, en el mismo orden. No omitas ingredientes aunque parezcan obvios (incluidos chorizo y tocineta); no acortes palabras ("plancha" no es "planch"), no resumas y no uses puntos suspensivos.
 - Incluye todos los productos, tamaños, porciones, combos, ingredientes y precios visibles. No inventes datos ni deduzcas ingredientes. Si un dato no es legible, usa cadena vacía para texto o 0 para precio; nunca lo adivines.
 - El precio debe ser el valor numérico impreso, sin símbolo de moneda ni separadores de miles. No conviertas ni multipliques el precio.
-- Devuelve también "es_combo" y "familia_combo". Todos los combos deben quedar en una única categoría de menú "Combos", sin importar si son de hamburguesa, perro, pollo, lasaña u otro producto. "es_combo" es true cuando la carta presenta el producto dentro de una sección de combos o su nombre indica que es un combo; en otro caso false. "familia_combo" indica el plato principal (por ejemplo "Hamburguesas", "Perros", "Pollo a la Broaster", "Lasaña", "Pizzas"). Si no es combo o no se identifica la familia, usa cadena vacía o "Otros" respectivamente. No conviertas el combo en un producto normal ni inventes una familia.
+- Devuelve también "es_combo" y "familia_combo". Todos los combos deben quedar en la categoría de menú "Combos". "familia_combo" debe indicar SOLO el plato principal que da identidad al combo, no cualquier acompañamiento o ingrediente mencionado después. Respeta el orden de la descripción: por ejemplo, "arroz chino, 1/2 pollo, papa y gaseosa" pertenece a "Arroces"; "1/2 pollo, arroz chino y gaseosa" pertenece a "Pollo a la Broaster". Usa familias concretas como "Arroces", "Hamburguesas", "Perros", "Pollo a la Broaster", "Lasaña" o "Pizzas". Si el nombre identifica el plato principal, prioriza el nombre; si es genérico ("Promoción 1", "Combo 2"), identifica el primer plato principal de la descripción e ignora acompañamientos y bebidas. Si no se identifica con claridad, usa "Otros". No conviertas el combo en un producto normal ni inventes una familia.
 - Cada tamaño/presentación con precio debe quedar como producto visible independiente, con ese precio. Asigna a cada tamaño un mismo "familia" únicamente cuando la carta confirme que pertenece al mismo producto base (por ejemplo, Personal, Mediana y Familiar bajo Pizzas usan familia "Pizzas"). Para una opción listada junto a un producto, inclúyela en sus "opciones". Si la carta pone el catálogo de sabores/variantes en otra parte, devuélvelo una sola vez en el arreglo raíz "variantes" con esa misma familia y el encabezado correspondiente en "categoria" (por ejemplo, cada sabor de pizza con familia y categoria "Pizzas"); no lo conviertas en productos vendibles ni repitas la lista por cada tamaño. No cruces familias distintas ni adivines asociaciones. Si la relación no es clara, deja familia vacía y no vincules.
 - En "opciones" y "variantes" incluye solo elecciones explícitas que el cliente debe escoger: sabores, especialidades, tipos, ingredientes seleccionables o acompañamientos. Para cada una devuelve grupo (por ejemplo, "Sabor"), nombre y descripción literal completa; descripción vacía si no aparece. Excluye tamaños como Personal, Mediana y Familiar, precios base, encabezados y categorías. Si no hay variantes explícitas, usa [].
 - Revisa visualmente cada imagen completa antes de responder. Devuelve únicamente el JSON solicitado, sin texto adicional.`;
@@ -338,7 +338,7 @@ REGLAS OBLIGATORIAS:
                 type: "image_url",
                 image_url: {
                     url: `data:${file.mimetype};base64,${base64Image}`,
-                    // Un máximo de tres imágenes limita el costo; high conserva detalle para OCR.
+                    // high conserva el detalle necesario para leer el texto y los precios.
                     detail: "high"
                 }
             });
@@ -467,16 +467,32 @@ REGLAS OBLIGATORIAS:
         }
 
         const parecePresentacionPorTamano = nombre => /\b(?:personal|individual|pequeñ[ao]|chic[ao]|mediana?|grande|familiar|junior|mini|porción|porcion|media|entera|\d{2,3}\s*cm)\b/i.test(String(nombre || ""));
-        const inferirFamiliaCombo = producto => {
-            const texto = normalizarFamilia(`${producto.familia_combo || ""} ${producto.categoria || ""} ${producto.nombre || ""} ${producto.descripcion || ""}`);
+        const detectarFamiliaPrincipal = texto => {
+            const normalizado = normalizarFamilia(texto);
             const familias = [
-                [/\b(?:perro|hot dog)\b/, "Perros"], [/\b(?:hamburguesa|burger)\b/, "Hamburguesas"],
-                [/\b(?:pollo|broaster|alita|nugget)\b/, "Pollo a la Broaster"], [/\bpizza\b/, "Pizzas"],
-                [/\b(?:lasagna|lasana)\b/, "Lasaña"], [/\barepa\b/, "Arepas"], [/\bsalchipapa\b/, "Salchipapas"],
-                [/\b(?:sandwich|emparedado)\b/, "Sándwiches"], [/\b(?:taco|burrito)\b/, "Mexicanos"],
+                [/\b(?:arroces|arroz(?:\s+(?:chino|paisa|mixto|especial|con pollo|tres delicias))?)\b/, "Arroces"],
+                [/\b(?:perros?|hot\s?dog)\b/, "Perros"],
+                [/\b(?:hamburguesas?|burgers?)\b/, "Hamburguesas"],
+                [/\bpizzas?\b/, "Pizzas"],
+                [/\b(?:lasagna|lasana)\b/, "Lasaña"],
+                [/\barepas?\b/, "Arepas"],
+                [/\bsalchipapas?\b/, "Salchipapas"],
+                [/\b(?:sandwiches?|emparedados?)\b/, "Sándwiches"],
+                [/\b(?:tacos?|burritos?)\b/, "Mexicanos"],
+                [/\b(?:pollo|broaster|alita|nugget)\b/, "Pollo a la Broaster"],
                 [/\b(?:pescado|marisco)\b/, "Pescados y mariscos"]
             ];
-            return familias.find(([patron]) => patron.test(texto))?.[1] || String(producto.familia_combo || "Otros").trim() || "Otros";
+            return familias.find(([patron]) => patron.test(normalizado))?.[1] || "";
+        };
+        const inferirFamiliaCombo = producto => {
+            const familiaPorNombre = detectarFamiliaPrincipal(producto.nombre);
+            if (familiaPorNombre) return familiaPorNombre;
+            const primerComponente = String(producto.descripcion || "").split(/[,;+]/, 1)[0];
+            const familiaPorInicioDescripcion = detectarFamiliaPrincipal(primerComponente);
+            if (familiaPorInicioDescripcion) return familiaPorInicioDescripcion;
+            const familiaDeclarada = String(producto.familia_combo || "").trim();
+            if (familiaDeclarada && normalizarFamilia(familiaDeclarada) !== "otro") return familiaDeclarada;
+            return detectarFamiliaPrincipal(producto.descripcion) || "Otros";
         };
         const esProductoCombo = producto => producto.es_combo === true
             || /\bcombos?\b/i.test(String(producto.categoria || ""))
