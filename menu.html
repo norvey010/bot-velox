@@ -142,6 +142,9 @@
         }
 
        let todosLosProductos = [];
+       let categoriasMenu = [];
+       let indiceCategoriaActiva = -1;
+       let inicioGestoMenu = null;
 
 async function cargarMenu() {
     var contenedor = document.getElementById('contenedor-menu');
@@ -195,14 +198,17 @@ async function cargarMenu() {
     // Extraer categorías únicas para los botones superiores
     const categoriasSet = new Set();
     todosLosProductos.forEach(p => categoriasSet.add(p.categoria || 'General'));
+    categoriasMenu = Array.from(categoriasSet);
+    indiceCategoriaActiva = -1;
     
     let botonesHtml = '';
-    categoriasSet.forEach(cat => {
+    categoriasMenu.forEach(cat => {
         botonesHtml += `<button type="button" data-categoria="${escaparHtml(cat)}" class="shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap">${escaparHtml(cat)}</button>`;
     });
     if (contenedorCategorias) contenedorCategorias.innerHTML = botonesHtml;
 
-    renderizarProductos(todosLosProductos);
+    if (categoriasMenu.length) filtrarCategoria(categoriasMenu[0]);
+    else renderizarProductos(todosLosProductos);
 }
 
 function obtenerVisualProducto(producto) {
@@ -299,14 +305,54 @@ function renderizarProductos(listaProds) {
     contenedor.innerHTML = html;
 }
 function filtrarCategoria(categoriaElegida) {
+    indiceCategoriaActiva = categoriasMenu.indexOf(categoriaElegida);
     document.querySelectorAll('#contenedor-categorias [data-categoria]').forEach(boton => {
         const activa = boton.dataset.categoria === categoriaElegida;
         boton.className = activa
-            ? 'shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold bg-red-600 text-white transition shadow whitespace-nowrap'
-            : 'shrink-0 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap';
+            ? 'shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-red-600 text-white transition shadow whitespace-nowrap'
+            : 'shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap';
     });
     const filtrados = todosLosProductos.filter(p => resolverCategoriaCombo(p) === categoriaElegida);
     renderizarProductos(filtrados);
+}
+
+function cambiarCategoriaPorDeslizamiento(direccion) {
+    if (!categoriasMenu.length || indiceCategoriaActiva < 0) return;
+    const siguiente = Math.max(0, Math.min(categoriasMenu.length - 1, indiceCategoriaActiva + direccion));
+    if (siguiente === indiceCategoriaActiva) return;
+    filtrarCategoria(categoriasMenu[siguiente]);
+    const botonActivo = Array.from(document.querySelectorAll('#contenedor-categorias [data-categoria]'))
+        .find(boton => boton.dataset.categoria === categoriasMenu[siguiente]);
+    botonActivo?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+// Solo interpreta gestos laterales iniciados sobre el catálogo. El scroll vertical
+// y los botones de producto siguen funcionando con su comportamiento habitual.
+const catalogoMenu = document.getElementById('contenedor-menu');
+if (catalogoMenu) {
+    catalogoMenu.addEventListener('touchstart', event => {
+        if (event.touches.length !== 1) {
+            inicioGestoMenu = null;
+            return;
+        }
+        const objetivo = event.target instanceof Element ? event.target : null;
+        if (objetivo?.closest('button, a, input, select, textarea, [role="dialog"]')) {
+            inicioGestoMenu = null;
+            return;
+        }
+        inicioGestoMenu = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    }, { passive: true });
+
+    catalogoMenu.addEventListener('touchend', event => {
+        if (!inicioGestoMenu || !event.changedTouches.length) return;
+        const dx = event.changedTouches[0].clientX - inicioGestoMenu.x;
+        const dy = event.changedTouches[0].clientY - inicioGestoMenu.y;
+        inicioGestoMenu = null;
+        if (Math.abs(dx) < 65 || Math.abs(dx) <= Math.abs(dy) * 1.25) return;
+        cambiarCategoriaPorDeslizamiento(dx < 0 ? 1 : -1);
+    }, { passive: true });
+
+    catalogoMenu.addEventListener('touchcancel', () => { inicioGestoMenu = null; }, { passive: true });
 }
 
 function normalizarTexto(valor) {
