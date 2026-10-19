@@ -31,6 +31,19 @@
         box-shadow: inset 0 0 0 1px rgba(248, 113, 113, .14), 0 8px 22px rgba(127, 29, 29, .12);
     }
     .velox-option:has(input:checked) .velox-option-title { color: #fbbf24; }
+    @keyframes menuCategoryFromRight {
+        from { opacity: 0; transform: translate3d(34px, 0, 0) scale(.985); filter: blur(3px); }
+        to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
+    }
+    @keyframes menuCategoryFromLeft {
+        from { opacity: 0; transform: translate3d(-34px, 0, 0) scale(.985); filter: blur(3px); }
+        to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
+    }
+    .menu-category-enter-next { animation: menuCategoryFromRight .34s cubic-bezier(.2,.75,.25,1) both; }
+    .menu-category-enter-previous { animation: menuCategoryFromLeft .34s cubic-bezier(.2,.75,.25,1) both; }
+    @media (prefers-reduced-motion: reduce) {
+        .menu-category-enter-next, .menu-category-enter-previous { animation-duration: .01ms; }
+    }
 </style>
 </head>
 
@@ -145,6 +158,7 @@
        let categoriasMenu = [];
        let indiceCategoriaActiva = -1;
        let inicioGestoMenu = null;
+       let direccionAnimacionMenu = 'next';
 
 async function cargarMenu() {
     var contenedor = document.getElementById('contenedor-menu');
@@ -268,7 +282,8 @@ function renderizarProductos(listaProds) {
 
     var html = '';
     for (const [categoria, lista] of Object.entries(productosPorCategoria)) {
-        html += `<div class="mb-8"><h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-amber-400">✦</span> ${escaparHtml(categoria)}</h2>`;
+        const claseAnimacion = direccionAnimacionMenu === 'previous' ? 'menu-category-enter-previous' : 'menu-category-enter-next';
+        html += `<div class="mb-8 ${claseAnimacion}"><h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-amber-400">✦</span> ${escaparHtml(categoria)}</h2>`;
         html += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">';
         lista.forEach(producto => {
             const visualProducto = obtenerVisualProducto(producto);
@@ -305,7 +320,12 @@ function renderizarProductos(listaProds) {
     contenedor.innerHTML = html;
 }
 function filtrarCategoria(categoriaElegida) {
-    indiceCategoriaActiva = categoriasMenu.indexOf(categoriaElegida);
+    const indiceAnterior = indiceCategoriaActiva;
+    const nuevoIndice = categoriasMenu.indexOf(categoriaElegida);
+    if (indiceAnterior >= 0 && nuevoIndice !== indiceAnterior) {
+        direccionAnimacionMenu = nuevoIndice > indiceAnterior ? 'next' : 'previous';
+    }
+    indiceCategoriaActiva = nuevoIndice;
     document.querySelectorAll('#contenedor-categorias [data-categoria]').forEach(boton => {
         const activa = boton.dataset.categoria === categoriaElegida;
         boton.className = activa
