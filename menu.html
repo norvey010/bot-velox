@@ -7,8 +7,11 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Menú Digital | Velox</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://ozailviyimrjmebrilbp.supabase.co" crossorigin>
+    <script defer src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
     /* Ocultar barra de desplazamiento en la barra de categorías */
     .scrollbar-none::-webkit-scrollbar {
@@ -68,7 +71,12 @@
     </header>
     <!-- CATÁLOGO -->
     <main class="max-w-7xl mx-auto p-4 md:px-6 space-y-4" id="contenedor-menu">
-        <p class="text-center text-slate-400 py-10" id="estado-carga">Cargando catálogo...</p>
+        <div id="estado-carga" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-label="Cargando menú" role="status">
+            <span class="sr-only">Cargando menú...</span>
+            <div class="h-28 rounded-2xl border border-slate-800 bg-[#111214] animate-pulse"></div>
+            <div class="h-28 rounded-2xl border border-slate-800 bg-[#111214] animate-pulse hidden sm:block"></div>
+            <div class="h-28 rounded-2xl border border-slate-800 bg-[#111214] animate-pulse hidden lg:block"></div>
+        </div>
     </main>
 
     <!-- BARRA CARRITO -->
@@ -194,7 +202,7 @@ async function cargarMenu() {
     // Forzamos la consulta de productos ordenada por ID para evitar datos cacheados
     let { data: productos, error: resProd } = await supabaseClient
         .from('productos')
-        .select('*')
+        .select('id,nombre,descripcion,precio,categoria,imagen_url,opciones')
         .eq('restaurante_id', ID_RESTAURANTE_ACTUAL)
         .order('id', { ascending: true });
 
@@ -229,7 +237,7 @@ function obtenerVisualProducto(producto) {
     const url = (producto.imagen_url || '').trim();
     const esImagenGenericaAnterior = url.includes('photo-1504674900247-0877df9cc836');
     if (url.startsWith('http') && !esImagenGenericaAnterior) {
-        return `<img src="${url}" alt="${producto.nombre}" loading="lazy" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">`;
+        return `<img src="${url}" alt="${producto.nombre}" loading="lazy" decoding="async" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">`;
     }
 
     const texto = `${producto.categoria || ''} ${producto.nombre || ''}`
