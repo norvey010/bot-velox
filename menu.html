@@ -51,7 +51,6 @@
 <!-- Barra de Categorías Deslizante -->
 <div class="max-w-7xl mx-auto px-4 pt-5">
     <div id="contenedor-categorias" class="flex gap-2 overflow-x-auto whitespace-nowrap pb-3 scrollbar-none">
-        <button type="button" data-categoria="TODOS" class="shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold bg-red-600 text-white transition shadow-lg shadow-red-950/30">🌟 Todos</button>
     </div>
 </div>
     <!-- CATÁLOGO -->
@@ -190,17 +189,16 @@ async function cargarMenu() {
     todosLosProductos = productos.map(producto => ({
         ...producto,
         _categoriaOriginal: producto.categoria,
-        categoria: resolverCategoriaCombo(producto, productos)
+        categoria: resolverCategoriaCombo(producto)
     }));
 
     // Extraer categorías únicas para los botones superiores
     const categoriasSet = new Set();
     todosLosProductos.forEach(p => categoriasSet.add(p.categoria || 'General'));
     
-    let botonesHtml = `<button type="button" data-categoria="TODOS" class="shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold bg-red-600 text-white transition shadow whitespace-nowrap">🌟 Todos</button>`;
+    let botonesHtml = '';
     categoriasSet.forEach(cat => {
-        const etiqueta = cat === 'Combos' ? '🎁 Todos los combos' : escaparHtml(cat);
-        botonesHtml += `<button type="button" data-categoria="${escaparHtml(cat)}" class="shrink-0 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap">${etiqueta}</button>`;
+        botonesHtml += `<button type="button" data-categoria="${escaparHtml(cat)}" class="shrink-0 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap">${escaparHtml(cat)}</button>`;
     });
     if (contenedorCategorias) contenedorCategorias.innerHTML = botonesHtml;
 
@@ -255,7 +253,7 @@ function renderizarProductos(listaProds) {
 
     const productosPorCategoria = {};
     listaProds.forEach(prod => {
-        const cat = resolverCategoriaCombo(prod, todosLosProductos);
+        const cat = resolverCategoriaCombo(prod);
         if (!productosPorCategoria[cat]) {
             productosPorCategoria[cat] = [];
         }
@@ -264,26 +262,9 @@ function renderizarProductos(listaProds) {
 
     var html = '';
     for (const [categoria, lista] of Object.entries(productosPorCategoria)) {
-        const esCategoriaCombos = categoria === 'Combos';
-        const tituloCategoria = esCategoriaCombos ? 'Todos los combos' : categoria;
-        const productosPorFamilia = new Map();
-        if (esCategoriaCombos) {
-            lista.forEach(producto => {
-                const familia = resolverFamiliaCombo(producto);
-                if (!productosPorFamilia.has(familia)) productosPorFamilia.set(familia, []);
-                productosPorFamilia.get(familia).push(producto);
-            });
-        } else {
-            productosPorFamilia.set('', lista);
-        }
-
-        html += `<div class="mb-8"><h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-amber-400">✦</span> ${escaparHtml(tituloCategoria)}</h2>`;
-        for (const [familia, productosFamilia] of productosPorFamilia) {
-            if (esCategoriaCombos) {
-                html += `<h3 class="text-lg md:text-xl font-bold text-amber-300 mt-6 mb-3">${escaparHtml(familia)}</h3>`;
-            }
-            html += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">';
-            productosFamilia.forEach(producto => {
+        html += `<div class="mb-8"><h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-amber-400">✦</span> ${escaparHtml(categoria)}</h2>`;
+        html += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">';
+        lista.forEach(producto => {
             const visualProducto = obtenerVisualProducto(producto);
 
             const personalizacion = obtenerPersonalizacionProducto(producto);
@@ -310,9 +291,8 @@ function renderizarProductos(listaProds) {
                     </div>
                 </div>
             `;
-            });
-            html += '</div>';
-        }
+        });
+        html += '</div>';
         html += '</div>';
     }
 
@@ -325,20 +305,17 @@ function filtrarCategoria(categoriaElegida) {
             ? 'shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold bg-red-600 text-white transition shadow whitespace-nowrap'
             : 'shrink-0 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap';
     });
-    if (categoriaElegida === 'TODOS') {
-        renderizarProductos(todosLosProductos);
-    } else {
-        const filtrados = todosLosProductos.filter(p => resolverCategoriaCombo(p, todosLosProductos) === categoriaElegida);
-        renderizarProductos(filtrados);
-    }
+    const filtrados = todosLosProductos.filter(p => resolverCategoriaCombo(p) === categoriaElegida);
+    renderizarProductos(filtrados);
 }
 
 function normalizarTexto(valor) {
     return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
-function resolverCategoriaCombo(producto, productosMenu = todosLosProductos) {
-    return esProductoCombo(producto) ? 'Combos' : String(producto._categoriaOriginal || producto.categoria || 'General').trim();
+function resolverCategoriaCombo(producto) {
+    const categoriaOriginal = String(producto._categoriaOriginal || producto.categoria || 'General').trim();
+    return esProductoCombo(producto) ? resolverFamiliaCombo(producto) : categoriaOriginal;
 }
 
 function esProductoCombo(producto) {
@@ -367,9 +344,13 @@ function obtenerMetadataFamiliaCombo(producto) {
 function resolverFamiliaCombo(producto) {
     const familiaGuardada = obtenerMetadataFamiliaCombo(producto);
     const detectarFamiliaPrincipal = texto => {
-        const normalizado = normalizarTexto(texto);
+        const textoNormalizado = normalizarTexto(texto);
+        const arrozEspecifico = textoNormalizado.match(/\barroz\s+((?:(?:con|de)\s+)?[a-z]+(?:\s+(?!con\b|de\b|y\b)[a-z]+)?)/);
+        if (arrozEspecifico) return `Arroz ${arrozEspecifico[1].trim()}`;
+
+        const normalizado = textoNormalizado;
         const familias = [
-            { patron: /\b(?:arroces|arroz(?:\s+(?:chino|paisa|mixto|especial|con pollo|tres delicias))?)\b/, nombre: 'Arroces' },
+            { patron: /\barroces?\b/, nombre: 'Arroces' },
             { patron: /\b(?:perros?|hot\s?dog)\b/, nombre: 'Perros' },
             { patron: /\b(?:hamburguesas?|burgers?)\b/, nombre: 'Hamburguesas' },
             { patron: /\bpizzas?\b/, nombre: 'Pizzas' },
@@ -381,7 +362,13 @@ function resolverFamiliaCombo(producto) {
             { patron: /\b(?:pollo|broaster|alitas?|nuggets?)\b/, nombre: 'Pollo a la Broaster' },
             { patron: /\b(?:pescado|marisco)\b/, nombre: 'Pescados y mariscos' }
         ];
-        return familias.find(familia => familia.patron.test(normalizado))?.nombre || '';
+        return familias
+            .map((familia, prioridad) => {
+                const coincidencia = familia.patron.exec(normalizado);
+                return coincidencia ? { nombre: familia.nombre, indice: coincidencia.index, prioridad } : null;
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.indice - b.indice || a.prioridad - b.prioridad)[0]?.nombre || '';
     };
 
     // Si el título identifica el plato principal, tiene prioridad sobre la descripción.

@@ -319,7 +319,7 @@ REGLAS OBLIGATORIAS:
 - Copia cada nombre y toda descripción/ingrediente legible completa, en el mismo orden. No omitas ingredientes aunque parezcan obvios (incluidos chorizo y tocineta); no acortes palabras ("plancha" no es "planch"), no resumas y no uses puntos suspensivos.
 - Incluye todos los productos, tamaños, porciones, combos, ingredientes y precios visibles. No inventes datos ni deduzcas ingredientes. Si un dato no es legible, usa cadena vacía para texto o 0 para precio; nunca lo adivines.
 - El precio debe ser el valor numérico impreso, sin símbolo de moneda ni separadores de miles. No conviertas ni multipliques el precio.
-- Devuelve también "es_combo" y "familia_combo". Todos los combos deben quedar en la categoría de menú "Combos". "familia_combo" debe indicar SOLO el plato principal que da identidad al combo, no cualquier acompañamiento o ingrediente mencionado después. Respeta el orden de la descripción: por ejemplo, "arroz chino, 1/2 pollo, papa y gaseosa" pertenece a "Arroces"; "1/2 pollo, arroz chino y gaseosa" pertenece a "Pollo a la Broaster". Usa familias concretas como "Arroces", "Hamburguesas", "Perros", "Pollo a la Broaster", "Lasaña" o "Pizzas". Si el nombre identifica el plato principal, prioriza el nombre; si es genérico ("Promoción 1", "Combo 2"), identifica el primer plato principal de la descripción e ignora acompañamientos y bebidas. Si no se identifica con claridad, usa "Otros". No conviertas el combo en un producto normal ni inventes una familia.
+- Devuelve también "es_combo" y "familia_combo". Los combos se guardan directamente en la categoría del plato principal; no crees una categoría "Combos". "familia_combo" debe identificar el plato principal con el mayor detalle que la carta permita (por ejemplo, "Arroz chino", "Arroz paisa", "Arroz ranchero", "Arroz mexicano", "Hamburguesa", "Perro", "Pollo a la Broaster", "Lasaña" o "Pizza"), no cualquier acompañamiento o ingrediente mencionado después. Respeta el orden de la descripción: "arroz chino, 1/2 pollo, papa y gaseosa" pertenece a "Arroz chino"; "1/2 pollo, arroz chino y gaseosa" pertenece a "Pollo a la Broaster". Si el nombre identifica el plato principal, prioriza el nombre; si es genérico ("Promoción 1", "Combo 2"), identifica el primer plato principal de la descripción e ignora acompañamientos y bebidas. Usa una categoría específica para cada tipo de plato diferente; utiliza una categoría general como "Arroces" solo si no se puede identificar el tipo. Si no se identifica con claridad, usa "Otros". No conviertas el combo en un producto normal ni inventes una familia.
 - Cada tamaño/presentación con precio debe quedar como producto visible independiente, con ese precio. Asigna a cada tamaño un mismo "familia" únicamente cuando la carta confirme que pertenece al mismo producto base (por ejemplo, Personal, Mediana y Familiar bajo Pizzas usan familia "Pizzas"). Para una opción listada junto a un producto, inclúyela en sus "opciones". Si la carta pone el catálogo de sabores/variantes en otra parte, devuélvelo una sola vez en el arreglo raíz "variantes" con esa misma familia y el encabezado correspondiente en "categoria" (por ejemplo, cada sabor de pizza con familia y categoria "Pizzas"); no lo conviertas en productos vendibles ni repitas la lista por cada tamaño. No cruces familias distintas ni adivines asociaciones. Si la relación no es clara, deja familia vacía y no vincules.
 - En "opciones" y "variantes" incluye solo elecciones explícitas que el cliente debe escoger: sabores, especialidades, tipos, ingredientes seleccionables o acompañamientos. Para cada una devuelve grupo (por ejemplo, "Sabor"), nombre y descripción literal completa; descripción vacía si no aparece. Excluye tamaños como Personal, Mediana y Familiar, precios base, encabezados y categorías. Si no hay variantes explícitas, usa [].
 - Revisa visualmente cada imagen completa antes de responder. Devuelve únicamente el JSON solicitado, sin texto adicional.`;
@@ -468,9 +468,13 @@ REGLAS OBLIGATORIAS:
 
         const parecePresentacionPorTamano = nombre => /\b(?:personal|individual|pequeñ[ao]|chic[ao]|mediana?|grande|familiar|junior|mini|porción|porcion|media|entera|\d{2,3}\s*cm)\b/i.test(String(nombre || ""));
         const detectarFamiliaPrincipal = texto => {
+            const textoNormalizado = String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es");
+            const arrozEspecifico = textoNormalizado.match(/\barroz\s+((?:(?:con|de)\s+)?[a-z]+(?:\s+(?!con\b|de\b|y\b)[a-z]+)?)/);
+            if (arrozEspecifico) return `Arroz ${arrozEspecifico[1].trim()}`;
+
             const normalizado = normalizarFamilia(texto);
             const familias = [
-                [/\b(?:arroces|arroz(?:\s+(?:chino|paisa|mixto|especial|con pollo|tres delicias))?)\b/, "Arroces"],
+                [/\b(?:arroces|arroce|arroz)\b/, "Arroces"],
                 [/\b(?:perros?|hot\s?dog)\b/, "Perros"],
                 [/\b(?:hamburguesas?|burgers?)\b/, "Hamburguesas"],
                 [/\bpizzas?\b/, "Pizzas"],
@@ -482,7 +486,13 @@ REGLAS OBLIGATORIAS:
                 [/\b(?:pollo|broaster|alita|nugget)\b/, "Pollo a la Broaster"],
                 [/\b(?:pescado|marisco)\b/, "Pescados y mariscos"]
             ];
-            return familias.find(([patron]) => patron.test(normalizado))?.[1] || "";
+            return familias
+                .map(([patron, nombre], prioridad) => {
+                    const coincidencia = patron.exec(normalizado);
+                    return coincidencia ? { nombre, indice: coincidencia.index, prioridad } : null;
+                })
+                .filter(Boolean)
+                .sort((a, b) => a.indice - b.indice || a.prioridad - b.prioridad)[0]?.nombre || "";
         };
         const inferirFamiliaCombo = producto => {
             const familiaPorNombre = detectarFamiliaPrincipal(producto.nombre);
@@ -514,7 +524,7 @@ REGLAS OBLIGATORIAS:
                 });
             return {
             restaurante_id: restaurante_id,
-            categoria: combo ? "Combos" : String(p.categoria || "General").trim(),
+            categoria: combo ? familiaCombo : String(p.categoria || "General").trim(),
             nombre: p.nombre,
             precio: Number(p.precio) < 1000 ? Number(p.precio) * 1000 : Number(p.precio) || 0,
             descripcion: p.descripcion || "",
