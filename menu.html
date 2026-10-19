@@ -47,12 +47,12 @@
                 </p>
             </div>
         </div>
+        <!-- Las categorías permanecen visibles porque forman parte del encabezado fijo. -->
+        <div class="max-w-7xl mx-auto pt-3">
+            <div id="contenedor-categorias" class="flex gap-2 overflow-x-auto whitespace-nowrap pb-1 scrollbar-none touch-pan-x">
+            </div>
+        </div>
     </header>
-<!-- Barra de Categorías Deslizante -->
-<div class="max-w-7xl mx-auto px-4 pt-5">
-    <div id="contenedor-categorias" class="flex gap-2 overflow-x-auto whitespace-nowrap pb-3 scrollbar-none">
-    </div>
-</div>
     <!-- CATÁLOGO -->
     <main class="max-w-7xl mx-auto p-4 md:px-6 space-y-4" id="contenedor-menu">
         <p class="text-center text-slate-400 py-10" id="estado-carga">Cargando catálogo...</p>
@@ -198,7 +198,7 @@ async function cargarMenu() {
     
     let botonesHtml = '';
     categoriasSet.forEach(cat => {
-        botonesHtml += `<button type="button" data-categoria="${escaparHtml(cat)}" class="shrink-0 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap">${escaparHtml(cat)}</button>`;
+        botonesHtml += `<button type="button" data-categoria="${escaparHtml(cat)}" class="shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap">${escaparHtml(cat)}</button>`;
     });
     if (contenedorCategorias) contenedorCategorias.innerHTML = botonesHtml;
 
@@ -271,21 +271,21 @@ function renderizarProductos(listaProds) {
             const requierePersonalizacion = personalizacion.selectores.length > 0;
             const textoBoton = requierePersonalizacion ? textoBotonPersonalizacion(personalizacion.selectores) : '+ Agregar';
             const botonHtml = `
-                <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-red-950/30">
+                <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm transition shadow-lg shadow-red-950/30">
                     ${textoBoton}
                 </button>
             `;
 
             html += `
-                <div class="group bg-[#111214] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-col">
-                    <div class="h-48 sm:h-44 bg-[#090a0c] overflow-hidden">${visualProducto}</div>
-                    <div class="p-4 flex flex-col flex-1">
+                <div class="group bg-[#111214] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-row sm:flex-col">
+                    <div class="w-24 h-24 shrink-0 bg-[#090a0c] overflow-hidden sm:w-full sm:h-44">${visualProducto}</div>
+                    <div class="min-w-0 p-3 sm:p-4 flex flex-col flex-1">
                         <div class="flex-1">
-                            <h3 class="font-extrabold text-white text-lg leading-snug">${producto.nombre}</h3>
-                            <p class="text-sm text-slate-400 mt-1.5 leading-relaxed lowercase">${producto.descripcion || 'Sin descripción'}</p>
+                            <h3 class="font-extrabold text-white text-sm sm:text-lg leading-snug">${producto.nombre}</h3>
+                            <p class="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed lowercase">${producto.descripcion || 'Sin descripción'}</p>
                         </div>
-                        <div class="mt-5 flex flex-col gap-3">
-                            <span class="font-extrabold text-amber-400 text-xl">$${Number(producto.precio).toLocaleString('es-CO')}</span>
+                        <div class="mt-2 sm:mt-5 flex flex-col gap-2 sm:gap-3">
+                            <span class="font-extrabold text-amber-400 text-base sm:text-xl">$${Number(producto.precio).toLocaleString('es-CO')}</span>
                             ${botonHtml}
                         </div>
                     </div>
@@ -313,9 +313,31 @@ function normalizarTexto(valor) {
     return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+function normalizarCategoriaMenu(categoria) {
+    const etiqueta = String(categoria || 'General').trim();
+    const clave = normalizarTexto(etiqueta).replace(/\s+/g, ' ');
+    const categoriasCanonicas = {
+        'hamburguesa': 'Hamburguesas',
+        'hamburguesas': 'Hamburguesas',
+        'pizza': 'Pizzas',
+        'pizzas': 'Pizzas',
+        'arepa': 'Arepas',
+        'arepas': 'Arepas',
+        'perro': 'Perros',
+        'perros': 'Perros',
+        'perro caliente': 'Perros',
+        'perros calientes': 'Perros',
+        'pollo broaster': 'Pollo a la Broaster',
+        'pollo a la broaster': 'Pollo a la Broaster',
+        'sandwich': 'Sándwiches',
+        'sandwiches': 'Sándwiches'
+    };
+    return categoriasCanonicas[clave] || etiqueta;
+}
+
 function resolverCategoriaCombo(producto) {
-    const categoriaOriginal = String(producto._categoriaOriginal || producto.categoria || 'General').trim();
-    return esProductoCombo(producto) ? resolverFamiliaCombo(producto) : categoriaOriginal;
+    const categoriaOriginal = normalizarCategoriaMenu(producto._categoriaOriginal || producto.categoria);
+    return esProductoCombo(producto) ? normalizarCategoriaMenu(resolverFamiliaCombo(producto)) : categoriaOriginal;
 }
 
 function esProductoCombo(producto) {
