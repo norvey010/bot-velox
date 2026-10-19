@@ -305,6 +305,13 @@ app.post('/api/importar-menu', (req, res, next) => {
             return res.status(400).json({ error: "Faltan las imágenes del menú o el ID del restaurante." });
         }
 
+        const bytesTotalesImagenes = files.reduce((total, file) => total + file.size, 0);
+        console.info("Importación de menú recibida:", JSON.stringify({
+            restaurante_id,
+            cantidad_imagenes: files.length,
+            megabytes_totales: Number((bytesTotalesImagenes / (1024 * 1024)).toFixed(2))
+        }));
+
         const promptTexto = `Transcribe el menú de las imágenes como un OCR literal. La carta es la única fuente de verdad.
 
 REGLAS OBLIGATORIAS:
@@ -405,10 +412,20 @@ REGLAS OBLIGATORIAS:
                     }
                 }
             },
-            max_completion_tokens: 4096
+            // Los menús completos pueden producir bastante JSON; 4096 truncaba la respuesta con cartas extensas.
+            max_completion_tokens: 16000
         });
 
         const eleccion = response.choices?.[0];
+        const uso = response.usage || {};
+        console.info("Respuesta OpenAI importar-menu:", JSON.stringify({
+            restaurante_id,
+            model: response.model || modeloImportacionMenu,
+            finish_reason: eleccion?.finish_reason || null,
+            prompt_tokens: uso.prompt_tokens ?? null,
+            completion_tokens: uso.completion_tokens ?? null,
+            total_tokens: uso.total_tokens ?? null
+        }));
         const contenidoRespuesta = eleccion?.message?.content;
         if (!contenidoRespuesta || eleccion.finish_reason === "length") {
             throw new Error("La respuesta de IA quedó vacía o incompleta; no se reemplazó el menú actual.");
@@ -420,14 +437,6 @@ REGLAS OBLIGATORIAS:
         if (resultadoParcial.productos.some(producto => !String(producto.nombre || "").trim())) {
             throw new Error("La extracción devolvió productos sin nombre; se conserva el menú actual.");
         }
-        const uso = response.usage || {};
-        console.info("Uso OpenAI importar-menu:", JSON.stringify({
-            restaurante_id,
-            model: response.model || modeloImportacionMenu,
-            prompt_tokens: uso.prompt_tokens ?? null,
-            completion_tokens: uso.completion_tokens ?? null,
-            total_tokens: uso.total_tokens ?? null
-        }));
         const todosLosProductos = resultadoParcial.productos;
 
         // Vincula listas de variantes separadas con cada presentación vendible
@@ -535,8 +544,31 @@ REGLAS OBLIGATORIAS:
         });
 
     } catch (error) {
-        console.error("Error al procesar menú:", error);
-        return res.status(500).json({ error: "Hubo un error al procesar las imágenes con Inteligencia Artificial." });
+        const status = error.status || error.response?.status || null;
+        const code = error.code || error.error?.code || null;
+        const type = error.type || error.error?.type || null;
+        const message = error.message || "Error desconocido";
+        console.error("Error al procesar menú con IA:", JSON.stringify({
+            status,
+            code,
+            type,
+            message,
+            details: error.response?.data || null
+        }));
+
+        let mensajeUsuario = "No se pudo completar la lectura del menú. Revisa los registros de Railway para ver el motivo exacto.";
+        if (code === "context_length_exceeded" || /context length|maximum context|too many tokens/i.test(message)) {
+            mensajeUsuario = "Las imágenes juntas exceden la capacidad de una sola lectura. Prueba dividir el menú en grupos de páginas.";
+        } else if (/respuesta de IA quedó vacía o incompleta/i.test(message)) {
+            mensajeUsuario = "La IA empezó a leer el menú, pero no alcanzó a devolver todo el resultado. Prueba dividir las páginas en varios grupos.";
+        } else if (status === 413 || /payload too large|request too large|entity too large/i.test(message)) {
+            mensajeUsuario = "El conjunto de imágenes pesa demasiado para una sola petición. Prueba subirlas en grupos más pequeños.";
+        } else if (status === 429) {
+            mensajeUsuario = "OpenAI rechazó temporalmente la lectura por límite de uso o saldo. Revisa Usage y Billing de tu cuenta.";
+        } else if (status === 401) {
+            mensajeUsuario = "OpenAI rechazó la clave API configurada en Railway. Revisa OPENAI_API_KEY.";
+        }
+        return res.status(500).json({ error: mensajeUsuario });
     }
 });
 
