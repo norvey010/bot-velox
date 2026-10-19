@@ -44,8 +44,15 @@
     }
     .menu-category-enter-next { animation: menuCategoryFromRight .34s cubic-bezier(.2,.75,.25,1) both; }
     .menu-category-enter-previous { animation: menuCategoryFromLeft .34s cubic-bezier(.2,.75,.25,1) both; }
+    .menu-product-reveal {
+        opacity: 0;
+        transform: translateY(9px);
+        transition: opacity .28s ease-out, transform .28s ease-out;
+    }
+    .menu-product-reveal.is-visible { opacity: 1; transform: translateY(0); }
     @media (prefers-reduced-motion: reduce) {
         .menu-category-enter-next, .menu-category-enter-previous { animation-duration: .01ms; }
+        .menu-product-reveal { opacity: 1; transform: none; transition: none; }
     }
 </style>
 </head>
@@ -167,6 +174,7 @@
        let indiceCategoriaActiva = -1;
        let inicioGestoMenu = null;
        let direccionAnimacionMenu = 'next';
+       let observadorTarjetasMenu = null;
 
 async function cargarMenu() {
     var contenedor = document.getElementById('contenedor-menu');
@@ -273,6 +281,10 @@ function obtenerVisualProducto(producto) {
 
 function renderizarProductos(listaProds) {
     var contenedor = document.getElementById('contenedor-menu');
+    if (observadorTarjetasMenu) {
+        observadorTarjetasMenu.disconnect();
+        observadorTarjetasMenu = null;
+    }
     
     if (!listaProds || listaProds.length === 0) {
         contenedor.innerHTML = `<p class="text-center text-slate-400 p-6">No hay productos disponibles.</p>`;
@@ -306,7 +318,7 @@ function renderizarProductos(listaProds) {
             `;
 
             html += `
-                <div class="group bg-[#111214] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-row sm:flex-col">
+                <div data-animacion-scroll class="menu-product-reveal group bg-[#111214] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-row sm:flex-col">
                     <div class="w-24 h-24 shrink-0 bg-[#090a0c] overflow-hidden sm:w-full sm:h-44">${visualProducto}</div>
                     <div class="min-w-0 p-3 sm:p-4 flex flex-col flex-1">
                         <div class="flex-1">
@@ -326,6 +338,19 @@ function renderizarProductos(listaProds) {
     }
 
     contenedor.innerHTML = html;
+    const tarjetas = contenedor.querySelectorAll('[data-animacion-scroll]');
+    if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        tarjetas.forEach(tarjeta => tarjeta.classList.add('is-visible'));
+        return;
+    }
+    observadorTarjetasMenu = new IntersectionObserver(entradas => {
+        entradas.forEach(entrada => {
+            if (!entrada.isIntersecting) return;
+            entrada.target.classList.add('is-visible');
+            observadorTarjetasMenu?.unobserve(entrada.target);
+        });
+    }, { threshold: 0.06, rootMargin: '0px 0px 32px 0px' });
+    tarjetas.forEach(tarjeta => observadorTarjetasMenu.observe(tarjeta));
 }
 function filtrarCategoria(categoriaElegida) {
     const indiceAnterior = indiceCategoriaActiva;
