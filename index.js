@@ -282,14 +282,15 @@ app.post('/webhook', async (req, res) => {
 });
 
 // Ruta inteligente para importar menú múltiple optimizada y sin errores
-const uploadMenuFiles = upload.array('menuFile', 3);
+// Sin límite de cantidad de imágenes durante las pruebas de lectura del menú.
+const uploadMenuFiles = upload.array('menuFile');
 
 app.post('/api/importar-menu', (req, res, next) => {
-    // Devolver un error claro en JSON si exceden el límite de imágenes.
+    // Devolver un error claro si Multer no puede recibir los archivos.
     uploadMenuFiles(req, res, (error) => {
         if (error) {
             if (error instanceof multer.MulterError && error.code === 'LIMIT_UNEXPECTED_FILE') {
-                return res.status(400).json({ error: "Puedes subir máximo 3 archivos por petición." });
+                return res.status(400).json({ error: "No se reconoció uno de los archivos enviados. Vuelve a seleccionar las imágenes del menú." });
             }
             return res.status(400).json({ error: "No se pudieron recibir los archivos del menú." });
         }

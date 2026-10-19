@@ -193,9 +193,9 @@
         <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-4">
     <input type="hidden" id="ai-restaurante-id">
     <div>
-        <label class="block text-sm font-semibold text-slate-200 mb-2">1. Selecciona hasta 3 fotos de tu menú</label>
+        <label class="block text-sm font-semibold text-slate-200 mb-2">1. Selecciona las fotos de tu menú</label>
         <p class="text-xs text-slate-500 mb-3">Toma las fotos con buena luz y asegúrate de que se lean los nombres y precios.</p>
-        <input type="file" id="menuFile" name="menuFile" accept="image/*" multiple max="3" class="block w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-600">
+        <input type="file" id="menuFile" name="menuFile" accept="image/*" multiple class="block w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-600">
     </div>
     <button type="submit" id="btn-procesar-ia" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition">Procesar Menú con IA 🚀</button>
 </form>
@@ -528,11 +528,6 @@ async function abrirMenuEnVivo() {
 
       if (!inputFiles.files || inputFiles.files.length === 0) {
         alert('Selecciona al menos una foto de tu menú para continuar.');
-        return;
-      }
-
-      if (inputFiles.files.length > 3) {
-        alert('Puedes subir hasta 3 fotos por vez. Elige las páginas más claras de tu menú.');
         return;
       }
 
