@@ -17,16 +17,27 @@
     #modal-personalizar.hidden, #modal-pedido.hidden, #barra-carrito.hidden { display: none !important; }
     body.pb-28 { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
     #barra-carrito {
-        position: fixed;
-        left: max(12px, env(safe-area-inset-left, 0px));
-        right: max(12px, env(safe-area-inset-right, 0px));
-        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        position: fixed !important;
+        top: auto !important;
+        left: max(12px, env(safe-area-inset-left, 0px)) !important;
+        right: max(12px, env(safe-area-inset-right, 0px)) !important;
+        bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
         width: auto;
         max-width: 42rem;
         margin-left: auto;
         margin-right: auto;
         z-index: 40;
         box-sizing: border-box;
+        padding: 6px;
+        border: 1px solid rgba(255, 255, 255, .12);
+        border-radius: 22px;
+        background: rgba(13, 14, 16, .88);
+        box-shadow: 0 14px 40px rgba(0, 0, 0, .42);
+        -webkit-backdrop-filter: blur(14px);
+        backdrop-filter: blur(14px);
+        -webkit-transform: translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0);
+        will-change: transform;
     }
     #nombre-restaurante:empty { display: none; }
     /* Ocultar barra de desplazamiento en la barra de categorías */
