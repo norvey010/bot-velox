@@ -2,7 +2,7 @@
 <html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -15,7 +15,19 @@
     <style>
     /* Mantiene ocultos los elementos plegados aunque Tailwind tarde en arrancar. */
     #modal-personalizar.hidden, #modal-pedido.hidden, #barra-carrito.hidden { display: none !important; }
-    #barra-carrito { position: fixed; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+    body.pb-28 { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
+    #barra-carrito {
+        position: fixed;
+        left: max(12px, env(safe-area-inset-left, 0px));
+        right: max(12px, env(safe-area-inset-right, 0px));
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        width: auto;
+        max-width: 42rem;
+        margin-left: auto;
+        margin-right: auto;
+        z-index: 40;
+        box-sizing: border-box;
+    }
     #nombre-restaurante:empty { display: none; }
     /* Ocultar barra de desplazamiento en la barra de categorías */
     .scrollbar-none::-webkit-scrollbar {
