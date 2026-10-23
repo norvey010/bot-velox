@@ -686,6 +686,21 @@ app.post('/api/productos/:id/generar-imagen', async (req, res) => {
             n: 1,
             safety_identifier: safetyIdentifier
         });
+        const usoTokensImagen = respuestaImagen.usage ? {
+            input_tokens: respuestaImagen.usage.input_tokens ?? null,
+            output_tokens: respuestaImagen.usage.output_tokens ?? null,
+            total_tokens: respuestaImagen.usage.total_tokens ?? null,
+            input_tokens_details: respuestaImagen.usage.input_tokens_details || null,
+            output_tokens_details: respuestaImagen.usage.output_tokens_details || null
+        } : null;
+        console.info('Uso OpenAI generar-imagen-producto:', JSON.stringify({
+            restaurante_id: restaurante.id,
+            producto_id: producto.id,
+            modelo: respuestaImagen.model || process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-flare',
+            calidad: respuestaImagen.quality || 'low',
+            tamano: respuestaImagen.size || '1024x1024',
+            uso: usoTokensImagen
+        }));
         const imagenBase64 = respuestaImagen.data?.[0]?.b64_json;
         if (!imagenBase64) throw new Error('OpenAI no devolvió una imagen.');
 
@@ -717,6 +732,7 @@ app.post('/api/productos/:id/generar-imagen', async (req, res) => {
             success: true,
             imagen_url: urlImagen.publicUrl,
             productos_actualizados: idsActualizar.length,
+            uso_tokens: usoTokensImagen,
             mensaje: esPizzaPorTamano
                 ? `Imagen creada y aplicada ${idsActualizar.length === 1 ? 'al tamaño de pizza' : `a los ${idsActualizar.length} tamaños de pizza`}.`
                 : 'Imagen creada y guardada en el producto.'

@@ -499,7 +499,11 @@
         });
         const resultado = await respuesta.json();
         if (!respuesta.ok || !resultado.success) throw new Error(resultado.error || 'No se pudo crear la imagen.');
-        alert(resultado.mensaje || 'Imagen creada y guardada en el producto.');
+        const uso = resultado.uso_tokens;
+        const detalleTokens = uso?.total_tokens != null
+          ? `\nTokens reportados por OpenAI: ${Number(uso.total_tokens).toLocaleString()} total (entrada: ${Number(uso.input_tokens || 0).toLocaleString()}, salida: ${Number(uso.output_tokens || 0).toLocaleString()}).`
+          : '\nOpenAI no devolvió el detalle de tokens para esta generación; el registro quedó en Railway.';
+        alert((resultado.mensaje || 'Imagen creada y guardada en el producto.') + detalleTokens);
         await cargarProductos();
       } catch (error) {
         console.error('Error al crear imagen de producto:', error);
