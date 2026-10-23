@@ -202,6 +202,7 @@
        let inicioGestoMenu = null;
        let direccionAnimacionMenu = 'next';
        let observadorTarjetasMenu = null;
+       let productosRenderizadosPorId = new Map();
 
 async function cargarMenu() {
     var contenedor = document.getElementById('contenedor-menu');
@@ -306,12 +307,52 @@ function obtenerVisualProducto(producto) {
     </div>`;
 }
 
+function esNombreTamanoPizza(nombre) {
+    const normalizado = normalizarTexto(nombre).replace(/\s+/g, ' ').trim();
+    return /^(?:pizza\s+)?(?:porciones?|personal(?:\s+\d+)?|individual|mini|pequena|chica|mediana|grande|familiar(?:\s+\d+)?|jumbo|gigante)(?:\s*\(?\s*\d+(?:[.,]\d+)?\s*(?:cm|pulgadas?)\s*\)?)?$/.test(normalizado)
+        || /^pizza\s+(?:de\s+)?\d+(?:[.,]\d+)?\s*(?:cm|pulgadas?)$/.test(normalizado);
+}
+
+function prepararTarjetasDeCategoria(productos, categoria) {
+    const esCategoriaPizzas = ['pizza', 'pizzas'].includes(normalizarTexto(categoria));
+    if (!esCategoriaPizzas) return productos;
+
+    const tamanos = productos.filter(producto => !esProductoCombo(producto) && esNombreTamanoPizza(producto.nombre));
+    if (tamanos.length < 2) return productos;
+
+    const tamanosOrdenados = [...tamanos].sort((a, b) => (Number(a.precio) || 0) - (Number(b.precio) || 0));
+    const opcionesPorLlave = new Map();
+    tamanosOrdenados.forEach(producto => {
+        opcionesValidasProducto(producto).forEach(opcion => {
+            const llave = `${normalizarTexto(opcion.grupo)}|${normalizarTexto(opcion.nombre)}`;
+            if (!opcionesPorLlave.has(llave)) opcionesPorLlave.set(llave, opcion);
+        });
+    });
+
+    const primeraConFoto = tamanosOrdenados.find(producto => String(producto.imagen_url || '').startsWith('http'));
+    const idGrupo = `grupo-pizzas-${normalizarTexto(categoria).replace(/[^a-z0-9]+/g, '-')}`;
+    const opcionesAgrupadas = [...opcionesPorLlave.values()];
+    const tarjetaAgrupada = {
+        ...tamanosOrdenados[0],
+        id: idGrupo,
+        nombre: 'Pizza',
+        descripcion: opcionesAgrupadas.length ? 'Elige el tamaño y el sabor' : 'Elige el tamaño',
+        precio: Number(tamanosOrdenados[0].precio) || 0,
+        imagen_url: primeraConFoto?.imagen_url || tamanosOrdenados[0].imagen_url || '',
+        opciones: opcionesAgrupadas,
+        _variantesTamano: tamanosOrdenados
+    };
+    const idsTamanos = new Set(tamanos.map(producto => String(producto.id)));
+    return [...productos.filter(producto => !idsTamanos.has(String(producto.id))), tarjetaAgrupada];
+}
+
 function renderizarProductos(listaProds) {
     var contenedor = document.getElementById('contenedor-menu');
     if (observadorTarjetasMenu) {
         observadorTarjetasMenu.disconnect();
         observadorTarjetasMenu = null;
     }
+    productosRenderizadosPorId = new Map();
     
     if (!listaProds || listaProds.length === 0) {
         contenedor.innerHTML = `<p class="text-center text-slate-400 p-6">No hay productos disponibles.</p>`;
@@ -329,16 +370,20 @@ function renderizarProductos(listaProds) {
 
     var html = '';
     for (const [categoria, lista] of Object.entries(productosPorCategoria)) {
-        lista.sort((a, b) => (Number(a.precio) || 0) - (Number(b.precio) || 0));
+        const tarjetasCategoria = prepararTarjetasDeCategoria(lista, categoria)
+            .sort((a, b) => (Number(a.precio) || 0) - (Number(b.precio) || 0));
         const claseAnimacion = direccionAnimacionMenu === 'previous' ? 'menu-category-enter-previous' : 'menu-category-enter-next';
         html += `<div class="mb-8 ${claseAnimacion}"><h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-amber-400">✦</span> ${escaparHtml(categoria)}</h2>`;
         html += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">';
-        lista.forEach(producto => {
+        tarjetasCategoria.forEach(producto => {
+            productosRenderizadosPorId.set(String(producto.id), producto);
             const visualProducto = obtenerVisualProducto(producto);
 
             const personalizacion = obtenerPersonalizacionProducto(producto);
             const requierePersonalizacion = personalizacion.selectores.length > 0;
-            const textoBoton = requierePersonalizacion ? textoBotonPersonalizacion(personalizacion.selectores) : '+ Agregar';
+            const textoBoton = requierePersonalizacion
+                ? textoBotonPersonalizacion(personalizacion.selectores)
+                : '+ Agregar';
             const botonHtml = `
                 <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm transition shadow-lg shadow-red-950/30">
                     ${textoBoton}
@@ -354,7 +399,7 @@ function renderizarProductos(listaProds) {
                             <p class="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed lowercase">${producto.descripcion ? escaparHtml(producto.descripcion).toLowerCase() : ''}</p>
                         </div>
                         <div class="mt-2 sm:mt-5 flex flex-col gap-2 sm:gap-3">
-                            <span class="font-extrabold text-amber-400 text-base sm:text-xl">$${Number(producto.precio).toLocaleString('es-CO')}</span>
+                            <span class="font-extrabold text-amber-400 text-base sm:text-xl">${producto._variantesTamano?.length ? 'Desde ' : ''}$${Number(producto.precio).toLocaleString('es-CO')}</span>
                             ${botonHtml}
                         </div>
                     </div>
@@ -635,10 +680,28 @@ function obtenerPersonalizacionProducto(producto) {
         opciones
     }));
 
+    if (producto._variantesTamano?.length) {
+        selectores.unshift({
+            etiqueta: 'Elige el tamaño',
+            grupo: 'Tamaño',
+            opciones: producto._variantesTamano.map(variante => ({
+                grupo: 'Tamaño',
+                nombre: variante.nombre,
+                productoId: variante.id,
+                precio: Number(variante.precio) || 0
+            }))
+        });
+    }
+
     return { selectores };
 }
 
 function textoBotonPersonalizacion(selectores) {
+    if (selectores.some(selector => normalizarTexto(selector.grupo) === 'tamano')) {
+        return selectores.some(selector => /^(sabor|sabores|especialidad|especialidades)$/i.test(normalizarTexto(selector.grupo)))
+            ? 'Elegir tamaño y sabor'
+            : 'Elegir tamaño';
+    }
     if (selectores.length && selectores.every(selector => /^(sabor|sabores|especialidad|especialidades)$/i.test(normalizarTexto(selector.grupo)))) {
         return 'Elegir sabores';
     }
@@ -654,7 +717,8 @@ function escaparHtml(valor) {
 let productoPersonalizacionActual = null;
 
 function iniciarPersonalizacion(id) {
-    const producto = todosLosProductos.find(p => String(p.id) === String(id));
+    const producto = productosRenderizadosPorId.get(String(id))
+        || todosLosProductos.find(p => String(p.id) === String(id));
     if (!producto) return;
 
     const personalizacion = obtenerPersonalizacionProducto(producto);
@@ -675,7 +739,7 @@ function iniciarPersonalizacion(id) {
                 <input type="radio" name="${idCampo}" data-selector-index="${index}" value="${opcionIndex}" required class="mt-0.5 h-4 w-4 shrink-0 accent-red-500 focus:ring-2 focus:ring-red-400/50">
                 <span class="min-w-0 flex-1">
                     <span class="velox-option-title block text-sm font-bold leading-snug text-slate-100 transition">${escaparHtml(opcion.nombre)}</span>
-                    ${opcion.descripcion ? `<span class="mt-1 block text-xs leading-relaxed text-slate-400">${escaparHtml(opcion.descripcion)}</span>` : ''}
+                    ${opcion.precio != null ? `<span class="mt-1 block text-xs leading-relaxed text-amber-300">$${Number(opcion.precio).toLocaleString('es-CO')}</span>` : opcion.descripcion ? `<span class="mt-1 block text-xs leading-relaxed text-slate-400">${escaparHtml(opcion.descripcion)}</span>` : ''}
                 </span>
             </label>
         `).join('');
@@ -701,17 +765,27 @@ function confirmarPersonalizacion(event) {
     if (!productoPersonalizacionActual) return;
 
     const { producto, selectores } = productoPersonalizacionActual;
-    const selecciones = Array.from(document.querySelectorAll('#campos-personalizar input[type="radio"][required]:checked')).map(input => {
+    const seleccionesConOpcion = Array.from(document.querySelectorAll('#campos-personalizar input[type="radio"][required]:checked')).map(input => {
         const selector = selectores[Number(input.dataset.selectorIndex)];
         const opcion = selector?.opciones[Number(input.value)];
-        if (!selector || !opcion) return '';
-        return `${selector.grupo}: ${opcion.nombre}${opcion.descripcion ? ` — ${opcion.descripcion}` : ''}`;
+        return selector && opcion ? { selector, opcion } : null;
     }).filter(Boolean);
 
-    const nombreCompleto = `${producto.nombre}${selecciones.length ? ` (${selecciones.join(' · ')})` : ''}`;
-    const item = cart.find(i => i.id === producto.id && i.nombre === nombreCompleto);
+    const opcionTamano = seleccionesConOpcion.find(({ selector }) => normalizarTexto(selector.grupo) === 'tamano')?.opcion;
+    const productoElegido = opcionTamano
+        ? (producto._variantesTamano || []).find(variante => String(variante.id) === String(opcionTamano.productoId)) || producto
+        : producto;
+    const selecciones = seleccionesConOpcion.map(({ selector, opcion }) =>
+        `${selector.grupo}: ${opcion.nombre}${opcion.descripcion ? ` — ${opcion.descripcion}` : ''}`
+    );
+
+    const seleccionesSinTamano = seleccionesConOpcion
+        .filter(({ selector }) => normalizarTexto(selector.grupo) !== 'tamano')
+        .map(({ selector, opcion }) => `${selector.grupo}: ${opcion.nombre}${opcion.descripcion ? ` — ${opcion.descripcion}` : ''}`);
+    const nombreCompleto = `${productoElegido.nombre}${seleccionesSinTamano.length ? ` (${seleccionesSinTamano.join(' · ')})` : ''}`;
+    const item = cart.find(i => i.id === productoElegido.id && i.nombre === nombreCompleto);
     if (item) item.cantidad++;
-    else cart.push({ id: producto.id, nombre: nombreCompleto, precio: Number(producto.precio), cantidad: 1 });
+    else cart.push({ id: productoElegido.id, nombre: nombreCompleto, precio: Number(opcionTamano?.precio ?? productoElegido.precio), cantidad: 1 });
 
     actualizarBarraCarrito();
     cerrarModalPersonalizar();
