@@ -15,6 +15,7 @@
     <style>
     /* Mantiene ocultos los elementos plegados aunque Tailwind tarde en arrancar. */
     #modal-personalizar.hidden, #modal-pedido.hidden, #barra-carrito.hidden { display: none !important; }
+    #barra-carrito { bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
     #nombre-restaurante:empty { display: none; }
     /* Ocultar barra de desplazamiento en la barra de categorías */
     .scrollbar-none::-webkit-scrollbar {
@@ -720,6 +721,24 @@ document.addEventListener('click', event => {
             actualizarBarraCarrito();
         }
 
+        function ajustarBarraCarritoAlViewport() {
+            var barra = document.getElementById('barra-carrito');
+            if (!barra) return;
+            var viewport = window.visualViewport;
+            var espacioFueraDeVista = viewport
+                ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+                : 0;
+            barra.style.bottom = `calc(${espacioFueraDeVista}px + 1rem + env(safe-area-inset-bottom, 0px))`;
+        }
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', ajustarBarraCarritoAlViewport, { passive: true });
+            window.visualViewport.addEventListener('scroll', ajustarBarraCarritoAlViewport, { passive: true });
+        }
+        window.addEventListener('resize', ajustarBarraCarritoAlViewport, { passive: true });
+        window.addEventListener('orientationchange', () => setTimeout(ajustarBarraCarritoAlViewport, 120), { passive: true });
+        ajustarBarraCarritoAlViewport();
+
         function actualizarBarraCarrito() {
             var barra = document.getElementById('barra-carrito');
             var cantItems = document.getElementById('cant-items');
@@ -734,6 +753,7 @@ document.addEventListener('click', event => {
 
             if (totalCantidad > 0) {
                 barra.classList.remove('hidden');
+                ajustarBarraCarritoAlViewport();
                 cantItems.innerText = totalCantidad + (totalCantidad === 1 ? ' ítem' : ' ítems');
                 totalCarrito.innerText = '$' + totalPrecio.toLocaleString('es-CO');
             } else {
