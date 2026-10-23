@@ -268,8 +268,14 @@ async function cargarMenu() {
     else renderizarProductos(todosLosProductos);
 }
 
-function obtenerVisualProducto(producto) {
-    const url = (producto.imagen_url || '').trim();
+function esNombreTamanoPizza(nombre) {
+    const normalizado = normalizarTexto(nombre).replace(/\s+/g, ' ').trim();
+    return /^(?:pizza\s+)?(?:porci(?:on|ones)|personal(?:\s+\d+)?|individual|mini|pequena|chica|mediana|grande|familiar(?:\s+\d+)?|jumbo|gigante)(?:\s*\(?\s*\d+(?:[.,]\d+)?\s*(?:cm|pulgadas?)\s*\)?)?$/.test(normalizado)
+        || /^pizza\s+(?:de\s+)?\d+(?:[.,]\d+)?\s*(?:cm|pulgadas?)$/.test(normalizado);
+}
+
+function obtenerVisualProducto(producto, imagenCompartida = '') {
+    const url = (imagenCompartida || producto.imagen_url || '').trim();
     const esImagenGenericaAnterior = url.includes('photo-1504674900247-0877df9cc836');
     if (url.startsWith('http') && !esImagenGenericaAnterior) {
         return `<img src="${url}" alt="${producto.nombre}" loading="lazy" decoding="async" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">`;
@@ -296,7 +302,9 @@ function obtenerVisualProducto(producto) {
     // Selección estable por producto: el mismo plato conserva su visual al recargar.
     const llave = String(producto.id || producto.nombre || 'menu');
     const hash = Array.from(llave).reduce((total, letra) => total + letra.charCodeAt(0), 0);
-    const icono = visual.iconos[hash % visual.iconos.length];
+    const icono = esNombreTamanoPizza(producto.nombre) && texto.includes('pizza')
+        ? '🍕'
+        : visual.iconos[hash % visual.iconos.length];
     return `<div role="img" aria-label="Ilustración para ${producto.categoria || 'menú'}" class="relative w-full h-full flex items-center justify-center overflow-hidden bg-gradient-to-br ${visual.fondo}">
         <div class="absolute -right-8 -top-12 w-44 h-44 rounded-full border border-white/5"></div>
         <div class="absolute -left-10 -bottom-16 w-52 h-52 rounded-full border border-white/5"></div>
@@ -330,11 +338,17 @@ function renderizarProductos(listaProds) {
     var html = '';
     for (const [categoria, lista] of Object.entries(productosPorCategoria)) {
         lista.sort((a, b) => (Number(a.precio) || 0) - (Number(b.precio) || 0));
+        const esCategoriaPizzas = ['pizza', 'pizzas'].includes(normalizarTexto(categoria));
+        const productosPorTamanoPizza = esCategoriaPizzas ? lista.filter(producto => esNombreTamanoPizza(producto.nombre)) : [];
+        const imagenCompartidaPizza = productosPorTamanoPizza
+            .map(producto => String(producto.imagen_url || '').trim())
+            .find(url => url.startsWith('http') && !url.includes('photo-1504674900247-0877df9cc836')) || '';
         const claseAnimacion = direccionAnimacionMenu === 'previous' ? 'menu-category-enter-previous' : 'menu-category-enter-next';
         html += `<div class="mb-8 ${claseAnimacion}"><h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-amber-400">✦</span> ${escaparHtml(categoria)}</h2>`;
         html += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">';
         lista.forEach(producto => {
-            const visualProducto = obtenerVisualProducto(producto);
+            const comparteImagenPizza = productosPorTamanoPizza.includes(producto);
+            const visualProducto = obtenerVisualProducto(producto, comparteImagenPizza ? imagenCompartidaPizza : '');
 
             const personalizacion = obtenerPersonalizacionProducto(producto);
             const requierePersonalizacion = personalizacion.selectores.length > 0;
