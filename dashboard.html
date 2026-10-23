@@ -167,6 +167,7 @@
       <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
         <div class="p-4 border-b border-slate-700">
           <h3 class="font-bold text-white">Menú Actual</h3>
+          <p class="mt-1 text-xs text-slate-400">Sube una foto real o crea una imagen ilustrativa con IA. Cada generación tiene un costo en tu cuenta de OpenAI y se guarda para reutilizarla.</p>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
@@ -410,9 +411,12 @@
             <td class="p-4 font-bold text-white">${prod.nombre}</td>
             <td class="p-4 text-xs text-slate-400">${prod.descripcion || 'Sin descripción'}</td>
             <td class="p-4 font-bold text-emerald-400">$${Number(prod.precio).toLocaleString()}</td>
-            <td class="p-4 text-center space-x-2">
+            <td class="p-4 text-center">
+              <div class="flex flex-wrap justify-center gap-2">
+              <button onclick='generarImagenIA(${JSON.stringify(String(prod.id))}, ${Boolean(prod.imagen_url)})' class="bg-fuchsia-700 hover:bg-fuchsia-600 disabled:opacity-60 text-white px-2.5 py-1 rounded text-xs">${prod.imagen_url ? '✨ Cambiar por IA' : '✨ Crear imagen IA'}</button>
               <button onclick="prepararEdicionProducto(${prod.id})" class="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded text-xs">✏️ Editar</button>
               <button onclick="eliminarProducto(${prod.id})" class="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded text-xs">🗑️ Borrar</button>
+              </div>
             </td>
           </tr>
         `;
@@ -461,6 +465,52 @@
       document.getElementById('form-producto').reset();
       cargarProductos();
       alert('¡Producto guardado con éxito!');
+    }
+
+    let generandoImagenIA = false;
+
+    async function generarImagenIA(productoId, tieneImagen) {
+      if (!RESTAURANTE_ID || generandoImagenIA) return;
+      const accion = tieneImagen ? 'reemplazará la imagen actual' : 'creará una imagen nueva';
+      const continuar = confirm(`La IA ${accion} a partir del nombre y la descripción del producto. La imagen será ilustrativa, se guardará en tu menú y cada generación tiene un costo en tu cuenta de OpenAI. Si es un tamaño de pizza, la imagen se aplicará a todos los tamaños. ¿Deseas continuar?`);
+      if (!continuar) return;
+
+      const { data: { session }, error: errorSesion } = await supabaseClient.auth.getSession();
+      if (errorSesion || !session?.access_token) {
+        alert('Tu sesión venció. Inicia sesión de nuevo para crear imágenes.');
+        return;
+      }
+
+      generandoImagenIA = true;
+      const botones = Array.from(document.querySelectorAll('#productos-body button'));
+      const textoOriginal = botones.map(boton => boton.textContent);
+      botones.forEach(boton => { boton.disabled = true; });
+      const botonActivo = botones.find(boton => boton.getAttribute('onclick')?.includes(String(productoId)) && boton.textContent.includes('IA'));
+      if (botonActivo) botonActivo.textContent = 'Generando imagen…';
+
+      try {
+        const respuesta = await fetch(`/api/productos/${encodeURIComponent(productoId)}/generar-imagen`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ restaurante_id: RESTAURANTE_ID })
+        });
+        const resultado = await respuesta.json();
+        if (!respuesta.ok || !resultado.success) throw new Error(resultado.error || 'No se pudo crear la imagen.');
+        alert(resultado.mensaje || 'Imagen creada y guardada en el producto.');
+        await cargarProductos();
+      } catch (error) {
+        console.error('Error al crear imagen de producto:', error);
+        alert(error.message || 'No se pudo crear la imagen.');
+      } finally {
+        generandoImagenIA = false;
+        botones.forEach((boton, index) => {
+          boton.disabled = false;
+          if (textoOriginal[index] && boton.isConnected) boton.textContent = textoOriginal[index];
+        });
+      }
     }
 
     async function eliminarProducto(id) {
