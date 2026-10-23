@@ -302,6 +302,7 @@ function renderizarProductos(listaProds) {
 
     var html = '';
     for (const [categoria, lista] of Object.entries(productosPorCategoria)) {
+        lista.sort((a, b) => (Number(a.precio) || 0) - (Number(b.precio) || 0));
         const claseAnimacion = direccionAnimacionMenu === 'previous' ? 'menu-category-enter-previous' : 'menu-category-enter-next';
         html += `<div class="mb-8 ${claseAnimacion}"><h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-amber-400">✦</span> ${escaparHtml(categoria)}</h2>`;
         html += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">';
@@ -365,6 +366,17 @@ function filtrarCategoria(categoriaElegida) {
             ? 'shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-red-600 text-white transition shadow whitespace-nowrap'
             : 'shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap';
     });
+    const barraCategorias = document.getElementById('contenedor-categorias');
+    const botonActivo = Array.from(document.querySelectorAll('#contenedor-categorias [data-categoria]'))
+        .find(boton => boton.dataset.categoria === categoriaElegida);
+    if (barraCategorias && botonActivo) {
+        const posicion = botonActivo.getBoundingClientRect().left
+            - barraCategorias.getBoundingClientRect().left
+            + barraCategorias.scrollLeft
+            - (barraCategorias.clientWidth - botonActivo.clientWidth) / 2;
+        const limite = barraCategorias.scrollWidth - barraCategorias.clientWidth;
+        barraCategorias.scrollTo({ left: Math.max(0, Math.min(limite, posicion)), behavior: 'smooth' });
+    }
     const filtrados = todosLosProductos.filter(p => resolverCategoriaCombo(p) === categoriaElegida);
     renderizarProductos(filtrados);
 }
@@ -374,9 +386,6 @@ function cambiarCategoriaPorDeslizamiento(direccion) {
     const siguiente = Math.max(0, Math.min(categoriasMenu.length - 1, indiceCategoriaActiva + direccion));
     if (siguiente === indiceCategoriaActiva) return;
     filtrarCategoria(categoriasMenu[siguiente]);
-    const botonActivo = Array.from(document.querySelectorAll('#contenedor-categorias [data-categoria]'))
-        .find(boton => boton.dataset.categoria === categoriasMenu[siguiente]);
-    botonActivo?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
 
 // Solo interpreta gestos laterales iniciados sobre el catálogo. El scroll vertical
