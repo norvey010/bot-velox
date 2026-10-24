@@ -134,12 +134,40 @@ app.post('/webhook', async (req, res) => {
             const message = value?.messages?.[0];
             
             if (message) {
+                const idMensajeWhatsApp = String(message.id || '').trim();
                 const numeroRemitente = message.from;
                 const textoUsuario = message.text?.body;
 
                 if (!textoUsuario) {
                     console.log("⚠️ Mensaje no contiene texto. Se ignora.");
                     return;
+                }
+
+                // Un reintento del mismo mensaje no debe volver a consumir IA ni crear otra comanda.
+                // La columna/índice se instala con la migración de Supabase incluida en el repositorio.
+                let deduplicacionPersistenteDisponible = Boolean(idMensajeWhatsApp);
+                if (idMensajeWhatsApp) {
+                    const { data: pedidoExistente, error: errorConsultaDuplicado } = await supabase
+                        .from('pedidos')
+                        .select('id')
+                        .eq('whatsapp_message_id', idMensajeWhatsApp)
+                        .maybeSingle();
+
+                    if (pedidoExistente) {
+                        console.info('Reintento de WhatsApp ignorado; la comanda ya existe:', idMensajeWhatsApp);
+                        return;
+                    }
+                    if (errorConsultaDuplicado) {
+                        const columnaAunNoInstalada = /whatsapp_message_id.*(does not exist|not found|schema cache)|column .*whatsapp_message_id/i.test(errorConsultaDuplicado.message || '');
+                        if (columnaAunNoInstalada) {
+                            deduplicacionPersistenteDisponible = false;
+                            console.warn('Falta aplicar la migración de idempotencia de WhatsApp en Supabase.');
+                        } else {
+                            // Se continúa para no perder pedidos por un fallo temporal de lectura;
+                            // el índice único seguirá evitando duplicados al insertar.
+                            console.error('No se pudo consultar el ID de WhatsApp:', errorConsultaDuplicado.message);
+                        }
+                    }
                 }
                 console.log(`Mensaje recibido de ${numeroRemitente} (Phone ID: ${phoneNumberId}): ${textoUsuario}`);
 
@@ -209,8 +237,7 @@ app.post('/webhook', async (req, res) => {
                             totalLimpio = parseFloat(rawTotal) || 0;
                         }
 
-                        const { error } = await supabase.from('pedidos').insert([
-                            {
+                        const pedidoNuevo = {
                                 restaurante_id: restauranteIdActual,
                                 cliente_telefono: numeroRemitente,
                                 cliente_nombre: clienteNombre,
@@ -218,12 +245,23 @@ app.post('/webhook', async (req, res) => {
                                 total: totalLimpio,
                                 direccion: direccionCliente,
                                 metodo_pago: metodoPago,
-                                estado: 'Pendiente'
-                            }
-                        ]);
+                                estado: 'Pendiente',
+                                ...(deduplicacionPersistenteDisponible ? { whatsapp_message_id: idMensajeWhatsApp } : {})
+                        };
+                        const { error } = await supabase.from('pedidos').insert([pedidoNuevo]);
 
                         if (error) {
-                            console.error('❌ Error devuelto por Supabase:', error.message);
+                            if (error.code === '23505' && idMensajeWhatsApp) {
+                                console.info('Comanda duplicada bloqueada por el índice único de WhatsApp:', idMensajeWhatsApp);
+                            } else if (deduplicacionPersistenteDisponible && /whatsapp_message_id.*(does not exist|not found|schema cache)|column .*whatsapp_message_id/i.test(error.message || '')) {
+                                // Compatibilidad temporal hasta que se aplique la migración SQL.
+                                delete pedidoNuevo.whatsapp_message_id;
+                                const { error: errorSinId } = await supabase.from('pedidos').insert([pedidoNuevo]);
+                                if (errorSinId) console.error('❌ Error al guardar pedido sin columna de idempotencia:', errorSinId.message);
+                                else console.warn('Pedido guardado sin idempotencia: aplica la migración SQL para activar la protección.');
+                            } else {
+                                console.error('❌ Error devuelto por Supabase:', error.message);
+                            }
                         } else {
                             console.log('✅ Pedido guardado exitosamente en Supabase para el restaurante:', restauranteIdActual);
                         }
