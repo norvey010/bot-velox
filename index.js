@@ -51,6 +51,10 @@ app.get('/', (req, res) => {
 
 // Ruta de prueba de la IA con OpenAI
 app.get('/probar-ia', async (req, res) => {
+  if (process.env.ENABLE_AI_DIAGNOSTIC !== 'true') {
+    return res.sendStatus(404);
+  }
+
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
