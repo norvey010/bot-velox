@@ -153,7 +153,7 @@
                 <!-- Aquí se pintan los platos dinámicamente con JS -->
             </div>
             <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-800 font-bold">
-                <span class="text-sm text-slate-300">Total a Pagar:</span>
+                <span class="text-sm text-slate-300">Total estimado:</span>
             <span id="total-modal-carrito" class="text-amber-400 text-base">$0</span>
             </div>
         </div>
@@ -855,93 +855,79 @@ function eliminarItemCarrito(index) {
         }
 
     async function confirmarYEnviarPedido(event) {
-    event.preventDefault();
+        event.preventDefault();
 
-    var direccion = document.getElementById('input-direccion').value;
-    var metodoPago = document.getElementById('select-pago').value;
-    var notas = document.getElementById('input-notas').value;
+        var direccion = document.getElementById('input-direccion').value.trim();
+        var metodoPago = document.getElementById('select-pago').value;
+        var notas = document.getElementById('input-notas').value.trim();
+        if (cart.length === 0) return;
 
-    if (cart.length === 0) return;
-
-    var total = 0;
-    var detalles = [];
-    for (var i = 0; i < cart.length; i++) {
-        total += (cart[i].precio * cart[i].cantidad);
-        detalles.push(cart[i].cantidad + ' x ' + cart[i].nombre);
-    }
-    var detallePedido = detalles.join(', ');
-
-    // Validamos que ya tengamos los datos del restaurante cargados en memoria
-    if (!window.RESTAURANTE_ACTUAL || !window.RESTAURANTE_ACTUAL.id) {
-        alert("⚠️ Error: No se encontró el restaurante en el sistema.");
-        return;
-    }
-
-    var restauranteData = window.RESTAURANTE_ACTUAL;
-    var telefonoNegocio = "";
-    var nombreNegocio = restauranteData.nombre_restaurante || "Restaurante";
-
-    var telefonoCrudo = restauranteData.telefono || "";
-    
-    if (telefonoCrudo) {
-        let telLimpio = String(telefonoCrudo).replace(/\D/g, '');
-        if (telLimpio.length === 10) {
-            telefonoNegocio = "57" + telLimpio;
-        } else {
-            telefonoNegocio = telLimpio;
-        }
-    }
-
-    if (!telefonoNegocio) {
-        alert("⚠️ Error: El restaurante no tiene un número de WhatsApp configurado.");
-        return;
-    }
-
-    try {
-        // 2. Guarda el pedido en la base de datos usando el ID real
-        var resPedido = await supabaseClient.from('pedidos').insert([{
-            restaurante_id: restauranteData.id,
-            cliente_nombre: 'Anónimo',
-            cliente_telefono: 'Sin teléfono',
-            direccion: direccion,
-            detalle: detallePedido,
-            items: detallePedido,
-            total: total,
-            estado: 'Pendiente',
-            metodo_pago: metodoPago,
-            notas: notas || ''
-        }]);
-
-        if (resPedido.error) {
-            console.error("Error de Supabase:", resPedido.error);
-            alert("Error al guardar: " + resPedido.error.message);
+        if (!window.RESTAURANTE_ACTUAL || !window.RESTAURANTE_ACTUAL.id) {
+            alert('⚠️ Error: No se encontró el restaurante en el sistema.');
             return;
         }
 
-        // 3. Arma el mensaje estructurado para WhatsApp
-        var mensajeWhatsapp = `*NUEVO PEDIDO - ${nombreNegocio}*\n\n` +
-            `• *Dirección:* ${direccion}\n` +
-            `• *Pedido:* ${detallePedido}\n` +
-            `• *Total:* $ ${total.toLocaleString('es-CO')}\n` +
-            `• *Pago:* ${metodoPago}\n` +
-            (notas ? `• *Notas:* ${notas}\n` : '') +
-            `\n\n[/NUEVO_PEDIDO]`;
+        var botonEnviar = document.querySelector('#form-confirmar-pedido button[type="submit"]');
+        if (botonEnviar) {
+            botonEnviar.disabled = true;
+            botonEnviar.textContent = 'Registrando pedido…';
+        }
 
-        var linkFinal = 'https://wa.me/' + telefonoNegocio + '?text=' + encodeURIComponent(mensajeWhatsapp);
+        try {
+            // El servidor consulta los productos y recalcula el total con los precios oficiales.
+            var respuesta = await fetch('/api/pedidos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    restaurante_id: window.RESTAURANTE_ACTUAL.id,
+                    direccion: direccion,
+                    metodo_pago: metodoPago,
+                    notas: notas,
+                    items: cart.map(function(item) {
+                        return { id: item.id, nombre: item.nombre, cantidad: item.cantidad };
+                    })
+                })
+            });
+            var resultado = await respuesta.json().catch(function() { return {}; });
+            if (!respuesta.ok || !resultado.success) {
+                alert(resultado.error || 'No se pudo registrar el pedido. Inténtalo de nuevo.');
+                return;
+            }
 
-        // 4. Limpia el carrito y abre el WhatsApp correcto
-        cart = [];
-        if (typeof actualizarBarraCarrito === 'function') actualizarBarraCarrito();
-        if (typeof cerrarModalPedido === 'function') cerrarModalPedido();
+            var total = Number(resultado.total);
+            var detallePedido = resultado.detalle;
+            var nombreNegocio = resultado.nombre_restaurante || window.RESTAURANTE_ACTUAL.nombre_restaurante || 'Restaurante';
+            var telefonoCrudo = resultado.telefono_restaurante || window.RESTAURANTE_ACTUAL.telefono || '';
+            var telefonoNegocio = String(telefonoCrudo).replace(/\D/g, '');
+            if (telefonoNegocio.length === 10) telefonoNegocio = '57' + telefonoNegocio;
 
-        window.location.href = linkFinal;
-        return;
+            var mensajeWhatsapp = `*NUEVO PEDIDO - ${nombreNegocio}*\n\n` +
+                `• *Dirección:* ${direccion}\n` +
+                `• *Pedido:* ${detallePedido}\n` +
+                `• *Total:* $ ${total.toLocaleString('es-CO')}\n` +
+                `• *Pago:* ${metodoPago}\n` +
+                (notas ? `• *Notas:* ${notas}\n` : '') +
+                `\n\n[/NUEVO_PEDIDO]`;
 
-    } catch (err) {
-        console.error("Error inesperado:", err);
-        alert("Error inesperado: " + err.message);
+            cart = [];
+            if (typeof actualizarBarraCarrito === 'function') actualizarBarraCarrito();
+            if (typeof cerrarModalPedido === 'function') cerrarModalPedido();
+
+            if (!telefonoNegocio) {
+                alert('El pedido quedó guardado, pero el restaurante no tiene un WhatsApp configurado.');
+                return;
+            }
+            window.location.href = 'https://wa.me/' + telefonoNegocio + '?text=' + encodeURIComponent(mensajeWhatsapp);
+        } catch (err) {
+            console.error('Error inesperado al confirmar pedido:', err);
+            alert('No se pudo registrar el pedido. Revisa tu conexión e inténtalo de nuevo.');
+        } finally {
+            if (botonEnviar) {
+                botonEnviar.disabled = false;
+                botonEnviar.textContent = 'Confirmar Pedido 🚀';
+            }
+        }
     }
-}
         window.cargarMenu = cargarMenu;
         window.onload = function() {
             cargarMenu();

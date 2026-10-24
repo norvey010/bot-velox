@@ -11,8 +11,11 @@ const OpenAI = require('openai'); // 👈 Migrado a OpenAI
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY }); // 👈 Inicialización con tu API Key
 const supabaseUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 const supabaseKey = (process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || '').trim();
+// Las escrituras de pedidos usan una clave privada del servidor. Nunca se expone al navegador.
+const supabaseAdminKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || '').trim();
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseAdmin = supabaseAdminKey ? createClient(supabaseUrl, supabaseAdminKey) : null;
 const app = express();
 app.disable('x-powered-by');
 app.use((req, res, next) => {
@@ -412,6 +415,109 @@ app.post('/webhook', async (req, res) => {
         }
     } catch (error) {
         console.error("Error en el webhook:", error.message || 'Error desconocido');
+    }
+});
+
+// El total confiable se calcula en el servidor con los precios guardados en Supabase.
+app.post('/api/pedidos', async (req, res) => {
+    try {
+        if (!supabaseAdmin) {
+            return res.status(503).json({ error: 'El servidor no está configurado para registrar pedidos de forma segura.' });
+        }
+        const restauranteId = String(req.body?.restaurante_id || '').trim();
+        const direccion = String(req.body?.direccion || '').trim();
+        const metodoPago = String(req.body?.metodo_pago || '').trim();
+        const notas = String(req.body?.notas || '').trim();
+        const itemsSolicitados = req.body?.items;
+        const metodosPagoPermitidos = new Set(['Efectivo', 'Transferencia (Nequi / Daviplata)', 'Datáfono']);
+
+        if (!restauranteId || restauranteId.length > 80 || !direccion || direccion.length > 250
+            || notas.length > 500 || !metodosPagoPermitidos.has(metodoPago)
+            || !Array.isArray(itemsSolicitados) || itemsSolicitados.length === 0 || itemsSolicitados.length > 30) {
+            return res.status(400).json({ error: 'Revisa la dirección, el método de pago y los productos del pedido.' });
+        }
+        if (!limitarAccion(`pedido:${restauranteId}`, 60, 60 * 1000)) {
+            return res.status(429).json({ error: 'El restaurante recibió muchos pedidos seguidos. Espera un momento y vuelve a intentar.' });
+        }
+
+        const { data: restaurante, error: errorRestaurante } = await supabaseAdmin
+            .from('restaurantes')
+            .select('id, nombre_restaurante, telefono')
+            .eq('id', restauranteId)
+            .maybeSingle();
+        if (errorRestaurante) throw errorRestaurante;
+        if (!restaurante) return res.status(404).json({ error: 'No encontramos este restaurante.' });
+        if (!String(restaurante.telefono || '').replace(/\D/g, '')) {
+            return res.status(400).json({ error: 'Este restaurante todavía no tiene un WhatsApp configurado para recibir pedidos.' });
+        }
+
+        const idsProductos = [...new Set(itemsSolicitados.map(item => String(item?.id || '').trim()))];
+        if (idsProductos.some(id => !id || id.length > 80)) {
+            return res.status(400).json({ error: 'Uno de los productos del pedido no es válido.' });
+        }
+        const { data: productos, error: errorProductos } = await supabaseAdmin
+            .from('productos')
+            .select('id, nombre, precio, disponible')
+            .eq('restaurante_id', restaurante.id)
+            .eq('disponible', true)
+            .in('id', idsProductos);
+        if (errorProductos) throw errorProductos;
+
+        const productosPorId = new Map((productos || []).map(producto => [String(producto.id), producto]));
+        if (productosPorId.size !== idsProductos.length) {
+            return res.status(400).json({ error: 'Un producto ya no está disponible. Actualiza la carta e inténtalo de nuevo.' });
+        }
+
+        let total = 0;
+        let cantidadTotal = 0;
+        const lineasPedido = [];
+        for (const item of itemsSolicitados) {
+            const producto = productosPorId.get(String(item.id));
+            const cantidad = Number(item.cantidad);
+            const precio = Number(producto?.precio);
+            const nombreEnviado = String(item.nombre || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+            if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 30
+                || !Number.isFinite(precio) || precio < 0
+                || !nombreEnviado.startsWith(String(producto.nombre))) {
+                return res.status(400).json({ error: 'Uno de los productos o cantidades no es válido. Actualiza la carta e inténtalo de nuevo.' });
+            }
+            cantidadTotal += cantidad;
+            if (cantidadTotal > 60) return res.status(400).json({ error: 'El pedido supera la cantidad máxima de productos.' });
+            total += precio * cantidad;
+            lineasPedido.push(`${cantidad} x ${nombreEnviado.slice(0, 300)}`);
+        }
+
+        const detalle = lineasPedido.join(', ');
+        const pedido = {
+            restaurante_id: restaurante.id,
+            cliente_nombre: 'Anónimo',
+            cliente_telefono: 'Sin teléfono',
+            direccion,
+            detalle,
+            items: detalle,
+            total: Math.round(total),
+            estado: 'Pendiente',
+            metodo_pago: metodoPago,
+            notas
+        };
+        const { data: pedidoGuardado, error: errorGuardar } = await supabaseAdmin
+            .from('pedidos')
+            .insert([pedido])
+            .select('id')
+            .maybeSingle();
+        if (errorGuardar) throw errorGuardar;
+
+        return res.status(201).json({
+            success: true,
+            pedido_id: pedidoGuardado?.id || null,
+            detalle,
+            total: pedido.total,
+            nombre_restaurante: restaurante.nombre_restaurante || 'Restaurante',
+            telefono_restaurante: restaurante.telefono || ''
+        });
+    } catch (error) {
+        console.error('No se pudo registrar el pedido:', error.message || 'Error desconocido');
+        return res.status(500).json({ error: 'No se pudo registrar el pedido. Inténtalo de nuevo en un momento.' });
     }
 });
 
