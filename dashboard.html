@@ -239,6 +239,13 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let paginaActual = 0;
     const porPagina = 15;
+    const pedidosRenderizados = new Map();
+
+    function escaparHtmlUI(valor) {
+      return String(valor ?? '').replace(/[&<>"']/g, caracter => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[caracter]);
+    }
 
     async function inicializarDashboard() {
       // 1. Verificar sesión
@@ -327,6 +334,22 @@
     function renderTablaPedidos(pedidos) {
       const tbody = document.getElementById('pedidos-body');
       tbody.innerHTML = '';
+      pedidosRenderizados.clear();
+
+      if (!tbody.dataset.handlersBound) {
+        tbody.addEventListener('click', event => {
+          const boton = event.target.closest('[data-print-order]');
+          if (boton) {
+            const pedido = pedidosRenderizados.get(boton.dataset.printOrder);
+            if (pedido) imprimirTicketAutomatico(pedido);
+          }
+        });
+        tbody.addEventListener('change', event => {
+          const selector = event.target.closest('[data-order-state]');
+          if (selector) actualizarEstado(selector.dataset.orderState, selector.value);
+        });
+        tbody.dataset.handlersBound = 'true';
+      }
 
       if (!pedidos || pedidos.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">No hay pedidos registrados.</td></tr>`;
@@ -334,6 +357,8 @@
       }
 
       pedidos.forEach(p => {
+        const pedidoId = String(p.id);
+        pedidosRenderizados.set(pedidoId, p);
         const fecha = new Date(p.created_at).toLocaleString('es-CO');
         const badgeColor = getBadgeColor(p.estado || 'pendiente');
 
@@ -341,21 +366,21 @@
           <tr class="hover:bg-slate-750 transition">
             <td class="p-4 text-xs text-slate-400 whitespace-nowrap">${fecha}</td>
             <td class="p-4">
-              <div class="font-medium text-white">${p.cliente_nombre || 'Cliente'}</div>
-              <div class="text-xs text-slate-400">${p.cliente_telefono || ''}</div>
+              <div class="font-medium text-white">${escaparHtmlUI(p.cliente_nombre || 'Cliente')}</div>
+              <div class="text-xs text-slate-400">${escaparHtmlUI(p.cliente_telefono || '')}</div>
             </td>
-            <td class="p-4 max-w-xs truncate text-slate-300" title="${p.items}">${p.items || 'Sin detalle'}</td>
-            <td class="p-4 max-w-xs truncate text-slate-300" title="${p.direccion}">${p.direccion || 'Sin dirección'}</td>
+            <td class="p-4 max-w-xs truncate text-slate-300" title="${escaparHtmlUI(p.items || 'Sin detalle')}">${escaparHtmlUI(p.items || 'Sin detalle')}</td>
+            <td class="p-4 max-w-xs truncate text-slate-300" title="${escaparHtmlUI(p.direccion || 'Sin dirección')}">${escaparHtmlUI(p.direccion || 'Sin dirección')}</td>
             <td class="p-4 font-bold text-emerald-400">$${(p.total || 0).toLocaleString()}</td>
             <td class="p-4 text-center flex items-center justify-center gap-2">
-              <select onchange="actualizarEstado('${p.id}', this.value)" class="text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeColor} bg-slate-900 cursor-pointer focus:outline-none">
+              <select data-order-state="${escaparHtmlUI(pedidoId)}" class="text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeColor} bg-slate-900 cursor-pointer focus:outline-none">
                 <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>🟡 Pendiente</option>
                 <option value="preparando" ${p.estado === 'preparando' ? 'selected' : ''}>🟠 Preparando</option>
                 <option value="en_camino" ${p.estado === 'en_camino' ? 'selected' : ''}>🔵 En Camino</option>
                 <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>🟢 Entregado</option>
                 <option value="cancelado" ${p.estado === 'cancelado' ? 'selected' : ''}>🔴 Cancelado</option>
               </select>
-              <button onclick='imprimirTicketAutomatico(${JSON.stringify(p)})' class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs">🖨️</button>
+              <button type="button" data-print-order="${escaparHtmlUI(pedidoId)}" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs" aria-label="Imprimir pedido">🖨️</button>
             </td>
           </tr>
         `;
@@ -408,8 +433,8 @@
       data.forEach(prod => {
         tbody.innerHTML += `
           <tr class="hover:bg-slate-750 transition">
-            <td class="p-4 font-bold text-white">${prod.nombre}</td>
-            <td class="p-4 text-xs text-slate-400">${prod.descripcion || 'Sin descripción'}</td>
+            <td class="p-4 font-bold text-white">${escaparHtmlUI(prod.nombre)}</td>
+            <td class="p-4 text-xs text-slate-400">${escaparHtmlUI(prod.descripcion || 'Sin descripción')}</td>
             <td class="p-4 font-bold text-emerald-400">$${Number(prod.precio).toLocaleString()}</td>
             <td class="p-4 text-center">
               <div class="flex flex-wrap justify-center gap-2">
@@ -592,6 +617,11 @@ async function abrirMenuEnVivo() {
 
       const formData = new FormData(formElement);
       formData.set('restaurante_id', idRestauranteFinal);
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session?.access_token) {
+        alert('Tu sesión venció. Inicia sesión de nuevo antes de importar el menú.');
+        return;
+      }
 
       if (btnProcesar) {
         btnProcesar.innerText = '🤖 Analizando menú con IA... (Esto puede tomar unos segundos)';
@@ -601,6 +631,7 @@ async function abrirMenuEnVivo() {
       try {
         const respuesta = await fetch('/api/importar-menu', {
           method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
           body: formData
         });
 

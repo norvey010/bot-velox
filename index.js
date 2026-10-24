@@ -282,11 +282,31 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
-// Ruta inteligente para importar menú múltiple optimizada y sin errores
-// Sin límite de cantidad de imágenes durante las pruebas de lectura del menú.
+// Verifica la sesión antes de recibir y procesar archivos pesados.
+async function autenticarImportacionMenu(req, res, next) {
+    try {
+        const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+        if (!token) return res.status(401).json({ error: 'Inicia sesión para importar un menú.' });
+
+        const { data, error } = await supabase.auth.getUser(token);
+        if (error || !data?.user) return res.status(401).json({ error: 'Tu sesión venció. Inicia sesión de nuevo.' });
+
+        req.usuarioImportacion = data.user;
+        req.supabaseUsuario = createClient(supabaseUrl, supabaseKey, {
+            auth: { autoRefreshToken: false, persistSession: false },
+            global: { headers: { Authorization: `Bearer ${token}` } }
+        });
+        next();
+    } catch (error) {
+        console.error('Error al validar la sesión de importación:', error.message);
+        return res.status(401).json({ error: 'No se pudo validar tu sesión. Inicia sesión de nuevo.' });
+    }
+}
+
+// Se conserva la posibilidad de subir varias páginas durante las pruebas de lectura.
 const uploadMenuFiles = upload.array('menuFile');
 
-app.post('/api/importar-menu', (req, res, next) => {
+app.post('/api/importar-menu', autenticarImportacionMenu, (req, res, next) => {
     // Devolver un error claro si Multer no puede recibir los archivos.
     uploadMenuFiles(req, res, (error) => {
         if (error) {
@@ -304,6 +324,17 @@ app.post('/api/importar-menu', (req, res, next) => {
 
         if (!files || files.length === 0 || !restaurante_id) {
             return res.status(400).json({ error: "Faltan las imágenes del menú o el ID del restaurante." });
+        }
+
+        const { data: restauranteAutorizado, error: errorPropiedad } = await req.supabaseUsuario
+            .from('restaurantes')
+            .select('id')
+            .eq('id', restaurante_id)
+            .eq('id_usuario', req.usuarioImportacion.id)
+            .maybeSingle();
+        if (errorPropiedad) throw errorPropiedad;
+        if (!restauranteAutorizado) {
+            return res.status(403).json({ error: 'No tienes permiso para modificar el menú de este restaurante.' });
         }
 
         const bytesTotalesImagenes = files.reduce((total, file) => total + file.size, 0);
@@ -543,7 +574,7 @@ REGLAS OBLIGATORIAS:
             .eq('restaurante_id', restaurante_id);
 
         if (deleteError) {
-            console.error("Error al limpiar productos antiguos:", deleteError);
+            throw new Error(`No se pudo reemplazar el menú actual: ${deleteError.message}`);
         }
 
         // 2. Insertamos los nuevos productos extraídos

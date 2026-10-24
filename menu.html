@@ -278,7 +278,7 @@ function obtenerVisualProducto(producto, imagenCompartida = '') {
     const url = (imagenCompartida || producto.imagen_url || '').trim();
     const esImagenGenericaAnterior = url.includes('photo-1504674900247-0877df9cc836');
     if (url.startsWith('http') && !esImagenGenericaAnterior) {
-        return `<img src="${url}" alt="${producto.nombre}" loading="lazy" decoding="async" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">`;
+        return `<img src="${escaparHtml(url)}" alt="${escaparHtml(producto.nombre)}" loading="lazy" decoding="async" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">`;
     }
 
     const texto = `${producto.categoria || ''} ${producto.nombre || ''}`
@@ -305,12 +305,12 @@ function obtenerVisualProducto(producto, imagenCompartida = '') {
     const icono = esNombreTamanoPizza(producto.nombre) && texto.includes('pizza')
         ? '🍕'
         : visual.iconos[hash % visual.iconos.length];
-    return `<div role="img" aria-label="Ilustración para ${producto.categoria || 'menú'}" class="relative w-full h-full flex items-center justify-center overflow-hidden bg-gradient-to-br ${visual.fondo}">
+    return `<div role="img" aria-label="Ilustración para ${escaparHtml(producto.categoria || 'menú')}" class="relative w-full h-full flex items-center justify-center overflow-hidden bg-gradient-to-br ${visual.fondo}">
         <div class="absolute -right-8 -top-12 w-44 h-44 rounded-full border border-white/5"></div>
         <div class="absolute -left-10 -bottom-16 w-52 h-52 rounded-full border border-white/5"></div>
         <div class="absolute inset-0 opacity-[0.08]" style="background-image:radial-gradient(#fff 1px,transparent 1px);background-size:18px 18px"></div>
         <span class="relative drop-shadow-2xl text-7xl sm:text-8xl select-none">${icono}</span>
-        <span class="absolute bottom-3 left-4 text-[10px] uppercase tracking-[.22em] font-bold text-white/45">${producto.categoria || 'Especialidad'}</span>
+        <span class="absolute bottom-3 left-4 text-[10px] uppercase tracking-[.22em] font-bold text-white/45">${escaparHtml(producto.categoria || 'Especialidad')}</span>
     </div>`;
 }
 
@@ -364,7 +364,7 @@ function renderizarProductos(listaProds) {
                     <div class="w-24 h-24 shrink-0 bg-[#090a0c] overflow-hidden sm:w-full sm:h-44">${visualProducto}</div>
                     <div class="min-w-0 p-3 sm:p-4 flex flex-col flex-1">
                         <div class="flex-1">
-                            <h3 class="font-extrabold text-white text-sm sm:text-lg leading-snug">${producto.nombre}</h3>
+                            <h3 class="font-extrabold text-white text-sm sm:text-lg leading-snug">${escaparHtml(producto.nombre)}</h3>
                             <p class="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed lowercase">${producto.descripcion ? escaparHtml(producto.descripcion).toLowerCase() : ''}</p>
                         </div>
                         <div class="mt-2 sm:mt-5 flex flex-col gap-2 sm:gap-3">
