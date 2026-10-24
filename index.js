@@ -1,5 +1,4 @@
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
 const axios = require('axios');
 require('dotenv').config();
 const path = require('path');
@@ -15,10 +14,91 @@ const supabaseKey = (process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY |
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 const app = express();
-app.use(express.json());
-app.use(express.static(__dirname));
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+});
+app.use(express.json({
+    limit: '1mb',
+    verify: (req, res, buffer) => {
+        if (req.path === '/webhook') req.rawBody = Buffer.from(buffer);
+    }
+}));
+// Publica solo las páginas y scripts del navegador; no expone index.js, package*.json,
+// migraciones, node_modules ni otros archivos del servidor.
+const archivosPublicos = new Set([
+    '/index.html', '/login.html', '/dashboard.html', '/menu.html', '/ticket.html',
+    '/app.login.js', '/app.registro.js'
+]);
+app.get([...archivosPublicos], (req, res) => {
+    res.sendFile(path.join(__dirname, req.path.slice(1)));
+});
 const historiales = {};
 const PORT = process.env.PORT || 3000;
+
+// Limitador sencillo por proceso para encarecer el abuso de endpoints que consumen IA.
+// En despliegues con varias réplicas conviene sustituirlo por Redis/limitador compartido.
+const limitesPorUsuario = new Map();
+let llamadasIAActivas = 0;
+const MAX_LLAMADAS_IA_ACTIVAS = 3;
+
+function reservarLlamadaIA(res) {
+    if (llamadasIAActivas >= MAX_LLAMADAS_IA_ACTIVAS) return false;
+    llamadasIAActivas += 1;
+    let liberada = false;
+    const liberar = () => {
+        if (liberada) return;
+        liberada = true;
+        llamadasIAActivas = Math.max(0, llamadasIAActivas - 1);
+    };
+    res.once('finish', liberar);
+    res.once('close', liberar);
+    return true;
+}
+
+function limitarAccion(clave, maximo, ventanaMs) {
+    const ahora = Date.now();
+    if (limitesPorUsuario.size > 5000) {
+        for (const [llave, limite] of limitesPorUsuario) {
+            if (ahora >= limite.reiniciaEn) limitesPorUsuario.delete(llave);
+        }
+        if (limitesPorUsuario.size > 5000) {
+            limitesPorUsuario.delete(limitesPorUsuario.keys().next().value);
+        }
+    }
+    const existente = limitesPorUsuario.get(clave);
+    if (!existente || ahora >= existente.reiniciaEn) {
+        limitesPorUsuario.set(clave, { cantidad: 1, reiniciaEn: ahora + ventanaMs });
+        return true;
+    }
+    if (existente.cantidad >= maximo) return false;
+    existente.cantidad += 1;
+    return true;
+}
+
+function verificarFirmaMeta(req) {
+    const secreto = String(process.env.WHATSAPP_APP_SECRET || '').trim();
+    const firma = String(req.headers['x-hub-signature-256'] || '');
+    if (!secreto || !req.rawBody || !/^sha256=[a-f0-9]{64}$/i.test(firma)) return false;
+    const firmaEsperada = `sha256=${crypto.createHmac('sha256', secreto).update(req.rawBody).digest('hex')}`;
+    const recibida = Buffer.from(firma, 'utf8');
+    const esperada = Buffer.from(firmaEsperada, 'utf8');
+    return recibida.length === esperada.length && crypto.timingSafeEqual(recibida, esperada);
+}
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 8 * 1024 * 1024, files: 10, fields: 20, parts: 30 },
+    fileFilter: (req, file, callback) => {
+        const permitidos = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+        if (!permitidos.has(file.mimetype)) return callback(new Error('Tipo de archivo no permitido.'));
+        callback(null, true);
+    }
+});
 
 const SYSTEM_PROMPT_BASE = `Eres Velox, asistente virtual de domicilios.
 
@@ -54,6 +134,7 @@ app.get('/probar-ia', async (req, res) => {
   if (process.env.ENABLE_AI_DIAGNOSTIC !== 'true') {
     return res.sendStatus(404);
   }
+  if (!limitarAccion(`diagnostico:${req.ip}`, 2, 60 * 1000)) return res.sendStatus(429);
 
   try {
     const completion = await openai.chat.completions.create({
@@ -61,25 +142,32 @@ app.get('/probar-ia', async (req, res) => {
       messages: [{ role: 'user', content: 'Di algo divertido sobre crear un bot' }],
     });
 
-    const respuestaIA = completion.choices[0].message.content;
-    res.send(`<h1>Respuesta de OpenAI:</h1><p>${respuestaIA}</p>`);
+    const respuestaIA = String(completion.choices[0].message.content || '');
+    const respuestaSegura = respuestaIA.replace(/[&<>"']/g, caracter => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[caracter]);
+    res.send(`<h1>Respuesta de OpenAI:</h1><p>${respuestaSegura}</p>`);
 
   } catch (error) {
-    console.error("❌ Error detallado al conectar con OpenAI:", error);
-    res.status(500).send(`<h2>Error inesperado:</h2><p>${error.message}</p>`);
+    console.error('Diagnóstico OpenAI fallido:', error.message);
+    res.sendStatus(500);
   }
 });
 
 // 1. Ruta de verificación del Webhook para WhatsApp
 app.get('/webhook', (req, res) => {
-    const VERIFY_TOKEN = "velox_token_seguro";
+    const VERIFY_TOKEN = String(process.env.WHATSAPP_VERIFY_TOKEN || '').trim();
 
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
+    if (!VERIFY_TOKEN) return res.status(503).send('Webhook no configurado.');
     if (mode && token) {
-        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+        const recibida = Buffer.from(String(token));
+        const esperada = Buffer.from(VERIFY_TOKEN);
+        const tokenValido = recibida.length === esperada.length && crypto.timingSafeEqual(recibida, esperada);
+        if (mode === 'subscribe' && tokenValido) {
             console.log('WEBHOOK_VERIFICADO');
             res.status(200).send(challenge);
         } else {
@@ -94,7 +182,7 @@ app.get('/webhook', (req, res) => {
 async function obtenerRestaurante(phoneNumberId) {
     let { data: restaurante, error } = await supabase
         .from('restaurantes')
-        .select('*')
+        .select('id, slug')
         .eq('phone_number_id', String(phoneNumberId).trim())
         .maybeSingle();
 
@@ -103,9 +191,7 @@ async function obtenerRestaurante(phoneNumberId) {
     }
 
     if (!restaurante) {
-        console.log("⚠️ No hizo match exacto. Consultando toda la tabla de restaurantes...");
-        const { data: todos } = await supabase.from('restaurantes').select('*');
-        console.log("📋 Contenido actual de Supabase:", JSON.stringify(todos, null, 2));
+        console.warn('No se encontró restaurante para el identificador de WhatsApp recibido.');
     }
 
     return restaurante;
@@ -121,6 +207,11 @@ async function obtenerMenu(restauranteId) {
 }
 
 app.post('/webhook', async (req, res) => {
+    if (!process.env.WHATSAPP_APP_SECRET) {
+        console.error('WHATSAPP_APP_SECRET no está configurado; se rechazó el webhook para evitar pedidos falsificados.');
+        return res.sendStatus(503);
+    }
+    if (!verificarFirmaMeta(req)) return res.sendStatus(401);
     res.sendStatus(200);
     try {
         const body = req.body;
@@ -130,7 +221,6 @@ app.post('/webhook', async (req, res) => {
             const changes = entry?.changes?.[0];
             const value = changes?.value;
             const phoneNumberId = value?.metadata?.phone_number_id;
-            console.log("🔥 ID QUE LLEGA:", phoneNumberId);
             const message = value?.messages?.[0];
             
             if (message) {
@@ -142,6 +232,7 @@ app.post('/webhook', async (req, res) => {
                     console.log("⚠️ Mensaje no contiene texto. Se ignora.");
                     return;
                 }
+                if (String(textoUsuario).length > 4000) return;
 
                 // Un reintento del mismo mensaje no debe volver a consumir IA ni crear otra comanda.
                 // La columna/índice se instala con la migración de Supabase incluida en el repositorio.
@@ -169,10 +260,7 @@ app.post('/webhook', async (req, res) => {
                         }
                     }
                 }
-                console.log(`Mensaje recibido de ${numeroRemitente} (Phone ID: ${phoneNumberId}): ${textoUsuario}`);
-
                 const restauranteData = await obtenerRestaurante(phoneNumberId);
-                console.log("🍔 RESTAURANTE ENCONTRADO:", restauranteData);
                 
                 let linkMenuDinamico = "https://bot-velox-production.up.railway.app/menu.html";
                 let restauranteIdActual = null;
@@ -187,6 +275,9 @@ app.post('/webhook', async (req, res) => {
                 const systemPromptDinamico = SYSTEM_PROMPT_BASE + `\nINSTRUCCIÓN CRÍTICA: Debes usar obligatoriamente este enlace exacto para el menú digital: ${linkMenuDinamico}. Está prohibido usar cualquier otro link genérico.`;
 
                 if (!historiales[numeroRemitente]) {
+                    if (Object.keys(historiales).length >= 5000) {
+                        delete historiales[Object.keys(historiales)[0]];
+                    }
                     historiales[numeroRemitente] = [];
                 }
                 
@@ -207,7 +298,6 @@ app.post('/webhook', async (req, res) => {
                 });
 
                 const aiResponse = completion.choices[0].message.content;
-                console.log(`🤖 Respuesta IA: ${aiResponse}`);
                 
                 const matchPedido = aiResponse.match(/\[NUEVO_PEDIDO\]([\s\S]*?)\[\/NUEVO_PEDIDO\]/);
                 const totalConfirmacionMatch = matchPedido?.[1].match(/Total:\s*(.+)/i);
@@ -216,6 +306,7 @@ app.post('/webhook', async (req, res) => {
                     ? `¡Listo! Recibimos tu pedido y ya fue enviado al restaurante.${totalConfirmacionMatch ? ` Total: ${totalConfirmacionMatch[1].trim()}.` : ''}`
                     : aiResponse;
                 historiales[numeroRemitente].push({ role: "assistant", content: respuestaWhatsApp });
+                historiales[numeroRemitente] = historiales[numeroRemitente].slice(-6);
 
                 if (matchPedido) {
                     try {
@@ -320,7 +411,7 @@ app.post('/webhook', async (req, res) => {
             }
         }
     } catch (error) {
-        console.error("Error en el webhook:", JSON.stringify(error.response?.data || error.message, null, 2));
+        console.error("Error en el webhook:", error.message || 'Error desconocido');
     }
 });
 
@@ -334,6 +425,12 @@ async function autenticarImportacionMenu(req, res, next) {
         if (error || !data?.user) return res.status(401).json({ error: 'Tu sesión venció. Inicia sesión de nuevo.' });
 
         req.usuarioImportacion = data.user;
+        if (!limitarAccion(`importar:${data.user.id}`, 5, 10 * 60 * 1000)) {
+            return res.status(429).json({ error: 'Has realizado varias lecturas seguidas. Espera unos minutos antes de intentarlo de nuevo.' });
+        }
+        if (!reservarLlamadaIA(res)) {
+            return res.status(503).json({ error: 'Hay varias lecturas en curso. Espera un momento y vuelve a intentarlo.' });
+        }
         req.supabaseUsuario = createClient(supabaseUrl, supabaseKey, {
             auth: { autoRefreshToken: false, persistSession: false },
             global: { headers: { Authorization: `Bearer ${token}` } }
@@ -346,14 +443,20 @@ async function autenticarImportacionMenu(req, res, next) {
 }
 
 // Se conserva la posibilidad de subir varias páginas durante las pruebas de lectura.
-const uploadMenuFiles = upload.array('menuFile');
+const uploadMenuFiles = upload.array('menuFile', 10);
 
 app.post('/api/importar-menu', autenticarImportacionMenu, (req, res, next) => {
     // Devolver un error claro si Multer no puede recibir los archivos.
     uploadMenuFiles(req, res, (error) => {
         if (error) {
+            if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+                return res.status(413).json({ error: 'Cada imagen debe pesar máximo 8 MB.' });
+            }
+            if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_COUNT') {
+                return res.status(413).json({ error: 'Puedes subir hasta 10 imágenes por lectura.' });
+            }
             if (error instanceof multer.MulterError && error.code === 'LIMIT_UNEXPECTED_FILE') {
-                return res.status(400).json({ error: "No se reconoció uno de los archivos enviados. Vuelve a seleccionar las imágenes del menú." });
+                return res.status(413).json({ error: 'Puedes subir hasta 10 imágenes por lectura.' });
             }
             return res.status(400).json({ error: "No se pudieron recibir los archivos del menú." });
         }
@@ -367,6 +470,15 @@ app.post('/api/importar-menu', autenticarImportacionMenu, (req, res, next) => {
         if (!files || files.length === 0 || !restaurante_id) {
             return res.status(400).json({ error: "Faltan las imágenes del menú o el ID del restaurante." });
         }
+        const imagenesInvalidas = files.some(file => {
+            const b = file.buffer;
+            const jpeg = b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+            const png = b.length >= 8 && b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+            const gif = b.length >= 6 && ['GIF87a', 'GIF89a'].includes(b.subarray(0, 6).toString('ascii'));
+            const webp = b.length >= 12 && b.subarray(0, 4).toString('ascii') === 'RIFF' && b.subarray(8, 12).toString('ascii') === 'WEBP';
+            return !(jpeg || png || gif || webp);
+        });
+        if (imagenesInvalidas) return res.status(400).json({ error: 'Uno de los archivos no es una imagen válida. Usa JPG, PNG, WEBP o GIF.' });
 
         const { data: restauranteAutorizado, error: errorPropiedad } = await req.supabaseUsuario
             .from('restaurantes')
@@ -610,7 +722,7 @@ REGLAS OBLIGATORIAS:
         });
 
         // 1. Borramos el menú anterior de este restaurante
-        const { error: deleteError } = await supabase
+        const { error: deleteError } = await req.supabaseUsuario
             .from('productos')
             .delete()
             .eq('restaurante_id', restaurante_id);
@@ -620,7 +732,7 @@ REGLAS OBLIGATORIAS:
         }
 
         // 2. Insertamos los nuevos productos extraídos
-        const { error: insertError } = await supabase
+        const { error: insertError } = await req.supabaseUsuario
             .from('productos')
             .insert(productosParaSupabase);
 
@@ -629,7 +741,7 @@ REGLAS OBLIGATORIAS:
         }
 
         // 3. Consultamos el slug para retornar una respuesta limpia
-        const { data: restData } = await supabase
+        const { data: restData } = await req.supabaseUsuario
             .from('restaurantes')
             .select('slug')
             .eq('id', restaurante_id)
@@ -652,8 +764,7 @@ REGLAS OBLIGATORIAS:
             status,
             code,
             type,
-            message,
-            details: error.response?.data || null
+            message
         }));
 
         let mensajeUsuario = "No se pudo completar la lectura del menú. Revisa los registros de Railway para ver el motivo exacto.";
@@ -699,6 +810,12 @@ app.post('/api/productos/:id/generar-imagen', async (req, res) => {
         const { data: authData, error: authError } = await supabase.auth.getUser(token);
         if (authError || !authData?.user) {
             return res.status(401).json({ error: 'Tu sesión venció. Inicia sesión de nuevo.' });
+        }
+        if (!limitarAccion(`imagen:${authData.user.id}`, 5, 10 * 60 * 1000)) {
+            return res.status(429).json({ error: 'Has generado varias imágenes seguidas. Espera unos minutos antes de crear otra.' });
+        }
+        if (!reservarLlamadaIA(res)) {
+            return res.status(503).json({ error: 'Hay varias tareas de IA en curso. Espera un momento y vuelve a intentarlo.' });
         }
 
         clienteUsuario = createClient(supabaseUrl, supabaseKey, {

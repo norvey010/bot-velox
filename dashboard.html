@@ -296,7 +296,11 @@
     // --- MÓDULO PEDIDOS ---
     async function cargarPedidos() {
       if (!RESTAURANTE_ID) return;
-      const busqueda = document.getElementById('input-search').value.trim();
+      // Evita que caracteres de sintaxis del filtro PostgREST alteren la consulta.
+      const busqueda = document.getElementById('input-search').value
+        .slice(0, 80)
+        .replace(/[()[\],.%\\]/g, ' ')
+        .trim();
 
       let query = supabaseClient
         .from('pedidos')
