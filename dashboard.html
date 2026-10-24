@@ -38,26 +38,25 @@
     <!-- Pestañas de Navegación -->
     <nav aria-label="Secciones de Velox" class="max-w-full flex gap-1 overflow-x-auto bg-[#090a0c] p-1.5 rounded-xl border border-slate-800">
       <button onclick="cambiarSeccion('pedidos')" id="tab-pedidos" class="px-4 py-2.5 rounded-lg text-sm font-semibold bg-red-600 text-white whitespace-nowrap">📦 Pedidos</button>
-      <button onclick="cambiarSeccion('productos')" id="tab-productos" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">🍔 Mi menú</button>
-      <button onclick="cambiarSeccion('menu-ia')" id="tab-menu-ia" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">✨ Crear menú</button>
+      <button onclick="cambiarSeccion('menu')" id="tab-menu" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">🍽️ Mi menú</button>
       <button onclick="cambiarSeccion('configuracion')" id="tab-configuracion" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">⚙️ Mi negocio</button>
     </nav>
 
     <div class="flex items-center gap-4 text-sm text-slate-300">
-      <span id="connection-status" class="bg-slate-900 text-slate-300 px-3 py-1.5 rounded-full border border-slate-700 text-xs whitespace-nowrap">● Velox activo</span>
+      <span id="connection-status" aria-live="polite" class="bg-slate-900 text-slate-300 px-3 py-1.5 rounded-full border border-slate-700 text-xs whitespace-nowrap">● Conectando pedidos…</span>
       <button onclick="cerrarSesion()" class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-red-500 hover:text-white whitespace-nowrap">Salir</button>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto p-6 space-y-6">
+  <main class="max-w-7xl mx-auto p-6 space-y-6 flex flex-col">
 
     <div class="rounded-2xl border border-slate-800 bg-gradient-to-r from-[#151012] via-[#111214] to-[#111214] p-5 md:p-7 shadow-xl shadow-black/20">
       <p class="text-xs font-bold uppercase tracking-[.2em] text-red-400">Tu restaurante, más fácil</p>
-      <h2 class="mt-2 text-2xl md:text-3xl font-extrabold text-white">Todo listo para atender</h2>
-      <p class="mt-2 max-w-2xl text-sm md:text-base text-slate-400">Aquí recibes pedidos, organizas tu menú y compartes tu carta digital. Elige una tarea para empezar.</p>
+      <h2 class="mt-2 text-2xl md:text-3xl font-extrabold text-white">¿Qué quieres hacer?</h2>
+      <p class="mt-2 max-w-2xl text-sm md:text-base text-slate-400">Organiza tu menú, compártelo y recibe los pedidos aquí.</p>
       <div class="mt-5 flex flex-wrap gap-3">
-        <button onclick="cambiarSeccion('menu-ia')" class="rounded-xl bg-red-600 hover:bg-red-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-red-950/30">✨ Crear mi menú automáticamente</button>
-        <button onclick="abrirMenuEnVivo()" class="rounded-xl border border-slate-700 bg-slate-900 px-5 py-3 text-sm font-semibold text-slate-200 hover:border-amber-400">👀 Ver mi menú digital</button>
+        <button onclick="cambiarSeccion('menu')" class="rounded-xl bg-red-600 hover:bg-red-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-red-950/30">🍽️ Organizar mi menú</button>
+        <button onclick="abrirMenuEnVivo()" class="rounded-xl border border-slate-700 bg-slate-900 px-5 py-3 text-sm font-semibold text-slate-200 hover:border-amber-400">👀 Ver mi carta</button>
       </div>
     </div>
 
@@ -70,32 +69,22 @@
           <h3 id="total-pedidos-count" class="text-3xl font-bold text-white mt-1">0</h3>
         </div>
         <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-xs text-slate-400 font-medium">Ventas registradas</p>
+          <p class="text-xs text-slate-400 font-medium">Suma de pedidos</p>
           <h3 id="total-ventas-sum" class="text-3xl font-bold text-emerald-400 mt-1">$0</h3>
         </div>
         <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-xs text-slate-400 font-medium">Por preparar o entregar</p>
-          <h3 id="total-pendientes-count" class="text-3xl font-bold text-amber-400 mt-1">0</h3>
+          <p class="text-xs text-slate-400 font-medium">Pedidos de hoy</p>
+          <h3 id="total-pedidos-hoy" class="text-3xl font-bold text-amber-400 mt-1">0</h3>
         </div>
       </div>
 
       <!-- Barra de Filtros y Búsqueda -->
-      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div class="w-full md:w-1/3">
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div class="w-full sm:flex-1">
           <input type="text" id="input-search" placeholder="🔍 Buscar por teléfono o cliente..." 
                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
         </div>
-        <div class="flex items-center gap-3 w-full md:w-auto">
-          <select id="select-estado" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-            <option value="todos">Todos los Estados</option>
-            <option value="pendiente">Pendientes 🟡</option>
-            <option value="preparando">En Preparación 🟠</option>
-            <option value="en_camino">En Camino 🔵</option>
-            <option value="entregado">Entregados 🟢</option>
-            <option value="cancelado">Cancelados 🔴</option>
-          </select>
-          <button onclick="cargarPedidos()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm text-white transition">Actualizar</button>
-        </div>
+        <button onclick="cargarPedidos()" class="w-full sm:w-auto bg-slate-700 hover:bg-slate-600 px-4 py-2.5 rounded-lg text-sm text-white transition">Actualizar pedidos</button>
       </div>
 
       <!-- Tabla de Pedidos -->
@@ -109,7 +98,7 @@
                 <th class="p-4">Detalle / Productos</th>
                 <th class="p-4">Dirección</th>
                 <th class="p-4">Total</th>
-                <th class="p-4 text-center">Acciones</th>
+                <th class="p-4 text-center">Imprimir</th>
               </tr>
             </thead>
             <tbody id="pedidos-body" class="divide-y divide-slate-700/50 text-sm">
@@ -131,7 +120,7 @@
     </section>
 
     <!-- SECCIÓN 2: GESTIÓN DE PRODUCTOS -->
-    <section id="sec-productos" class="hidden space-y-6">
+    <section id="sec-productos" class="hidden order-2 space-y-6">
       <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg space-y-4">
         <div><h2 class="text-2xl font-extrabold text-white flex items-center gap-2">🍔 Tu menú</h2><p class="mt-1 text-sm text-slate-400">Agrega o edita lo que vendes. Los cambios aparecerán en tu menú digital.</p></div>
         <form id="form-producto" onsubmit="guardarProducto(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -185,26 +174,26 @@
           </table>
         </div>
       </div>
+      <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-5 text-center">
+        <h3 class="text-white font-bold mb-2">3. Mira tu carta como la verán tus clientes</h3>
+        <p class="text-slate-400 text-sm mb-4">Cuando termines de revisar los productos y precios, abre tu carta.</p>
+        <button onclick="abrirMenuEnVivo()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-xl transition">👀 Abrir mi carta</button>
+      </div>
     </section>
 <!-- SECCIÓN: MENÚ AI -->
-<section id="sec-menu-ia" class="hidden space-y-6">
+<section id="sec-menu-ia" class="hidden order-1 space-y-6">
     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg space-y-4">
-        <div class="flex items-center gap-3"><span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-950 text-2xl">✨</span><div><h2 class="text-2xl font-extrabold text-white">Crear mi menú</h2><p class="text-sm text-slate-400">Sube fotos claras de tu carta. Velox leerá los platos y precios por ti.</p></div></div>
+        <div class="flex items-center gap-3"><span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-950 text-2xl">✨</span><div><h2 class="text-2xl font-extrabold text-white">1. Sube la foto de tu carta</h2><p class="text-sm text-slate-400">Velox leerá los productos y precios por ti. Después podrás revisarlos abajo.</p></div></div>
         
         <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-4">
     <input type="hidden" id="ai-restaurante-id">
     <div>
-        <label class="block text-sm font-semibold text-slate-200 mb-2">1. Selecciona las fotos de tu menú</label>
-        <p class="text-xs text-slate-500 mb-3">Toma las fotos con buena luz y asegúrate de que se lean los nombres y precios.</p>
+        <label class="block text-sm font-semibold text-slate-200 mb-2">Selecciona las fotos de tu carta</label>
+        <p class="text-xs text-slate-500 mb-3">Usa fotos claras y asegúrate de que se lean los nombres y precios.</p>
         <input type="file" id="menuFile" name="menuFile" accept="image/*" multiple class="block w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-600">
     </div>
-    <button type="submit" id="btn-procesar-ia" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition">Procesar Menú con IA 🚀</button>
+    <button type="submit" id="btn-procesar-ia" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition">Leer mi carta</button>
 </form>
-<div class="rounded-xl border border-slate-700 bg-slate-900/70 p-5 text-center mt-6">
-    <h3 class="text-white font-bold mb-2">2. Revisa cómo lo verán tus clientes</h3>
-    <p class="text-slate-400 text-sm mb-4">Cuando termines, abre tu carta digital para revisar los productos y precios.</p>
-    <button onclick="abrirMenuEnVivo()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-xl transition">👀 Ver mi menú digital</button>
-</div>
     </div>
 </section>
     <!-- SECCIÓN 3: CONFIGURACIÓN RESTAURANTE -->
@@ -217,12 +206,8 @@
             <input type="text" id="conf-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Número de WhatsApp (con código de país sin +)</label>
-            <input type="text" id="conf-phone" required placeholder="573222027893" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
-          </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Identificador Slug (Enlace)</label>
-            <input type="text" id="conf-slug" disabled class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-500 cursor-not-allowed">
+            <label class="block text-xs text-slate-400 mb-1">WhatsApp para recibir pedidos</label>
+            <input type="tel" id="conf-phone" required placeholder="300 123 4567" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
           </div>
           <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white">Guardar Cambios</button>
         </form>
@@ -288,14 +273,18 @@
       document.getElementById('sec-configuracion').classList.add('hidden');
 
       document.getElementById('tab-pedidos').className = "px-4 py-2.5 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap";
-      document.getElementById('tab-productos').className = "px-4 py-2.5 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap";
-      document.getElementById('tab-menu-ia').className = "px-4 py-2.5 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap";
+      document.getElementById('tab-menu').className = "px-4 py-2.5 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap";
       document.getElementById('tab-configuracion').className = "px-4 py-2.5 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap";
 
-      document.getElementById(`sec-${seccion}`).classList.remove('hidden');
+      if (seccion === 'menu') {
+        document.getElementById('sec-productos').classList.remove('hidden');
+        document.getElementById('sec-menu-ia').classList.remove('hidden');
+      } else {
+        document.getElementById(`sec-${seccion}`).classList.remove('hidden');
+      }
       document.getElementById(`tab-${seccion}`).className = "px-4 py-2.5 rounded-lg text-sm font-bold bg-red-600 text-white whitespace-nowrap";
 
-      if (seccion === 'productos') cargarProductos();
+      if (seccion === 'menu') cargarProductos();
       if (seccion === 'configuracion') cargarConfiguracion();
     }
 
@@ -307,7 +296,6 @@
     // --- MÓDULO PEDIDOS ---
     async function cargarPedidos() {
       if (!RESTAURANTE_ID) return;
-      const estado = document.getElementById('select-estado').value;
       const busqueda = document.getElementById('input-search').value.trim();
 
       let query = supabaseClient
@@ -317,7 +305,6 @@
         .order('created_at', { ascending: false })
         .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
 
-      if (estado !== 'todos') query = query.eq('estado', estado);
       if (busqueda) query = query.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
 
       const { data, count, error } = await query;
@@ -344,15 +331,11 @@
             if (pedido) imprimirTicketAutomatico(pedido);
           }
         });
-        tbody.addEventListener('change', event => {
-          const selector = event.target.closest('[data-order-state]');
-          if (selector) actualizarEstado(selector.dataset.orderState, selector.value);
-        });
         tbody.dataset.handlersBound = 'true';
       }
 
       if (!pedidos || pedidos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8 text-slate-500">No hay pedidos registrados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8"><p class="font-semibold text-white">Todavía no hay pedidos</p><p class="mt-1 text-slate-400">Cuando tu carta esté lista, compártela para que tus clientes puedan pedir.</p><button type="button" onclick="cambiarSeccion('menu')" class="mt-4 rounded-lg bg-red-600 px-4 py-2 font-semibold text-white">Organizar mi menú</button></td></tr>`;
         return;
       }
 
@@ -360,7 +343,6 @@
         const pedidoId = String(p.id);
         pedidosRenderizados.set(pedidoId, p);
         const fecha = new Date(p.created_at).toLocaleString('es-CO');
-        const badgeColor = getBadgeColor(p.estado || 'pendiente');
 
         tbody.innerHTML += `
           <tr class="hover:bg-slate-750 transition">
@@ -373,13 +355,6 @@
             <td class="p-4 max-w-xs truncate text-slate-300" title="${escaparHtmlUI(p.direccion || 'Sin dirección')}">${escaparHtmlUI(p.direccion || 'Sin dirección')}</td>
             <td class="p-4 font-bold text-emerald-400">$${(p.total || 0).toLocaleString()}</td>
             <td class="p-4 text-center flex items-center justify-center gap-2">
-              <select data-order-state="${escaparHtmlUI(pedidoId)}" class="text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeColor} bg-slate-900 cursor-pointer focus:outline-none">
-                <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>🟡 Pendiente</option>
-                <option value="preparando" ${p.estado === 'preparando' ? 'selected' : ''}>🟠 Preparando</option>
-                <option value="en_camino" ${p.estado === 'en_camino' ? 'selected' : ''}>🔵 En Camino</option>
-                <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>🟢 Entregado</option>
-                <option value="cancelado" ${p.estado === 'cancelado' ? 'selected' : ''}>🔴 Cancelado</option>
-              </select>
               <button type="button" data-print-order="${escaparHtmlUI(pedidoId)}" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs" aria-label="Imprimir pedido">🖨️</button>
             </td>
           </tr>
@@ -387,29 +362,16 @@
       });
     }
 
-    async function actualizarEstado(id, nuevoEstado) {
-      await supabaseClient.from('pedidos').update({ estado: nuevoEstado }).eq('id', id);
-      cargarPedidos();
-    }
-
-    function getBadgeColor(estado) {
-      switch (estado) {
-        case 'pendiente': return 'text-amber-400 border-amber-800';
-        case 'preparando': return 'text-orange-400 border-orange-800';
-        case 'en_camino': return 'text-blue-400 border-blue-800';
-        case 'entregado': return 'text-emerald-400 border-emerald-800';
-        case 'cancelado': return 'text-rose-400 border-rose-800';
-        default: return 'text-slate-400 border-slate-700';
-      }
-    }
-
     async function calcularMetricas() {
-      const { data } = await supabaseClient.from('pedidos').select('total, estado').eq('restaurante_id', RESTAURANTE_ID);
+      if (!RESTAURANTE_ID) return;
+      const { data } = await supabaseClient.from('pedidos').select('total, created_at').eq('restaurante_id', RESTAURANTE_ID);
       if (data) {
         document.getElementById('total-pedidos-count').innerText = data.length;
-        const totalVentas = data.reduce((sum, p) => sum + (p.total || 0), 0);
-        document.getElementById('total-ventas-sum').innerText = `$${totalVentas.toLocaleString()}`;
-        document.getElementById('total-pendientes-count').innerText = data.filter(p => p.estado === 'pendiente').length;
+        const sumaPedidos = data.reduce((sum, p) => sum + (Number(p.total) || 0), 0);
+        document.getElementById('total-ventas-sum').innerText = `$${sumaPedidos.toLocaleString('es-CO')}`;
+        const inicioHoy = new Date();
+        inicioHoy.setHours(0, 0, 0, 0);
+        document.getElementById('total-pedidos-hoy').innerText = data.filter(p => new Date(p.created_at) >= inicioHoy).length;
       }
     }
 
@@ -645,7 +607,7 @@ async function abrirMenuEnVivo() {
             : ' El servidor no devolvió el diagnóstico de variantes; comprueba que Railway tenga la última versión.';
           alert('¡Menú importado y guardado con éxito por la IA!' + mensajeVariantes);
           formElement.reset(); 
-          cambiarSeccion('productos'); // Te lleva directo a ver los productos nuevos
+          cambiarSeccion('menu'); // Te lleva a revisar la carta recién importada
         } else {
           alert('Error: ' + (resultado.error || 'No se pudo procesar el archivo.'));
         }
@@ -667,7 +629,6 @@ async function abrirMenuEnVivo() {
       if (data) {
         document.getElementById('conf-nombre').value = data.nombre_restaurante || '';
         document.getElementById('conf-phone').value = data.telefono || '';
-        document.getElementById('conf-slug').value = data.slug || '';
       }
     }
 
@@ -723,6 +684,20 @@ async function abrirMenuEnVivo() {
       iframe.src = url;
     }
 
+    function actualizarIndicadorConexion(estado) {
+      const indicador = document.getElementById('connection-status');
+      const conectado = estado === 'SUBSCRIBED';
+      const fallida = ['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(estado);
+      const mensajes = {
+        SUBSCRIBED: '● Pedidos en vivo',
+        CHANNEL_ERROR: '● Sin conexión en vivo',
+        TIMED_OUT: '● Conexión lenta',
+        CLOSED: '● Conexión cerrada'
+      };
+      indicador.textContent = mensajes[estado] || '● Conectando pedidos…';
+      indicador.className = `px-3 py-1.5 rounded-full border text-xs whitespace-nowrap ${conectado ? 'bg-emerald-950/50 text-emerald-300 border-emerald-800' : fallida ? 'bg-red-950/50 text-red-300 border-red-800' : 'bg-slate-900 text-slate-300 border-slate-700'}`;
+    }
+
     supabaseClient
       .channel('pedidos-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, payload => {
@@ -731,7 +706,7 @@ async function abrirMenuEnVivo() {
           imprimirTicketAutomatico(payload.new);
         }
       })
-      .subscribe();
+      .subscribe(actualizarIndicadorConexion);
 
     function cambiarPagina(delta) {
       paginaActual += delta;
@@ -746,7 +721,6 @@ async function abrirMenuEnVivo() {
     }
 
     document.getElementById('input-search').addEventListener('input', () => { paginaActual = 0; cargarPedidos(); });
-    document.getElementById('select-estado').addEventListener('change', () => { paginaActual = 0; cargarPedidos(); });
 
     // Inicializar al cargar la página
     inicializarDashboard();
