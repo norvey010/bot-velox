@@ -510,6 +510,36 @@ app.post('/webhook', async (req, res) => {
 });
 
 // El total confiable se calcula en el servidor con los precios guardados en Supabase.
+// La carta pública solo recibe campos públicos; nunca consulta directamente la fila completa del restaurante.
+app.get('/api/menu/:slug', async (req, res) => {
+    try {
+        const slug = String(req.params.slug || '').trim();
+        if (!slug || slug.length > 120) return res.status(400).json({ error: 'Enlace de menú no válido.' });
+        if (!supabaseAdmin) return res.status(503).json({ error: 'El menú no está disponible temporalmente.' });
+
+        const { data: restaurante, error: errorRestaurante } = await supabaseAdmin
+            .from('restaurantes')
+            .select('id, slug, nombre_restaurante, telefono')
+            .eq('slug', slug)
+            .maybeSingle();
+        if (errorRestaurante) throw errorRestaurante;
+        if (!restaurante) return res.status(404).json({ error: 'Restaurante no encontrado.' });
+
+        const { data: productos, error: errorProductos } = await supabaseAdmin
+            .from('productos')
+            .select('id, nombre, descripcion, precio, categoria, imagen_url, opciones')
+            .eq('restaurante_id', restaurante.id)
+            .order('id', { ascending: true });
+        if (errorProductos) throw errorProductos;
+
+        res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+        return res.json({ restaurante, productos: productos || [] });
+    } catch (error) {
+        console.error('No se pudo cargar la carta pública:', error.message || 'Error desconocido');
+        return res.status(500).json({ error: 'No se pudo cargar el menú. Inténtalo de nuevo.' });
+    }
+});
+
 app.post('/api/pedidos', async (req, res) => {
     try {
         if (!supabaseAdmin) {

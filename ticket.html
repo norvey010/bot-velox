@@ -54,6 +54,7 @@
         <p style="margin: 2px 0;"><strong>CLIENTE:</strong> <span id="ticket-cliente">Cargando...</span></p>
         <p style="margin: 2px 0;"><strong>TEL:</strong> <span id="ticket-tel">--</span></p>
         <p style="margin: 2px 0;"><strong>DIR:</strong> <span id="ticket-dir">--</span></p>
+        <p id="ticket-notas-linea" style="margin: 2px 0; display: none;"><strong>NOTAS:</strong> <span id="ticket-notas"></span></p>
     </div>
 
     <div class="line"></div>
@@ -84,13 +85,21 @@
     <script>
         // Cargar datos de la URL o LocalStorage
         const urlParams = new URLSearchParams(window.location.search);
-        document.getElementById('ticket-fecha').innerText = new Date().toLocaleString('es-CO');
+        const fechaPedido = new Date(urlParams.get('fecha') || Date.now());
+        document.getElementById('ticket-fecha').innerText = Number.isNaN(fechaPedido.getTime())
+            ? new Date().toLocaleString('es-CO')
+            : fechaPedido.toLocaleString('es-CO');
         document.getElementById('ticket-cliente').innerText = urlParams.get('cliente') || 'Cliente General';
         document.getElementById('ticket-tel').innerText = urlParams.get('telefono') || 'N/A';
         document.getElementById('ticket-dir').innerText = urlParams.get('direccion') || 'Recoge en Local';
         const total = Number(urlParams.get('total') || 0);
         document.getElementById('ticket-total').innerText = total.toLocaleString('es-CO');
         document.getElementById('ticket-pago').innerText = urlParams.get('pago') || 'Pendiente';
+        const notas = (urlParams.get('notas') || '').trim();
+        if (notas) {
+            document.getElementById('ticket-notas').innerText = notas;
+            document.getElementById('ticket-notas-linea').style.display = 'block';
+        }
 
         const detalle = urlParams.get('items') || 'Sin detalle del pedido';
         const ticketItems = document.getElementById('ticket-items');

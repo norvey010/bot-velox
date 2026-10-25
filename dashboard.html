@@ -332,7 +332,7 @@
           const boton = event.target.closest('[data-print-order]');
           if (boton) {
             const pedido = pedidosRenderizados.get(boton.dataset.printOrder);
-            if (pedido) imprimirTicketAutomatico(pedido);
+            if (pedido) imprimirTicketAutomatico(pedido, { permitirReimpresion: true });
           }
         });
         tbody.dataset.handlersBound = 'true';
@@ -668,12 +668,26 @@ async function abrirMenuEnVivo() {
     }
 
     // --- IMPRESIÓN Y REALTIME ---
-    function imprimirTicketAutomatico(p) {
+    function imprimirTicketAutomatico(p, opciones = {}) {
+      if (!p || !p.id) return;
+      const claveImpresion = `velox-ticket:${RESTAURANTE_ID}:${p.id}`;
+      try {
+        const impresos = JSON.parse(sessionStorage.getItem('velox-tickets-impresos') || '[]');
+        if (!opciones.permitirReimpresion && impresos.includes(claveImpresion)) return;
+        if (!opciones.permitirReimpresion) {
+          sessionStorage.setItem('velox-tickets-impresos', JSON.stringify([...impresos.slice(-199), claveImpresion]));
+        }
+      } catch (error) {
+        console.warn('No se pudo guardar el control local de impresión:', error);
+      }
+
       let iframe = document.getElementById('iframe-impresora');
       if (!iframe) {
         iframe = document.createElement('iframe');
         iframe.id = 'iframe-impresora';
-        iframe.style.display = 'none';
+        iframe.title = 'Vista de impresión de la comanda';
+        iframe.setAttribute('aria-hidden', 'true');
+        iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:1px;height:1px;border:0;';
         document.body.appendChild(iframe);
       }
       const parametros = new URLSearchParams({
@@ -682,7 +696,9 @@ async function abrirMenuEnVivo() {
         direccion: p.direccion || p.cliente_direccion || '',
         items: p.items || p.detalle || '',
         total: String(p.total || 0),
-        pago: p.metodo_pago || ''
+        pago: p.metodo_pago || '',
+        notas: p.notas || '',
+        fecha: p.created_at || ''
       });
       const url = `ticket.html?${parametros.toString()}`;
       iframe.src = url;

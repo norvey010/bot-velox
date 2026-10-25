@@ -9,9 +9,7 @@
     <title>Menú Digital | Velox</title>
     <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="preconnect" href="https://ozailviyimrjmebrilbp.supabase.co" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
     /* Mantiene ocultos los elementos plegados aunque Tailwind tarde en arrancar. */
     #modal-personalizar.hidden, #modal-pedido.hidden, #barra-carrito.hidden { display: none !important; }
@@ -185,16 +183,9 @@
 </div>
 
     <script>
-        var SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
-        var SUPABASE_KEY = 'sb_publishable_6YqFb_vPKTOFJZ9sp8AUzw_4aNLkH-l';
-        var supabaseClient = null;
         var cart = [];
         var numeroWhatsAppRestaurante = '';
         var ID_RESTAURANTE_ACTUAL = null;
-
-        if (window.supabase && window.supabase.createClient) {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        }
 
        let todosLosProductos = [];
        let categoriasMenu = [];
@@ -214,17 +205,19 @@ async function cargarMenu() {
         return;
     }
 
-    if (!supabaseClient && window.supabase) {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let respuestaMenu;
+    try {
+        respuestaMenu = await fetch(`/api/menu/${encodeURIComponent(clienteSlug)}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+    } catch (error) {
+        contenedor.innerHTML = '<p class="text-center text-red-400 py-10">No hay conexión para cargar el menú. Revisa tu internet e inténtalo de nuevo.</p>';
+        return;
     }
+    const datosMenu = await respuestaMenu.json().catch(() => ({}));
+    const restData = datosMenu.restaurante;
 
-    let { data: restData, error: restError } = await supabaseClient
-        .from('restaurantes')
-        .select('*')
-        .eq('slug', clienteSlug)
-        .maybeSingle();
-
-    if (restError || !restData) {
+    if (!respuestaMenu.ok || !restData || !Array.isArray(datosMenu.productos)) {
         contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Restaurante no encontrado.</p>';
         return;
     }
@@ -235,17 +228,7 @@ async function cargarMenu() {
     if (elNombre) elNombre.innerText = restData.nombre_restaurante;
 
     // Forzamos la consulta de productos ordenada por ID para evitar datos cacheados
-    let { data: productos, error: resProd } = await supabaseClient
-        .from('productos')
-        .select('id,nombre,descripcion,precio,categoria,imagen_url,opciones')
-        .eq('restaurante_id', ID_RESTAURANTE_ACTUAL)
-        .order('id', { ascending: true });
-
-    if (resProd || !productos) {
-        contenedor.innerHTML = '<p class="text-center text-red-400 py-6">No se pudieron cargar los productos.</p>';
-        return;
-    }
-
+    const productos = datosMenu.productos;
     todosLosProductos = productos.map(producto => ({
         ...producto,
         _categoriaOriginal: producto.categoria,
