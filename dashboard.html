@@ -21,6 +21,8 @@
     input, select, textarea { min-height: 42px; }
     button { transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
     button:hover:not(:disabled) { transform: translateY(-1px); }
+    summary { list-style: none; }
+    summary::-webkit-details-marker { display: none; }
     @media (max-width: 640px) {
       main { padding: .75rem !important; }
       header { gap: .5rem !important; }
@@ -155,14 +157,17 @@
             <input type="hidden" id="ai-restaurante-id">
             <label for="menuFile" class="block text-xs font-semibold text-slate-200">Fotos de la carta</label>
             <input type="file" id="menuFile" name="menuFile" accept="image/*" multiple aria-describedby="menu-file-summary" class="block w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-600">
-            <p id="menu-file-summary" class="text-xs text-slate-500" aria-live="polite">No has seleccionado fotos.</p>
+            <p id="menu-file-summary" class="hidden text-xs text-slate-400" aria-live="polite"></p>
             <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-emerald-600 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">Procesar menú</button>
           </form>
         </div>
 
         <div class="py-3">
           <details id="details-producto-form">
-            <summary id="producto-form-summary" class="cursor-pointer text-sm font-semibold text-slate-200">＋ Agregar un producto extra</summary>
+            <summary id="producto-form-summary" class="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-red-500">
+              <span class="flex items-center gap-2"><span id="producto-form-icon" class="flex h-6 w-6 items-center justify-center rounded-md bg-red-950 text-base text-red-300">＋</span><span id="producto-form-summary-text">Agregar un producto extra</span></span>
+              <span id="producto-form-chevron" class="text-slate-400 transition-transform" aria-hidden="true">⌄</span>
+            </summary>
             <form id="form-producto" onsubmit="guardarProducto(event)" class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
               <input type="hidden" id="prod-id">
               <div>
@@ -468,7 +473,8 @@
       const fileInput = document.getElementById('prod-imagen-file');
       const submitButton = event.submitter || document.querySelector('#form-producto button[type="submit"]');
       const status = document.getElementById('producto-save-status');
-      const summary = document.getElementById('producto-form-summary');
+      const summaryText = document.getElementById('producto-form-summary-text');
+      const summaryIcon = document.getElementById('producto-form-icon');
       const accion = id ? 'actualizado' : 'creado';
       const textoOriginal = submitButton?.textContent || 'Guardar Producto';
       let urlImagenFinal = '';
@@ -513,7 +519,8 @@
         document.getElementById('prod-id').value = '';
         if (fileInput) fileInput.value = '';
         document.getElementById('details-producto-form').open = false;
-        summary.textContent = '＋ Agregar un producto extra';
+        summaryText.textContent = 'Agregar un producto extra';
+        summaryIcon.textContent = '＋';
         status.textContent = `Producto ${accion} correctamente. La lista del menú ya está actualizada.`;
         status.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
       } catch (error) {
@@ -608,7 +615,8 @@
       document.getElementById('prod-descripcion').value = data.descripcion || '';
       document.getElementById('prod-categoria').value = data.categoria || '';
       document.getElementById('details-producto-form').open = true;
-      document.getElementById('producto-form-summary').textContent = '✏️ Editando producto';
+      document.getElementById('producto-form-summary-text').textContent = 'Editando producto';
+      document.getElementById('producto-form-icon').textContent = '✏️';
       const status = document.getElementById('producto-save-status');
       status.classList.add('hidden');
       document.getElementById('details-producto-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -618,7 +626,8 @@
       document.getElementById('form-producto').reset();
       document.getElementById('prod-id').value = '';
       document.getElementById('details-producto-form').open = false;
-      document.getElementById('producto-form-summary').textContent = '＋ Agregar un producto extra';
+      document.getElementById('producto-form-summary-text').textContent = 'Agregar un producto extra';
+      document.getElementById('producto-form-icon').textContent = '＋';
     }
 async function abrirMenuEnVivo() {
     try {
@@ -649,11 +658,16 @@ async function abrirMenuEnVivo() {
     }
 }
     // --- MÓDULO MENÚ IA (Múltiples imágenes dinámicas) ---
-    document.getElementById('menuFile').addEventListener('change', event => {
-      const cantidad = event.target.files.length;
-      document.getElementById('menu-file-summary').textContent = cantidad
-        ? `${cantidad} ${cantidad === 1 ? 'foto seleccionada' : 'fotos seleccionadas'}.`
-        : 'No has seleccionado fotos.';
+    function actualizarResumenFotosMenu() {
+      const cantidad = document.getElementById('menuFile').files.length;
+      const resumen = document.getElementById('menu-file-summary');
+      resumen.textContent = cantidad ? `${cantidad} ${cantidad === 1 ? 'foto seleccionada' : 'fotos seleccionadas'}.` : '';
+      resumen.classList.toggle('hidden', cantidad === 0);
+    }
+
+    document.getElementById('menuFile').addEventListener('change', actualizarResumenFotosMenu);
+    document.getElementById('details-producto-form').addEventListener('toggle', event => {
+      document.getElementById('producto-form-chevron').classList.toggle('rotate-180', event.currentTarget.open);
     });
 
     async function enviarMenuConIA(event) {
@@ -705,7 +719,7 @@ async function abrirMenuEnVivo() {
               : ' Atención: no se detectaron variantes para elegir. Revisa que la foto incluya claramente esa lista.')
             : ' El servidor no devolvió el diagnóstico de variantes; comprueba que Railway tenga la última versión.';
           formElement.reset();
-          document.getElementById('menu-file-summary').textContent = 'No has seleccionado fotos.';
+          actualizarResumenFotosMenu();
           const estadoMenu = document.getElementById('producto-save-status');
           estadoMenu.textContent = 'Menú importado y guardado correctamente. La lista se está actualizando.' + mensajeVariantes;
           estadoMenu.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
