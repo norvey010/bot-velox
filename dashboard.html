@@ -124,8 +124,9 @@
     <section id="sec-productos" class="hidden order-2 space-y-4">
       <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
         <div><h2 class="text-xl font-bold text-white flex items-center gap-2">🍔 Tu menú</h2><p class="mt-1 text-sm text-slate-400">Revisa lo que vendes y actualiza tu carta.</p></div>
-        <details class="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
-          <summary class="cursor-pointer text-sm font-semibold text-slate-200">＋ Agregar un producto manualmente</summary>
+        <p id="producto-save-status" class="hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+        <details id="details-producto-form" class="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
+          <summary id="producto-form-summary" class="cursor-pointer text-sm font-semibold text-slate-200">＋ Agregar un producto manualmente</summary>
         <form id="form-producto" onsubmit="guardarProducto(event)" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
           <input type="hidden" id="prod-id">
           <div>
@@ -439,44 +440,67 @@
       event.preventDefault();
       const id = document.getElementById('prod-id').value;
       const fileInput = document.getElementById('prod-imagen-file');
+      const submitButton = event.submitter || document.querySelector('#form-producto button[type="submit"]');
+      const status = document.getElementById('producto-save-status');
+      const summary = document.getElementById('producto-form-summary');
+      const accion = id ? 'actualizado' : 'creado';
+      const textoOriginal = submitButton?.textContent || 'Guardar Producto';
       let urlImagenFinal = '';
 
-      if (fileInput && fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const filePath = `restaurante_${RESTAURANTE_ID}/${fileName}`;
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = id ? 'Actualizando…' : 'Guardando…';
+      }
+      status.classList.add('hidden');
 
-        const { error: uploadError } = await supabaseClient.storage.from('productos').upload(filePath, file);
-        if (uploadError) {
-          alert('Error al subir la imagen: ' + uploadError.message);
-          return;
+      try {
+        if (fileInput && fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `restaurante_${RESTAURANTE_ID}/${fileName}`;
+
+          const { error: uploadError } = await supabaseClient.storage.from('productos').upload(filePath, file);
+          if (uploadError) throw new Error('No se pudo subir la imagen: ' + uploadError.message);
+
+          const { data: urlData } = supabaseClient.storage.from('productos').getPublicUrl(filePath);
+          urlImagenFinal = urlData.publicUrl;
         }
 
-        const { data: urlData } = supabaseClient.storage.from('productos').getPublicUrl(filePath);
-        urlImagenFinal = urlData.publicUrl;
+        const payload = {
+          nombre: document.getElementById('prod-nombre').value,
+          precio: parseFloat(document.getElementById('prod-precio').value),
+          descripcion: document.getElementById('prod-descripcion').value,
+          categoria: document.getElementById('prod-categoria').value || 'General',
+          restaurante_id: RESTAURANTE_ID
+        };
+
+        if (urlImagenFinal) payload.imagen_url = urlImagenFinal;
+
+        const { error } = id
+          ? await supabaseClient.from('productos').update(payload).eq('id', id)
+          : await supabaseClient.from('productos').insert([payload]);
+        if (error) throw new Error(error.message || 'No se pudo guardar el producto.');
+
+        await cargarProductos();
+        document.getElementById('form-producto').reset();
+        document.getElementById('prod-id').value = '';
+        if (fileInput) fileInput.value = '';
+        document.getElementById('details-producto-form').open = false;
+        summary.textContent = '＋ Agregar un producto manualmente';
+        status.textContent = `Producto ${accion} correctamente. La lista del menú ya está actualizada.`;
+        status.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
+      } catch (error) {
+        console.error('Error al guardar producto:', error);
+        status.textContent = error.message || 'No se pudo guardar el producto. Revisa los datos e inténtalo de nuevo.';
+        status.className = 'rounded-lg border border-rose-800 bg-rose-950/40 px-3 py-2 text-sm text-rose-200';
+      } finally {
+        status.classList.remove('hidden');
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = textoOriginal;
+        }
       }
-
-      const payload = {
-        nombre: document.getElementById('prod-nombre').value,
-        precio: parseFloat(document.getElementById('prod-precio').value),
-        descripcion: document.getElementById('prod-descripcion').value,
-        categoria: document.getElementById('prod-categoria').value || 'General',
-        restaurante_id: RESTAURANTE_ID
-      };
-
-      if (urlImagenFinal) payload.imagen_url = urlImagenFinal;
-
-      if (id) {
-        await supabaseClient.from('productos').update(payload).eq('id', id);
-      } else {
-        await supabaseClient.from('productos').insert([payload]);
-      }
-
-      if (fileInput) fileInput.value = '';
-      document.getElementById('form-producto').reset();
-      cargarProductos();
-      alert('¡Producto guardado con éxito!');
     }
 
     let generandoImagenIA = false;
@@ -531,8 +555,19 @@
 
     async function eliminarProducto(id) {
       if (!confirm('¿Estás seguro de eliminar este producto?')) return;
-      await supabaseClient.from('productos').delete().eq('id', id);
-      cargarProductos();
+      const status = document.getElementById('producto-save-status');
+      try {
+        const { error } = await supabaseClient.from('productos').delete().eq('id', id);
+        if (error) throw error;
+        await cargarProductos();
+        status.textContent = 'Producto eliminado. La lista del menú ya está actualizada.';
+        status.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
+      } catch (error) {
+        console.error('Error al eliminar producto:', error);
+        status.textContent = error.message || 'No se pudo eliminar el producto.';
+        status.className = 'rounded-lg border border-rose-800 bg-rose-950/40 px-3 py-2 text-sm text-rose-200';
+      }
+      status.classList.remove('hidden');
     }
 
     async function prepararEdicionProducto(id) {
@@ -546,12 +581,18 @@
       document.getElementById('prod-precio').value = data.precio || '';
       document.getElementById('prod-descripcion').value = data.descripcion || '';
       document.getElementById('prod-categoria').value = data.categoria || '';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.getElementById('details-producto-form').open = true;
+      document.getElementById('producto-form-summary').textContent = '✏️ Editando producto';
+      const status = document.getElementById('producto-save-status');
+      status.classList.add('hidden');
+      document.getElementById('details-producto-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     function limpiarFormProducto() {
       document.getElementById('form-producto').reset();
       document.getElementById('prod-id').value = '';
+      document.getElementById('details-producto-form').open = false;
+      document.getElementById('producto-form-summary').textContent = '＋ Agregar un producto manualmente';
     }
 async function abrirMenuEnVivo() {
     try {
@@ -630,8 +671,11 @@ async function abrirMenuEnVivo() {
               ? ` Se asociaron variantes a ${resultado.productosConVariantes} productos.`
               : ' Atención: no se detectaron variantes para elegir. Revisa que la foto incluya claramente esa lista.')
             : ' El servidor no devolvió el diagnóstico de variantes; comprueba que Railway tenga la última versión.';
-          alert('¡Menú importado y guardado con éxito por la IA!' + mensajeVariantes);
-          formElement.reset(); 
+          formElement.reset();
+          const estadoMenu = document.getElementById('producto-save-status');
+          estadoMenu.textContent = 'Menú importado y guardado correctamente. La lista se está actualizando.' + mensajeVariantes;
+          estadoMenu.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
+          estadoMenu.classList.remove('hidden');
           cambiarSeccion('menu'); // Te lleva a revisar la carta recién importada
         } else {
           alert('Error: ' + (resultado.error || 'No se pudo procesar el archivo.'));
