@@ -42,7 +42,7 @@
     <nav aria-label="Secciones de Velox" class="max-w-full flex gap-1 overflow-x-auto bg-[#090a0c] p-1 rounded-xl border border-slate-800">
       <button onclick="cambiarSeccion('menu')" id="tab-menu" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">🍽️ Mi menú</button>
       <button onclick="cambiarSeccion('pedidos')" id="tab-pedidos" class="px-3 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white whitespace-nowrap">📦 Pedidos</button>
-      <button onclick="cambiarSeccion('configuracion')" id="tab-configuracion" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">⚙️ Mi negocio</button>
+      <button onclick="cambiarSeccion('configuracion')" id="tab-configuracion" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">⚙️ Ajustes</button>
     </nav>
 
     <div class="flex items-center gap-4 text-sm text-slate-300">
@@ -197,14 +197,22 @@
     </div>
 </section>
     <!-- SECCIÓN 3: CONFIGURACIÓN RESTAURANTE -->
-    <section id="sec-configuracion" class="hidden max-w-2xl mx-auto">
+    <section id="sec-configuracion" class="hidden max-w-2xl mx-auto space-y-3">
       <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
-        <div><h2 class="text-xl font-bold text-white">⚙️ Mi negocio</h2><p class="mt-1 text-xs sm:text-sm text-slate-400">Actualiza los datos de tu negocio y el papel de impresión.</p></div>
-        <form onsubmit="guardarConfiguracion(event)" class="space-y-4">
+        <div><h2 class="text-xl font-bold text-white">⚙️ Ajustes</h2><p class="mt-1 text-xs sm:text-sm text-slate-400">Administra la información de tu negocio y cómo recibes e imprimes los pedidos.</p></div>
+        <nav aria-label="Categorías de ajustes" class="grid grid-cols-2 gap-2 rounded-xl border border-slate-700 bg-slate-900 p-1">
+          <button type="button" id="tab-ajustes-negocio" onclick="cambiarPestanaAjustes('negocio')" class="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white">🏪 Mi negocio</button>
+          <button type="button" id="tab-ajustes-contacto" onclick="cambiarPestanaAjustes('contacto')" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-400 hover:text-white">📲 WhatsApp e impresión</button>
+        </nav>
+        <form id="form-ajustes-negocio" onsubmit="guardarConfiguracion(event, 'negocio')" class="space-y-4">
           <div>
             <label class="block text-xs text-slate-400 mb-1">Nombre del Restaurante</label>
             <input type="text" id="conf-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
           </div>
+          <p id="config-negocio-save-status" class="hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+          <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white">Guardar nombre</button>
+        </form>
+        <form id="form-ajustes-contacto" onsubmit="guardarConfiguracion(event, 'contacto')" class="hidden space-y-4">
           <div>
             <label class="block text-xs text-slate-400 mb-1">WhatsApp para recibir pedidos</label>
             <input type="tel" id="conf-phone" required placeholder="300 123 4567" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
@@ -228,8 +236,8 @@
               </div>
             </div>
           </div>
-          <p id="config-save-status" class="hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
-          <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white">Guardar Cambios</button>
+          <p id="config-contacto-save-status" class="hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+          <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white">Guardar WhatsApp e impresión</button>
         </form>
       </div>
     </section>
@@ -307,7 +315,20 @@
       document.getElementById(`tab-${seccion}`).className = "px-3 py-2 rounded-lg text-sm font-bold bg-red-600 text-white whitespace-nowrap";
 
       if (seccion === 'menu') cargarProductos();
-      if (seccion === 'configuracion') cargarConfiguracion();
+      if (seccion === 'configuracion') {
+        cambiarPestanaAjustes('negocio');
+        cargarConfiguracion();
+      }
+    }
+
+    function cambiarPestanaAjustes(pestana) {
+      const negocioActivo = pestana !== 'contacto';
+      document.getElementById('form-ajustes-negocio').classList.toggle('hidden', !negocioActivo);
+      document.getElementById('form-ajustes-contacto').classList.toggle('hidden', negocioActivo);
+      const claseActiva = 'rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white';
+      const claseInactiva = 'rounded-lg px-3 py-2 text-sm font-medium text-slate-400 hover:text-white';
+      document.getElementById('tab-ajustes-negocio').className = negocioActivo ? claseActiva : claseInactiva;
+      document.getElementById('tab-ajustes-contacto').className = negocioActivo ? claseInactiva : claseActiva;
     }
 
     async function cerrarSesion() {
@@ -700,10 +721,11 @@ async function abrirMenuEnVivo() {
         document.getElementById('conf-phone').value = data.telefono || '';
         document.getElementById('conf-printer-width').value = Number(data.printer_paper_width) === 58 ? '58' : '80';
         actualizarVistaPreviaImpresora(false);
-        const estado = document.getElementById('config-save-status');
+        const estado = document.getElementById('config-contacto-save-status');
         const anchoActual = Number(data.printer_paper_width) === 58 ? 58 : 80;
         estado.textContent = `Configuración actual: próximas comandas en ${anchoActual} mm.`;
         estado.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
+        estado.classList.remove('hidden');
       }
     }
 
@@ -714,36 +736,38 @@ async function abrirMenuEnVivo() {
       if (etiquetaAncho) etiquetaAncho.textContent = `${ancho} mm`;
       if (vistaPrevia) vistaPrevia.style.width = `${(ancho / 80) * 100}%`;
       if (mostrarPendiente) {
-        const estado = document.getElementById('config-save-status');
+        const estado = document.getElementById('config-contacto-save-status');
         estado.textContent = `Vista previa de ${ancho} mm. Guarda los cambios para aplicar este ancho a las próximas comandas.`;
         estado.className = 'rounded-lg border border-amber-800 bg-amber-950/30 px-3 py-2 text-sm text-amber-200';
+        estado.classList.remove('hidden');
       }
     }
 
     document.getElementById('conf-printer-width').addEventListener('change', () => actualizarVistaPreviaImpresora());
 
-    async function guardarConfiguracion(event) {
+    async function guardarConfiguracion(event, grupo) {
       event.preventDefault();
       const btn = event.target.querySelector('button[type="submit"]');
-      const estado = document.getElementById('config-save-status');
+      const esNegocio = grupo === 'negocio';
+      const estado = document.getElementById(esNegocio ? 'config-negocio-save-status' : 'config-contacto-save-status');
       const textoOriginal = btn.innerText;
       btn.innerText = "Guardando...";
       btn.disabled = true;
       estado.textContent = 'Guardando tus cambios…';
       estado.className = 'rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300';
+      estado.classList.remove('hidden');
 
       try {
         const nuevoNombre = document.getElementById('conf-nombre').value;
         const nuevoTelefono = document.getElementById('conf-phone').value;
         const anchoPapel = Number(document.getElementById('conf-printer-width').value) === 58 ? 58 : 80;
+        const cambios = esNegocio
+          ? { nombre_restaurante: nuevoNombre }
+          : { telefono: nuevoTelefono, printer_paper_width: anchoPapel };
 
         const { data: configuracionGuardada, error } = await supabaseClient
           .from('restaurantes')
-          .update({
-            nombre_restaurante: nuevoNombre,
-            telefono: nuevoTelefono,
-            printer_paper_width: anchoPapel
-          })
+          .update(cambios)
           .eq('id', RESTAURANTE_ID)
           .select('id, nombre_restaurante, telefono, printer_paper_width')
           .maybeSingle();
@@ -751,14 +775,19 @@ async function abrirMenuEnVivo() {
         if (error) throw error;
         if (!configuracionGuardada) throw new Error('No se confirmó el guardado. Revisa tu sesión e inténtalo de nuevo.');
 
-        const anchoGuardado = Number(configuracionGuardada.printer_paper_width) === 58 ? 58 : 80;
-        ANCHO_PAPEL_IMPRESORA = anchoGuardado;
-        document.getElementById('conf-nombre').value = configuracionGuardada.nombre_restaurante || '';
-        document.getElementById('conf-phone').value = configuracionGuardada.telefono || '';
-        document.getElementById('conf-printer-width').value = String(anchoGuardado);
-        document.getElementById('nombre-restaurante-header').innerText = configuracionGuardada.nombre_restaurante || nuevoNombre;
-        actualizarVistaPreviaImpresora(false);
-        estado.textContent = `Guardado: ${configuracionGuardada.nombre_restaurante || 'tu negocio'} · próximas comandas en ${anchoGuardado} mm.`;
+        if (esNegocio) {
+          const nombreGuardado = configuracionGuardada.nombre_restaurante || nuevoNombre;
+          document.getElementById('conf-nombre').value = nombreGuardado;
+          document.getElementById('nombre-restaurante-header').innerText = nombreGuardado;
+          estado.textContent = `Nombre actualizado: ${nombreGuardado}.`;
+        } else {
+          const anchoGuardado = Number(configuracionGuardada.printer_paper_width) === 58 ? 58 : 80;
+          ANCHO_PAPEL_IMPRESORA = anchoGuardado;
+          document.getElementById('conf-phone').value = configuracionGuardada.telefono || '';
+          document.getElementById('conf-printer-width').value = String(anchoGuardado);
+          actualizarVistaPreviaImpresora(false);
+          estado.textContent = `WhatsApp e impresión guardados. Las próximas comandas usarán papel de ${anchoGuardado} mm.`;
+        }
         estado.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
       } catch (err) {
         console.error("Error al guardar:", err);
