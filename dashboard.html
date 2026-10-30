@@ -199,7 +199,7 @@
     <!-- SECCIÓN 3: CONFIGURACIÓN RESTAURANTE -->
     <section id="sec-configuracion" class="hidden max-w-2xl mx-auto">
       <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg space-y-4">
-        <div><h2 class="text-2xl font-extrabold text-white">⚙️ Mi negocio</h2><p class="mt-1 text-sm text-slate-400">Actualiza el nombre y el WhatsApp al que tus clientes pueden escribir.</p></div>
+        <div><h2 class="text-2xl font-extrabold text-white">⚙️ Mi negocio</h2><p class="mt-1 text-sm text-slate-400">Actualiza tu negocio y el tamaño del papel para imprimir las comandas.</p></div>
         <form onsubmit="guardarConfiguracion(event)" class="space-y-4">
           <div>
             <label class="block text-xs text-slate-400 mb-1">Nombre del Restaurante</label>
@@ -208,6 +208,14 @@
           <div>
             <label class="block text-xs text-slate-400 mb-1">WhatsApp para recibir pedidos</label>
             <input type="tel" id="conf-phone" required placeholder="300 123 4567" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label for="conf-printer-width" class="block text-xs text-slate-400 mb-1">Ancho del papel de la impresora</label>
+            <select id="conf-printer-width" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
+              <option value="58">58 mm — rollo angosto</option>
+              <option value="80">80 mm — rollo ancho</option>
+            </select>
+            <p class="mt-1 text-xs text-slate-500">Elige el ancho del rollo que usa tu impresora. Puedes cambiarlo cuando quieras.</p>
           </div>
           <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white">Guardar Cambios</button>
         </form>
@@ -218,6 +226,7 @@
 
   <script>
     let RESTAURANTE_ID = null;
+    let ANCHO_PAPEL_IMPRESORA = 80;
     const SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96YWlsdml5aW1yam1lYnJpbGJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMTA5MTEsImV4cCI6MjEwMDY4NjkxMX0.rkWEtTGV4uFB_w62sC-vygZoLbfEgx_KKTSd9oS-5CM';
 
@@ -256,6 +265,7 @@
 
       // 3. Asignar ID global y en el DOM de forma segura
       RESTAURANTE_ID = restaurante.id;
+      ANCHO_PAPEL_IMPRESORA = Number(restaurante.printer_paper_width) === 58 ? 58 : 80;
       const inputOculto = document.getElementById('ai-restaurante-id');
       if (inputOculto) inputOculto.value = restaurante.id;
       
@@ -633,6 +643,7 @@ async function abrirMenuEnVivo() {
       if (data) {
         document.getElementById('conf-nombre').value = data.nombre_restaurante || '';
         document.getElementById('conf-phone').value = data.telefono || '';
+        document.getElementById('conf-printer-width').value = Number(data.printer_paper_width) === 58 ? '58' : '80';
       }
     }
 
@@ -646,16 +657,19 @@ async function abrirMenuEnVivo() {
       try {
         const nuevoNombre = document.getElementById('conf-nombre').value;
         const nuevoTelefono = document.getElementById('conf-phone').value;
+        const anchoPapel = Number(document.getElementById('conf-printer-width').value) === 58 ? 58 : 80;
 
         const { error } = await supabaseClient
           .from('restaurantes')
           .update({
             nombre_restaurante: nuevoNombre,
-            telefono: nuevoTelefono
+            telefono: nuevoTelefono,
+            printer_paper_width: anchoPapel
           })
           .eq('id', RESTAURANTE_ID);
 
         if (error) throw error;
+        ANCHO_PAPEL_IMPRESORA = anchoPapel;
         alert("¡Configuración actualizada con éxito!");
         document.getElementById('nombre-restaurante-header').innerText = nuevoNombre;
       } catch (err) {
@@ -698,7 +712,8 @@ async function abrirMenuEnVivo() {
         total: String(p.total || 0),
         pago: p.metodo_pago || '',
         notas: p.notas || '',
-        fecha: p.created_at || ''
+        fecha: p.created_at || '',
+        ancho: String(ANCHO_PAPEL_IMPRESORA)
       });
       const url = `ticket.html?${parametros.toString()}`;
       iframe.src = url;

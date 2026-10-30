@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comanda de Cocina - Velox</title>
     <style>
+        :root { --ticket-paper-width: 80mm; }
         body {
             font-family: 'Courier New', Courier, monospace;
-            width: 280px; /* Ancho estándar de tira de papel de 58mm/80mm */
+            width: calc(var(--ticket-paper-width) - 6mm);
+            box-sizing: border-box;
             margin: 0 auto;
             padding: 10px;
             color: #000;
@@ -34,7 +36,7 @@
         }
         @media print {
             .btn-print { display: none; } /* Ocultar el botón al imprimir */
-            body { width: 100%; padding: 0; }
+            body { width: var(--ticket-paper-width); margin: 0; padding: 3mm; }
         }
     </style>
 </head>
@@ -85,6 +87,8 @@
     <script>
         // Cargar datos de la URL o LocalStorage
         const urlParams = new URLSearchParams(window.location.search);
+        const anchoPapel = Number(urlParams.get('ancho')) === 58 ? 58 : 80;
+        document.documentElement.style.setProperty('--ticket-paper-width', `${anchoPapel}mm`);
         const fechaPedido = new Date(urlParams.get('fecha') || Date.now());
         document.getElementById('ticket-fecha').innerText = Number.isNaN(fechaPedido.getTime())
             ? new Date().toLocaleString('es-CO')
@@ -112,12 +116,15 @@
             ticketItems.appendChild(fila);
         }
 
-        // Lanzar la ventana de impresión automáticamente al abrir en celular/PC
+        // Solicita a los navegadores compatibles un formato de recibo del ancho elegido.
+        // El controlador de impresión todavía puede imponer el tamaño configurado en el dispositivo.
         window.onload = () => {
-    setTimeout(() => {
-        window.print();
-    }, 500);
-};
+            const altoPapelMm = Math.max(60, Math.ceil((document.body.scrollHeight + 16) * 25.4 / 96));
+            const estiloPagina = document.createElement('style');
+            estiloPagina.textContent = `@page { size: ${anchoPapel}mm ${altoPapelMm}mm; margin: 0; }`;
+            document.head.appendChild(estiloPagina);
+            setTimeout(() => window.print(), 500);
+        };
     </script>
 </body>
 </html>
