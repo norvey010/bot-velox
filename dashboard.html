@@ -114,46 +114,11 @@
 
     <!-- SECCIÓN 2: GESTIÓN DE PRODUCTOS -->
     <section id="sec-productos" class="hidden order-2 space-y-4">
-      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
-        <div><h2 class="text-xl font-bold text-white flex items-center gap-2">🍔 Tu menú</h2><p class="mt-1 text-sm text-slate-400">Revisa lo que vendes y actualiza tu carta.</p></div>
-        <p id="producto-save-status" class="hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
-        <details id="details-producto-form" class="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
-          <summary id="producto-form-summary" class="cursor-pointer text-sm font-semibold text-slate-200">＋ Agregar un producto manualmente</summary>
-        <form id="form-producto" onsubmit="guardarProducto(event)" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-          <input type="hidden" id="prod-id">
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Nombre del Producto</label>
-            <input type="text" id="prod-nombre" required placeholder="Ej: Hamburguesa Doble" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
-          </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Precio ($ COP)</label>
-            <input type="number" id="prod-precio" required placeholder="Ej: 22000" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
-          </div>
-          <div>
-  <label class="block text-xs text-slate-400 mb-1">Imagen del Producto (Galería/Cámara)</label>
-  <input type="file" id="prod-imagen-file" accept="image/*" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-300 focus:border-emerald-500 focus:outline-none file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:bg-slate-700 file:text-white hover:file:bg-slate-600">
-</div>
-          <div class="md:col-span-3">
-            <label class="block text-xs text-slate-400 mb-1">Descripción</label>
-            <input type="text" id="prod-descripcion" placeholder="Ej: Carne 180g, queso cheddar, tocineta y salsa especial" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
-          </div>
-          <div>
-    <label class="block text-xs text-slate-400 mb-1">Categoría</label>
-    <input type="text" id="prod-categoria" required placeholder="Ej: Hamburguesas, Bebidas..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
-</div>
-          <div class="md:col-span-3 flex justify-end gap-2">
-            <button type="button" onclick="limpiarFormProducto()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-white">Cancelar</button>
-            <button type="submit" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-bold text-white">Guardar Producto</button>
-          </div>
-        </form>
-        </details>
-      </div>
-
       <!-- Lista de Productos -->
       <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
         <div class="p-3 border-b border-slate-700">
-          <h3 class="font-bold text-white">Menú Actual</h3>
-          <p class="mt-1 text-xs text-slate-400">Sube una foto real o crea una imagen ilustrativa con IA. Cada generación tiene un costo en tu cuenta de OpenAI y se guarda para reutilizarla.</p>
+          <h3 class="font-bold text-white">Productos de tu menú</h3>
+          <p class="mt-1 text-xs text-slate-400">Revisa, edita o elimina tus productos.</p>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
@@ -174,25 +139,66 @@
     </section>
 <!-- SECCIÓN: MENÚ AI -->
 <section id="sec-menu-ia" class="hidden order-1 space-y-4">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-800 bg-gradient-to-r from-[#151012] via-[#111214] to-[#111214] p-3.5 md:p-4 shadow-lg shadow-black/20">
-      <div>
-        <p class="text-[11px] font-bold uppercase tracking-[.16em] text-red-400">Panel de tu restaurante</p>
-        <h2 class="mt-1 text-lg md:text-xl font-bold text-white">Tu menú y carta digital</h2>
+    <div class="rounded-xl border border-slate-700 bg-slate-800 p-3 sm:p-4 shadow-lg">
+      <div class="mb-3">
+        <h2 class="text-lg font-bold text-white">Tu menú</h2>
+        <p class="text-xs text-slate-400">Prepara y revisa tu carta digital.</p>
       </div>
-      <button onclick="abrirMenuEnVivo()" class="self-start sm:self-auto rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:border-amber-400">👀 Ver mi carta</button>
-    </div>
-    <div class="bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
-        <div class="flex items-center gap-2.5"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-950 text-base">✨</span><div><h2 class="text-base font-bold text-white">Procesar mi menú con IA</h2><p class="text-xs text-slate-400">Elige fotos claras. Velox detecta productos y precios.</p></div></div>
-        
-        <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-3">
-    <input type="hidden" id="ai-restaurante-id">
-    <div>
-        <label for="menuFile" class="block text-xs font-semibold text-slate-200 mb-1.5">Fotos de la carta</label>
-        <input type="file" id="menuFile" name="menuFile" accept="image/*" multiple aria-describedby="menu-file-summary" class="block w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-600">
-        <p id="menu-file-summary" class="mt-1.5 text-xs text-slate-500" aria-live="polite">No has seleccionado fotos.</p>
-    </div>
-    <button type="submit" id="btn-procesar-ia" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition">Procesar menú</button>
-</form>
+
+      <div class="space-y-3 divide-y divide-slate-700">
+        <div class="pb-3">
+          <div class="mb-2 flex items-center gap-2">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-950 text-base">✨</span>
+            <div><h3 class="text-sm font-semibold text-white">Procesar mi menú con IA</h3><p class="text-xs text-slate-400">Elige fotos claras para detectar productos y precios.</p></div>
+          </div>
+          <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-2">
+            <input type="hidden" id="ai-restaurante-id">
+            <label for="menuFile" class="block text-xs font-semibold text-slate-200">Fotos de la carta</label>
+            <input type="file" id="menuFile" name="menuFile" accept="image/*" multiple aria-describedby="menu-file-summary" class="block w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-600">
+            <p id="menu-file-summary" class="text-xs text-slate-500" aria-live="polite">No has seleccionado fotos.</p>
+            <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-emerald-600 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">Procesar menú</button>
+          </form>
+        </div>
+
+        <div class="py-3">
+          <details id="details-producto-form">
+            <summary id="producto-form-summary" class="cursor-pointer text-sm font-semibold text-slate-200">＋ Agregar un producto extra</summary>
+            <form id="form-producto" onsubmit="guardarProducto(event)" class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <input type="hidden" id="prod-id">
+              <div>
+                <label class="mb-1 block text-xs text-slate-400">Nombre del producto</label>
+                <input type="text" id="prod-nombre" required placeholder="Ej: Hamburguesa doble" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="mb-1 block text-xs text-slate-400">Precio ($ COP)</label>
+                <input type="number" id="prod-precio" required placeholder="Ej: 22000" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="mb-1 block text-xs text-slate-400">Imagen (opcional)</label>
+                <input type="file" id="prod-imagen-file" accept="image/*" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
+              </div>
+              <div class="md:col-span-3">
+                <label class="mb-1 block text-xs text-slate-400">Descripción (opcional)</label>
+                <input type="text" id="prod-descripcion" placeholder="Describe el producto" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="mb-1 block text-xs text-slate-400">Categoría</label>
+                <input type="text" id="prod-categoria" required placeholder="Ej: Hamburguesas" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+              </div>
+              <div class="flex justify-end gap-2 md:col-span-3">
+                <button type="button" onclick="limpiarFormProducto()" class="rounded-lg bg-slate-700 px-4 py-2 text-xs text-white hover:bg-slate-600">Cancelar</button>
+                <button type="submit" class="rounded-lg bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-500">Guardar producto</button>
+              </div>
+            </form>
+          </details>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 pt-3">
+          <div><h3 class="text-sm font-semibold text-white">Ver mi carta</h3><p class="text-xs text-slate-400">Así la ven tus clientes.</p></div>
+          <button onclick="abrirMenuEnVivo()" class="shrink-0 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-amber-400">👀 Abrir carta</button>
+        </div>
+      </div>
+      <p id="producto-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
     </div>
 </section>
     <!-- SECCIÓN 3: CONFIGURACIÓN RESTAURANTE -->
@@ -507,7 +513,7 @@
         document.getElementById('prod-id').value = '';
         if (fileInput) fileInput.value = '';
         document.getElementById('details-producto-form').open = false;
-        summary.textContent = '＋ Agregar un producto manualmente';
+        summary.textContent = '＋ Agregar un producto extra';
         status.textContent = `Producto ${accion} correctamente. La lista del menú ya está actualizada.`;
         status.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
       } catch (error) {
@@ -612,7 +618,7 @@
       document.getElementById('form-producto').reset();
       document.getElementById('prod-id').value = '';
       document.getElementById('details-producto-form').open = false;
-      document.getElementById('producto-form-summary').textContent = '＋ Agregar un producto manualmente';
+      document.getElementById('producto-form-summary').textContent = '＋ Agregar un producto extra';
     }
 async function abrirMenuEnVivo() {
     try {
