@@ -21,13 +21,16 @@
     input, select, textarea { min-height: 42px; }
     button { transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
     button:hover:not(:disabled) { transform: translateY(-1px); }
-    @media (max-width: 640px) { main { padding: 1rem !important; } }
+    @media (max-width: 640px) {
+      main { padding: .75rem !important; }
+      header { gap: .5rem !important; }
+    }
   </style>
 </head>
 <body class="bg-[#08090b] text-slate-100 min-h-screen font-sans">
 
   <!-- Header -->
-  <header class="bg-[#0d0e10]/95 border-b border-red-950/80 px-4 md:px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40 shadow-xl shadow-black/20 backdrop-blur-xl">
+  <header class="bg-[#0d0e10]/95 border-b border-red-950/80 px-3 md:px-5 py-3 flex flex-col md:flex-row justify-between items-center gap-2 md:gap-3 sticky top-0 z-40 shadow-lg shadow-black/20 backdrop-blur-xl">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-red-950/40">V</div>
   <h1 class="text-lg font-extrabold tracking-wide text-white">
@@ -36,10 +39,10 @@
   </div>
     
     <!-- Pestañas de Navegación -->
-    <nav aria-label="Secciones de Velox" class="max-w-full flex gap-1 overflow-x-auto bg-[#090a0c] p-1.5 rounded-xl border border-slate-800">
-      <button onclick="cambiarSeccion('pedidos')" id="tab-pedidos" class="px-4 py-2.5 rounded-lg text-sm font-semibold bg-red-600 text-white whitespace-nowrap">📦 Pedidos</button>
-      <button onclick="cambiarSeccion('menu')" id="tab-menu" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">🍽️ Mi menú</button>
-      <button onclick="cambiarSeccion('configuracion')" id="tab-configuracion" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">⚙️ Mi negocio</button>
+    <nav aria-label="Secciones de Velox" class="max-w-full flex gap-1 overflow-x-auto bg-[#090a0c] p-1 rounded-xl border border-slate-800">
+      <button onclick="cambiarSeccion('menu')" id="tab-menu" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">🍽️ Mi menú</button>
+      <button onclick="cambiarSeccion('pedidos')" id="tab-pedidos" class="px-3 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white whitespace-nowrap">📦 Pedidos</button>
+      <button onclick="cambiarSeccion('configuracion')" id="tab-configuracion" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">⚙️ Mi negocio</button>
     </nav>
 
     <div class="flex items-center gap-4 text-sm text-slate-300">
@@ -48,38 +51,36 @@
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto p-6 space-y-6 flex flex-col">
+  <main class="max-w-7xl mx-auto p-4 md:p-5 space-y-4 flex flex-col">
 
-    <div class="rounded-2xl border border-slate-800 bg-gradient-to-r from-[#151012] via-[#111214] to-[#111214] p-5 md:p-7 shadow-xl shadow-black/20">
-      <p class="text-xs font-bold uppercase tracking-[.2em] text-red-400">Tu restaurante, más fácil</p>
-      <h2 class="mt-2 text-2xl md:text-3xl font-extrabold text-white">¿Qué quieres hacer?</h2>
-      <p class="mt-2 max-w-2xl text-sm md:text-base text-slate-400">Organiza tu menú, compártelo y recibe los pedidos aquí.</p>
-      <div class="mt-5 flex flex-wrap gap-3">
-        <button onclick="cambiarSeccion('menu')" class="rounded-xl bg-red-600 hover:bg-red-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-red-950/30">🍽️ Organizar mi menú</button>
-        <button onclick="abrirMenuEnVivo()" class="rounded-xl border border-slate-700 bg-slate-900 px-5 py-3 text-sm font-semibold text-slate-200 hover:border-amber-400">👀 Ver mi carta</button>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-800 bg-gradient-to-r from-[#151012] via-[#111214] to-[#111214] p-3.5 md:p-4 shadow-lg shadow-black/20">
+      <div>
+        <p class="text-[11px] font-bold uppercase tracking-[.16em] text-red-400">Panel de tu restaurante</p>
+        <h2 class="mt-1 text-lg md:text-xl font-bold text-white">Menú, pedidos y negocio</h2>
       </div>
+      <button onclick="abrirMenuEnVivo()" class="self-start sm:self-auto rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:border-amber-400">👀 Ver mi carta</button>
     </div>
 
     <!-- SECCIÓN 1: PEDIDOS -->
-    <section id="sec-pedidos" class="space-y-6">
+    <section id="sec-pedidos" class="space-y-4">
       <!-- Tarjetas de Métricas -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-xs text-slate-400 font-medium">Pedidos recibidos</p>
-          <h3 id="total-pedidos-count" class="text-3xl font-bold text-white mt-1">0</h3>
+      <div class="grid grid-cols-3 gap-2 sm:gap-3">
+        <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
+          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Pedidos recibidos</p>
+          <h3 id="total-pedidos-count" class="text-lg sm:text-2xl font-bold text-white mt-1">0</h3>
         </div>
-        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-xs text-slate-400 font-medium">Suma de pedidos</p>
-          <h3 id="total-ventas-sum" class="text-3xl font-bold text-emerald-400 mt-1">$0</h3>
+        <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
+          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Suma de pedidos</p>
+          <h3 id="total-ventas-sum" class="text-base sm:text-2xl font-bold text-emerald-400 mt-1 whitespace-nowrap">$0</h3>
         </div>
-        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-xs text-slate-400 font-medium">Pedidos de hoy</p>
-          <h3 id="total-pedidos-hoy" class="text-3xl font-bold text-amber-400 mt-1">0</h3>
+        <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
+          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Pedidos de hoy</p>
+          <h3 id="total-pedidos-hoy" class="text-lg sm:text-2xl font-bold text-amber-400 mt-1">0</h3>
         </div>
       </div>
 
       <!-- Barra de Filtros y Búsqueda -->
-      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col sm:flex-row gap-2 items-center justify-between">
         <div class="w-full sm:flex-1">
           <input type="text" id="input-search" placeholder="🔍 Buscar por teléfono o cliente..." 
                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
@@ -93,12 +94,12 @@
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-slate-900/80 text-xs uppercase text-slate-400 border-b border-slate-700">
-                <th class="p-4">Fecha / Hora</th>
-                <th class="p-4">Cliente</th>
-                <th class="p-4">Detalle / Productos</th>
-                <th class="p-4">Dirección</th>
-                <th class="p-4">Total</th>
-                <th class="p-4 text-center">Imprimir</th>
+                <th class="p-2.5 sm:p-4">Fecha / Hora</th>
+                <th class="p-2.5 sm:p-4">Cliente</th>
+                <th class="p-2.5 sm:p-4">Detalle / Productos</th>
+                <th class="p-2.5 sm:p-4">Dirección</th>
+                <th class="p-2.5 sm:p-4">Total</th>
+                <th class="p-2.5 sm:p-4 text-center">Imprimir</th>
               </tr>
             </thead>
             <tbody id="pedidos-body" class="divide-y divide-slate-700/50 text-sm">
@@ -120,10 +121,12 @@
     </section>
 
     <!-- SECCIÓN 2: GESTIÓN DE PRODUCTOS -->
-    <section id="sec-productos" class="hidden order-2 space-y-6">
-      <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg space-y-4">
-        <div><h2 class="text-2xl font-extrabold text-white flex items-center gap-2">🍔 Tu menú</h2><p class="mt-1 text-sm text-slate-400">Agrega o edita lo que vendes. Los cambios aparecerán en tu menú digital.</p></div>
-        <form id="form-producto" onsubmit="guardarProducto(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <section id="sec-productos" class="hidden order-2 space-y-4">
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
+        <div><h2 class="text-xl font-bold text-white flex items-center gap-2">🍔 Tu menú</h2><p class="mt-1 text-sm text-slate-400">Revisa lo que vendes y actualiza tu carta.</p></div>
+        <details class="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
+          <summary class="cursor-pointer text-sm font-semibold text-slate-200">＋ Agregar un producto manualmente</summary>
+        <form id="form-producto" onsubmit="guardarProducto(event)" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
           <input type="hidden" id="prod-id">
           <div>
             <label class="block text-xs text-slate-400 mb-1">Nombre del Producto</label>
@@ -150,11 +153,12 @@
             <button type="submit" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-bold text-white">Guardar Producto</button>
           </div>
         </form>
+        </details>
       </div>
 
       <!-- Lista de Productos -->
       <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
-        <div class="p-4 border-b border-slate-700">
+        <div class="p-3 border-b border-slate-700">
           <h3 class="font-bold text-white">Menú Actual</h3>
           <p class="mt-1 text-xs text-slate-400">Sube una foto real o crea una imagen ilustrativa con IA. Cada generación tiene un costo en tu cuenta de OpenAI y se guarda para reutilizarla.</p>
         </div>
@@ -174,32 +178,27 @@
           </table>
         </div>
       </div>
-      <div class="rounded-xl border border-slate-700 bg-slate-900/70 p-5 text-center">
-        <h3 class="text-white font-bold mb-2">3. Mira tu carta como la verán tus clientes</h3>
-        <p class="text-slate-400 text-sm mb-4">Cuando termines de revisar los productos y precios, abre tu carta.</p>
-        <button onclick="abrirMenuEnVivo()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-xl transition">👀 Abrir mi carta</button>
-      </div>
     </section>
 <!-- SECCIÓN: MENÚ AI -->
-<section id="sec-menu-ia" class="hidden order-1 space-y-6">
-    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg space-y-4">
-        <div class="flex items-center gap-3"><span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-950 text-2xl">✨</span><div><h2 class="text-2xl font-extrabold text-white">1. Sube la foto de tu carta</h2><p class="text-sm text-slate-400">Velox leerá los productos y precios por ti. Después podrás revisarlos abajo.</p></div></div>
+<section id="sec-menu-ia" class="hidden order-1 space-y-4">
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
+        <div class="flex items-center gap-3"><span class="flex h-10 w-10 items-center justify-center rounded-xl bg-red-950 text-xl">✨</span><div><h2 class="text-xl font-bold text-white">Leer mi menú con IA</h2><p class="text-xs sm:text-sm text-slate-400">Sube las fotos de tu carta y Velox organiza los productos y precios.</p></div></div>
         
         <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-4">
     <input type="hidden" id="ai-restaurante-id">
     <div>
         <label class="block text-sm font-semibold text-slate-200 mb-2">Selecciona las fotos de tu carta</label>
         <p class="text-xs text-slate-500 mb-3">Usa fotos claras y asegúrate de que se lean los nombres y precios.</p>
-        <input type="file" id="menuFile" name="menuFile" accept="image/*" multiple class="block w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-600">
+        <input type="file" id="menuFile" name="menuFile" accept="image/*" multiple class="block w-full rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-600">
     </div>
-    <button type="submit" id="btn-procesar-ia" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition">Leer mi carta</button>
+    <button type="submit" id="btn-procesar-ia" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition">Procesar menú</button>
 </form>
     </div>
 </section>
     <!-- SECCIÓN 3: CONFIGURACIÓN RESTAURANTE -->
     <section id="sec-configuracion" class="hidden max-w-2xl mx-auto">
-      <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg space-y-4">
-        <div><h2 class="text-2xl font-extrabold text-white">⚙️ Mi negocio</h2><p class="mt-1 text-sm text-slate-400">Actualiza tu negocio y el tamaño del papel para imprimir las comandas.</p></div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
+        <div><h2 class="text-xl font-bold text-white">⚙️ Mi negocio</h2><p class="mt-1 text-xs sm:text-sm text-slate-400">Actualiza los datos de tu negocio y el papel de impresión.</p></div>
         <form onsubmit="guardarConfiguracion(event)" class="space-y-4">
           <div>
             <label class="block text-xs text-slate-400 mb-1">Nombre del Restaurante</label>
@@ -282,9 +281,9 @@
       document.getElementById('sec-menu-ia').classList.add('hidden');
       document.getElementById('sec-configuracion').classList.add('hidden');
 
-      document.getElementById('tab-pedidos').className = "px-4 py-2.5 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap";
-      document.getElementById('tab-menu').className = "px-4 py-2.5 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap";
-      document.getElementById('tab-configuracion').className = "px-4 py-2.5 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap";
+      document.getElementById('tab-pedidos').className = "px-3 py-2 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap";
+      document.getElementById('tab-menu').className = "px-3 py-2 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap";
+      document.getElementById('tab-configuracion').className = "px-3 py-2 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap";
 
       if (seccion === 'menu') {
         document.getElementById('sec-productos').classList.remove('hidden');
@@ -292,7 +291,7 @@
       } else {
         document.getElementById(`sec-${seccion}`).classList.remove('hidden');
       }
-      document.getElementById(`tab-${seccion}`).className = "px-4 py-2.5 rounded-lg text-sm font-bold bg-red-600 text-white whitespace-nowrap";
+      document.getElementById(`tab-${seccion}`).className = "px-3 py-2 rounded-lg text-sm font-bold bg-red-600 text-white whitespace-nowrap";
 
       if (seccion === 'menu') cargarProductos();
       if (seccion === 'configuracion') cargarConfiguracion();
@@ -360,15 +359,15 @@
 
         tbody.innerHTML += `
           <tr class="hover:bg-slate-750 transition">
-            <td class="p-4 text-xs text-slate-400 whitespace-nowrap">${fecha}</td>
-            <td class="p-4">
+            <td class="p-2.5 sm:p-4 text-[11px] sm:text-xs text-slate-400 whitespace-nowrap">${fecha}</td>
+            <td class="p-2.5 sm:p-4">
               <div class="font-medium text-white">${escaparHtmlUI(p.cliente_nombre || 'Cliente')}</div>
               <div class="text-xs text-slate-400">${escaparHtmlUI(p.cliente_telefono || '')}</div>
             </td>
-            <td class="p-4 max-w-xs truncate text-slate-300" title="${escaparHtmlUI(p.items || 'Sin detalle')}">${escaparHtmlUI(p.items || 'Sin detalle')}</td>
-            <td class="p-4 max-w-xs truncate text-slate-300" title="${escaparHtmlUI(p.direccion || 'Sin dirección')}">${escaparHtmlUI(p.direccion || 'Sin dirección')}</td>
-            <td class="p-4 font-bold text-emerald-400">$${(p.total || 0).toLocaleString()}</td>
-            <td class="p-4 text-center flex items-center justify-center gap-2">
+            <td class="p-2.5 sm:p-4 max-w-xs truncate text-xs text-slate-300" title="${escaparHtmlUI(p.items || 'Sin detalle')}">${escaparHtmlUI(p.items || 'Sin detalle')}</td>
+            <td class="p-2.5 sm:p-4 max-w-xs truncate text-xs text-slate-300" title="${escaparHtmlUI(p.direccion || 'Sin dirección')}">${escaparHtmlUI(p.direccion || 'Sin dirección')}</td>
+            <td class="p-2.5 sm:p-4 font-bold text-sm text-emerald-400">$${(p.total || 0).toLocaleString()}</td>
+            <td class="p-2.5 sm:p-4 text-center flex items-center justify-center gap-2">
               <button type="button" data-print-order="${escaparHtmlUI(pedidoId)}" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs" aria-label="Imprimir pedido">🖨️</button>
             </td>
           </tr>
@@ -630,7 +629,7 @@ async function abrirMenuEnVivo() {
         alert('Ocurrió un error de conexión con el servidor.');
       } finally {
         if (btnProcesar) {
-          btnProcesar.innerText = 'Procesar Menú con IA 🚀';
+          btnProcesar.innerText = 'Procesar menú';
           btnProcesar.disabled = false;
         }
       }
