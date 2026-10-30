@@ -23,6 +23,35 @@
     button:hover:not(:disabled) { transform: translateY(-1px); }
     summary { list-style: none; }
     summary::-webkit-details-marker { display: none; }
+    #form-producto {
+      border: 1px solid #34363d;
+      border-radius: .75rem;
+      background: #15171b;
+      padding: .875rem;
+    }
+    #form-producto label {
+      display: block;
+      margin-bottom: .375rem;
+      color: #e5e7eb !important;
+      font-size: .8125rem;
+      font-weight: 600;
+    }
+    #form-producto input {
+      min-height: 46px;
+      border: 1px solid #50535c !important;
+      border-radius: .625rem;
+      background: #0b0c0f !important;
+      padding: .625rem .75rem;
+      color: #f9fafb !important;
+      font-size: .875rem;
+    }
+    #form-producto input::placeholder { color: #a1a1aa; opacity: 1; }
+    #form-producto input:focus {
+      border-color: #f87171 !important;
+      outline: none;
+      box-shadow: 0 0 0 2px rgb(248 113 113 / 22%);
+    }
+    #form-producto input[type="file"] { padding: .45rem; }
     @media (max-width: 640px) {
       main { padding: .75rem !important; }
       header { gap: .5rem !important; }
@@ -170,25 +199,26 @@
             </summary>
             <form id="form-producto" onsubmit="guardarProducto(event)" class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
               <input type="hidden" id="prod-id">
+              <p class="text-xs text-slate-400 md:col-span-3">Los campos con <span class="font-bold text-red-400">*</span> son obligatorios.</p>
               <div>
-                <label class="mb-1 block text-xs text-slate-400">Nombre del producto</label>
+                <label for="prod-nombre">Nombre del producto <span class="text-red-400">*</span></label>
                 <input type="text" id="prod-nombre" required placeholder="Ej: Hamburguesa doble" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
               </div>
               <div>
-                <label class="mb-1 block text-xs text-slate-400">Precio ($ COP)</label>
+                <label for="prod-precio">Precio ($ COP) <span class="text-red-400">*</span></label>
                 <input type="number" id="prod-precio" required placeholder="Ej: 22000" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
               </div>
               <div>
-                <label class="mb-1 block text-xs text-slate-400">Imagen (opcional)</label>
+                <label for="prod-imagen-file">Imagen del producto (opcional)</label>
                 <input type="file" id="prod-imagen-file" accept="image/*" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
               </div>
               <div class="md:col-span-3">
-                <label class="mb-1 block text-xs text-slate-400">Descripción (opcional)</label>
-                <input type="text" id="prod-descripcion" placeholder="Describe el producto" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+                <label for="prod-descripcion">Descripción (opcional)</label>
+                <input type="text" id="prod-descripcion" placeholder="Ej: Carne, queso y salsa especial" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
               </div>
               <div>
-                <label class="mb-1 block text-xs text-slate-400">Categoría</label>
-                <input type="text" id="prod-categoria" required placeholder="Ej: Hamburguesas" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+                <label for="prod-categoria">Categoría del menú <span class="text-red-400">*</span></label>
+                <input type="text" id="prod-categoria" required placeholder="Ej: Hamburguesas, Bebidas" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
               </div>
               <div class="flex justify-end gap-2 md:col-span-3">
                 <button type="button" onclick="limpiarFormProducto()" class="rounded-lg bg-slate-700 px-4 py-2 text-xs text-white hover:bg-slate-600">Cancelar</button>
