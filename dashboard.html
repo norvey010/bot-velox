@@ -215,7 +215,19 @@
               <option value="80">80 mm — rollo ancho</option>
             </select>
             <p class="mt-1 text-xs text-slate-500">Elige el ancho del rollo que usa tu impresora. Puedes cambiarlo cuando quieras.</p>
+            <div class="mt-3 rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+              <div class="mb-2 flex items-center justify-between text-xs text-slate-400">
+                <span>Vista previa de la comanda</span>
+                <span id="printer-width-label" class="font-semibold text-amber-300">80 mm</span>
+              </div>
+              <div class="mx-auto max-w-xs rounded-md bg-white p-2 text-center font-mono text-[9px] text-slate-900 shadow-sm transition-all duration-200" id="printer-width-preview">
+                <div class="border-b border-dashed border-slate-400 pb-1 font-bold">VELOX · COMANDA</div>
+                <div class="py-1 text-left">1 × Producto de ejemplo</div>
+                <div class="border-t border-dashed border-slate-400 pt-1 text-right font-bold">TOTAL: $25.000</div>
+              </div>
+            </div>
           </div>
+          <p id="config-save-status" class="hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
           <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white">Guardar Cambios</button>
         </form>
       </div>
@@ -643,37 +655,71 @@ async function abrirMenuEnVivo() {
         document.getElementById('conf-nombre').value = data.nombre_restaurante || '';
         document.getElementById('conf-phone').value = data.telefono || '';
         document.getElementById('conf-printer-width').value = Number(data.printer_paper_width) === 58 ? '58' : '80';
+        actualizarVistaPreviaImpresora(false);
+        const estado = document.getElementById('config-save-status');
+        const anchoActual = Number(data.printer_paper_width) === 58 ? 58 : 80;
+        estado.textContent = `Configuración actual: próximas comandas en ${anchoActual} mm.`;
+        estado.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
       }
     }
+
+    function actualizarVistaPreviaImpresora(mostrarPendiente = true) {
+      const ancho = Number(document.getElementById('conf-printer-width').value) === 58 ? 58 : 80;
+      const etiquetaAncho = document.getElementById('printer-width-label');
+      const vistaPrevia = document.getElementById('printer-width-preview');
+      if (etiquetaAncho) etiquetaAncho.textContent = `${ancho} mm`;
+      if (vistaPrevia) vistaPrevia.style.width = `${(ancho / 80) * 100}%`;
+      if (mostrarPendiente) {
+        const estado = document.getElementById('config-save-status');
+        estado.textContent = `Vista previa de ${ancho} mm. Guarda los cambios para aplicar este ancho a las próximas comandas.`;
+        estado.className = 'rounded-lg border border-amber-800 bg-amber-950/30 px-3 py-2 text-sm text-amber-200';
+      }
+    }
+
+    document.getElementById('conf-printer-width').addEventListener('change', () => actualizarVistaPreviaImpresora());
 
     async function guardarConfiguracion(event) {
       event.preventDefault();
       const btn = event.target.querySelector('button[type="submit"]');
+      const estado = document.getElementById('config-save-status');
       const textoOriginal = btn.innerText;
       btn.innerText = "Guardando...";
       btn.disabled = true;
+      estado.textContent = 'Guardando tus cambios…';
+      estado.className = 'rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300';
 
       try {
         const nuevoNombre = document.getElementById('conf-nombre').value;
         const nuevoTelefono = document.getElementById('conf-phone').value;
         const anchoPapel = Number(document.getElementById('conf-printer-width').value) === 58 ? 58 : 80;
 
-        const { error } = await supabaseClient
+        const { data: configuracionGuardada, error } = await supabaseClient
           .from('restaurantes')
           .update({
             nombre_restaurante: nuevoNombre,
             telefono: nuevoTelefono,
             printer_paper_width: anchoPapel
           })
-          .eq('id', RESTAURANTE_ID);
+          .eq('id', RESTAURANTE_ID)
+          .select('id, nombre_restaurante, telefono, printer_paper_width')
+          .maybeSingle();
 
         if (error) throw error;
-        ANCHO_PAPEL_IMPRESORA = anchoPapel;
-        alert("¡Configuración actualizada con éxito!");
-        document.getElementById('nombre-restaurante-header').innerText = nuevoNombre;
+        if (!configuracionGuardada) throw new Error('No se confirmó el guardado. Revisa tu sesión e inténtalo de nuevo.');
+
+        const anchoGuardado = Number(configuracionGuardada.printer_paper_width) === 58 ? 58 : 80;
+        ANCHO_PAPEL_IMPRESORA = anchoGuardado;
+        document.getElementById('conf-nombre').value = configuracionGuardada.nombre_restaurante || '';
+        document.getElementById('conf-phone').value = configuracionGuardada.telefono || '';
+        document.getElementById('conf-printer-width').value = String(anchoGuardado);
+        document.getElementById('nombre-restaurante-header').innerText = configuracionGuardada.nombre_restaurante || nuevoNombre;
+        actualizarVistaPreviaImpresora(false);
+        estado.textContent = `Guardado: ${configuracionGuardada.nombre_restaurante || 'tu negocio'} · próximas comandas en ${anchoGuardado} mm.`;
+        estado.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
       } catch (err) {
         console.error("Error al guardar:", err);
-        alert("Hubo un problema al guardar los cambios.");
+        estado.textContent = `No se guardaron los cambios. ${err.message || 'Inténtalo de nuevo.'}`;
+        estado.className = 'rounded-lg border border-red-800 bg-red-950/40 px-3 py-2 text-sm text-red-200';
       } finally {
         btn.innerText = textoOriginal;
         btn.disabled = false;
