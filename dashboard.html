@@ -181,15 +181,15 @@
       </div>
       <button onclick="abrirMenuEnVivo()" class="self-start sm:self-auto rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:border-amber-400">👀 Ver mi carta</button>
     </div>
-    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
-        <div class="flex items-center gap-3"><span class="flex h-10 w-10 items-center justify-center rounded-xl bg-red-950 text-xl">✨</span><div><h2 class="text-xl font-bold text-white">Leer mi menú con IA</h2><p class="text-xs sm:text-sm text-slate-400">Sube las fotos de tu carta y Velox organiza los productos y precios.</p></div></div>
+    <div class="bg-slate-800 p-3 sm:p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
+        <div class="flex items-center gap-2.5"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-950 text-base">✨</span><div><h2 class="text-base font-bold text-white">Procesar mi menú con IA</h2><p class="text-xs text-slate-400">Elige fotos claras. Velox detecta productos y precios.</p></div></div>
         
-        <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-4">
+        <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-3">
     <input type="hidden" id="ai-restaurante-id">
     <div>
-        <label class="block text-sm font-semibold text-slate-200 mb-2">Selecciona las fotos de tu carta</label>
-        <p class="text-xs text-slate-500 mb-3">Usa fotos claras y asegúrate de que se lean los nombres y precios.</p>
-        <input type="file" id="menuFile" name="menuFile" accept="image/*" multiple class="block w-full rounded-xl border border-slate-700 bg-slate-900 p-2.5 text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-600">
+        <label for="menuFile" class="block text-xs font-semibold text-slate-200 mb-1.5">Fotos de la carta</label>
+        <input type="file" id="menuFile" name="menuFile" accept="image/*" multiple aria-describedby="menu-file-summary" class="block w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-600">
+        <p id="menu-file-summary" class="mt-1.5 text-xs text-slate-500" aria-live="polite">No has seleccionado fotos.</p>
     </div>
     <button type="submit" id="btn-procesar-ia" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white transition">Procesar menú</button>
 </form>
@@ -643,6 +643,13 @@ async function abrirMenuEnVivo() {
     }
 }
     // --- MÓDULO MENÚ IA (Múltiples imágenes dinámicas) ---
+    document.getElementById('menuFile').addEventListener('change', event => {
+      const cantidad = event.target.files.length;
+      document.getElementById('menu-file-summary').textContent = cantidad
+        ? `${cantidad} ${cantidad === 1 ? 'foto seleccionada' : 'fotos seleccionadas'}.`
+        : 'No has seleccionado fotos.';
+    });
+
     async function enviarMenuConIA(event) {
       event.preventDefault();
       
@@ -672,7 +679,7 @@ async function abrirMenuEnVivo() {
       }
 
       if (btnProcesar) {
-        btnProcesar.innerText = '🤖 Analizando menú con IA... (Esto puede tomar unos segundos)';
+        btnProcesar.innerText = 'Leyendo menú…';
         btnProcesar.disabled = true;
       }
 
@@ -692,6 +699,7 @@ async function abrirMenuEnVivo() {
               : ' Atención: no se detectaron variantes para elegir. Revisa que la foto incluya claramente esa lista.')
             : ' El servidor no devolvió el diagnóstico de variantes; comprueba que Railway tenga la última versión.';
           formElement.reset();
+          document.getElementById('menu-file-summary').textContent = 'No has seleccionado fotos.';
           const estadoMenu = document.getElementById('producto-save-status');
           estadoMenu.textContent = 'Menú importado y guardado correctamente. La lista se está actualizando.' + mensajeVariantes;
           estadoMenu.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
