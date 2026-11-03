@@ -89,15 +89,15 @@
       <!-- Tarjetas de Métricas -->
       <div class="grid grid-cols-3 gap-2 sm:gap-3">
         <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Pedidos recibidos</p>
+          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Pedidos de hoy</p>
           <h3 id="total-pedidos-count" class="text-lg sm:text-2xl font-bold text-white mt-1">0</h3>
         </div>
         <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Suma de pedidos</p>
+          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Ventas de hoy</p>
           <h3 id="total-ventas-sum" class="text-base sm:text-2xl font-bold text-emerald-400 mt-1 whitespace-nowrap">$0</h3>
         </div>
         <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Pedidos de hoy</p>
+          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Promedio por pedido</p>
           <h3 id="total-pedidos-hoy" class="text-lg sm:text-2xl font-bold text-amber-400 mt-1">0</h3>
         </div>
       </div>
@@ -206,19 +206,22 @@
               </div>
               <div>
                 <label for="prod-precio">Precio ($ COP) <span class="text-red-400">*</span></label>
-                <input type="number" id="prod-precio" required placeholder="Ej: 22000" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+                <div class="relative">
+                  <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-semibold text-amber-300">$</span>
+                  <input type="text" id="prod-precio" inputmode="numeric" autocomplete="off" required placeholder="Ej: 25.000" class="w-full rounded-lg border border-slate-700 bg-slate-900 py-2 pl-8 pr-3 text-sm text-white focus:border-emerald-500 focus:outline-none">
+                </div>
               </div>
               <div>
-                <label for="prod-imagen-file">Imagen del producto (opcional)</label>
-                <input type="file" id="prod-imagen-file" accept="image/*" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
+                <label for="prod-categoria">Categoría del menú <span class="text-red-400">*</span></label>
+                <input type="text" id="prod-categoria" required placeholder="Ej: Hamburguesas, Bebidas" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
               </div>
               <div class="md:col-span-3">
                 <label for="prod-descripcion">Descripción (opcional)</label>
                 <input type="text" id="prod-descripcion" placeholder="Ej: Carne, queso y salsa especial" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
               </div>
-              <div>
-                <label for="prod-categoria">Categoría del menú <span class="text-red-400">*</span></label>
-                <input type="text" id="prod-categoria" required placeholder="Ej: Hamburguesas, Bebidas" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+              <div class="md:col-span-3">
+                <label for="prod-imagen-file">Imagen del producto (opcional)</label>
+                <input type="file" id="prod-imagen-file" accept="image/*" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
               </div>
               <div class="flex justify-end gap-2 md:col-span-3">
                 <button type="button" onclick="limpiarFormProducto()" class="rounded-lg bg-slate-700 px-4 py-2 text-xs text-white hover:bg-slate-600">Cancelar</button>
@@ -294,6 +297,38 @@
     let paginaActual = 0;
     const porPagina = 15;
     const pedidosRenderizados = new Map();
+    const temporizadoresAvisos = new WeakMap();
+
+    function mostrarAviso(elemento, mensaje, tipo = 'exito', duracion = 0) {
+      const temporizadorAnterior = temporizadoresAvisos.get(elemento);
+      if (temporizadorAnterior) clearTimeout(temporizadorAnterior);
+      elemento.textContent = mensaje;
+      const colores = {
+        exito: ['border-emerald-800', 'bg-emerald-950/40', 'text-emerald-200'],
+        error: ['border-red-800', 'bg-red-950/40', 'text-red-200'],
+        pendiente: ['border-amber-800', 'bg-amber-950/30', 'text-amber-200'],
+        info: ['border-slate-700', 'bg-slate-900', 'text-slate-300']
+      };
+      elemento.classList.remove('border-emerald-800', 'bg-emerald-950/40', 'text-emerald-200', 'border-red-800', 'bg-red-950/40', 'text-red-200', 'border-amber-800', 'bg-amber-950/30', 'text-amber-200', 'border-slate-700', 'bg-slate-900', 'text-slate-300');
+      elemento.classList.add(...colores[tipo]);
+      elemento.classList.remove('hidden');
+      if (duracion > 0) {
+        const temporizador = setTimeout(() => {
+          elemento.classList.add('hidden');
+          temporizadoresAvisos.delete(elemento);
+        }, duracion);
+        temporizadoresAvisos.set(elemento, temporizador);
+      }
+    }
+
+    function formatearPrecioCOP(valor) {
+      const digitos = String(valor ?? '').replace(/\D/g, '');
+      return digitos ? Number(digitos).toLocaleString('es-CO') : '';
+    }
+
+    document.getElementById('prod-precio').addEventListener('input', event => {
+      event.target.value = formatearPrecioCOP(event.target.value);
+    });
 
     function escaparHtmlUI(valor) {
       return String(valor ?? '').replace(/[&<>"']/g, caracter => ({
@@ -453,12 +488,14 @@
       if (!RESTAURANTE_ID) return;
       const { data } = await supabaseClient.from('pedidos').select('total, created_at').eq('restaurante_id', RESTAURANTE_ID);
       if (data) {
-        document.getElementById('total-pedidos-count').innerText = data.length;
-        const sumaPedidos = data.reduce((sum, p) => sum + (Number(p.total) || 0), 0);
-        document.getElementById('total-ventas-sum').innerText = `$${sumaPedidos.toLocaleString('es-CO')}`;
         const inicioHoy = new Date();
         inicioHoy.setHours(0, 0, 0, 0);
-        document.getElementById('total-pedidos-hoy').innerText = data.filter(p => new Date(p.created_at) >= inicioHoy).length;
+        const pedidosHoy = data.filter(p => new Date(p.created_at) >= inicioHoy);
+        const ventasHoy = pedidosHoy.reduce((sum, p) => sum + (Number(p.total) || 0), 0);
+        const promedioHoy = pedidosHoy.length ? Math.round(ventasHoy / pedidosHoy.length) : 0;
+        document.getElementById('total-pedidos-count').innerText = pedidosHoy.length;
+        document.getElementById('total-ventas-sum').innerText = `$${ventasHoy.toLocaleString('es-CO')}`;
+        document.getElementById('total-pedidos-hoy').innerText = `$${promedioHoy.toLocaleString('es-CO')}`;
       }
     }
 
@@ -516,6 +553,9 @@
       status.classList.add('hidden');
 
       try {
+        const precioNumerico = Number(document.getElementById('prod-precio').value.replace(/\D/g, ''));
+        if (!Number.isSafeInteger(precioNumerico) || precioNumerico <= 0) throw new Error('Ingresa un precio válido mayor que $0.');
+
         if (fileInput && fileInput.files.length > 0) {
           const file = fileInput.files[0];
           const fileExt = file.name.split('.').pop();
@@ -531,7 +571,7 @@
 
         const payload = {
           nombre: document.getElementById('prod-nombre').value,
-          precio: parseFloat(document.getElementById('prod-precio').value),
+          precio: precioNumerico,
           descripcion: document.getElementById('prod-descripcion').value,
           categoria: document.getElementById('prod-categoria').value || 'General',
           restaurante_id: RESTAURANTE_ID
@@ -551,14 +591,11 @@
         document.getElementById('details-producto-form').open = false;
         summaryText.textContent = 'Agregar un producto extra';
         summaryIcon.textContent = '＋';
-        status.textContent = `Producto ${accion} correctamente. La lista del menú ya está actualizada.`;
-        status.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
+        mostrarAviso(status, `Producto ${accion} correctamente.`, 'exito', 4500);
       } catch (error) {
         console.error('Error al guardar producto:', error);
-        status.textContent = error.message || 'No se pudo guardar el producto. Revisa los datos e inténtalo de nuevo.';
-        status.className = 'rounded-lg border border-rose-800 bg-rose-950/40 px-3 py-2 text-sm text-rose-200';
+        mostrarAviso(status, error.message || 'No se pudo guardar el producto. Revisa los datos e inténtalo de nuevo.', 'error');
       } finally {
-        status.classList.remove('hidden');
         if (submitButton) {
           submitButton.disabled = false;
           submitButton.textContent = textoOriginal;
@@ -623,14 +660,11 @@
         const { error } = await supabaseClient.from('productos').delete().eq('id', id);
         if (error) throw error;
         await cargarProductos();
-        status.textContent = 'Producto eliminado. La lista del menú ya está actualizada.';
-        status.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
+        mostrarAviso(status, 'Producto eliminado.', 'exito', 4500);
       } catch (error) {
         console.error('Error al eliminar producto:', error);
-        status.textContent = error.message || 'No se pudo eliminar el producto.';
-        status.className = 'rounded-lg border border-rose-800 bg-rose-950/40 px-3 py-2 text-sm text-rose-200';
+        mostrarAviso(status, error.message || 'No se pudo eliminar el producto.', 'error');
       }
-      status.classList.remove('hidden');
     }
 
     async function prepararEdicionProducto(id) {
@@ -641,7 +675,7 @@
       }
       document.getElementById('prod-id').value = data.id;
       document.getElementById('prod-nombre').value = data.nombre || '';
-      document.getElementById('prod-precio').value = data.precio || '';
+      document.getElementById('prod-precio').value = formatearPrecioCOP(data.precio || '');
       document.getElementById('prod-descripcion').value = data.descripcion || '';
       document.getElementById('prod-categoria').value = data.categoria || '';
       document.getElementById('details-producto-form').open = true;
@@ -751,9 +785,7 @@ async function abrirMenuEnVivo() {
           formElement.reset();
           actualizarResumenFotosMenu();
           const estadoMenu = document.getElementById('producto-save-status');
-          estadoMenu.textContent = 'Menú importado y guardado correctamente. La lista se está actualizando.' + mensajeVariantes;
-          estadoMenu.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
-          estadoMenu.classList.remove('hidden');
+          mostrarAviso(estadoMenu, 'Menú importado y guardado correctamente.' + mensajeVariantes, 'exito', 6000);
           cambiarSeccion('menu'); // Te lleva a revisar la carta recién importada
         } else {
           alert('Error: ' + (resultado.error || 'No se pudo procesar el archivo.'));
@@ -780,9 +812,7 @@ async function abrirMenuEnVivo() {
         actualizarVistaPreviaImpresora(false);
         const estado = document.getElementById('config-contacto-save-status');
         const anchoActual = Number(data.printer_paper_width) === 58 ? 58 : 80;
-        estado.textContent = `Configuración actual: próximas comandas en ${anchoActual} mm.`;
-        estado.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
-        estado.classList.remove('hidden');
+        mostrarAviso(estado, `Configuración actual: próximas comandas en ${anchoActual} mm.`, 'info');
       }
     }
 
@@ -794,9 +824,7 @@ async function abrirMenuEnVivo() {
       if (vistaPrevia) vistaPrevia.style.width = `${(ancho / 80) * 100}%`;
       if (mostrarPendiente) {
         const estado = document.getElementById('config-contacto-save-status');
-        estado.textContent = `Vista previa de ${ancho} mm. Guarda los cambios para aplicar este ancho a las próximas comandas.`;
-        estado.className = 'rounded-lg border border-amber-800 bg-amber-950/30 px-3 py-2 text-sm text-amber-200';
-        estado.classList.remove('hidden');
+        mostrarAviso(estado, `Vista previa de ${ancho} mm. Guarda los cambios para aplicar este ancho a las próximas comandas.`, 'pendiente');
       }
     }
 
@@ -810,9 +838,7 @@ async function abrirMenuEnVivo() {
       const textoOriginal = btn.innerText;
       btn.innerText = "Guardando...";
       btn.disabled = true;
-      estado.textContent = 'Guardando tus cambios…';
-      estado.className = 'rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300';
-      estado.classList.remove('hidden');
+      mostrarAviso(estado, 'Guardando tus cambios…', 'info');
 
       try {
         const nuevoNombre = document.getElementById('conf-nombre').value;
@@ -836,20 +862,18 @@ async function abrirMenuEnVivo() {
           const nombreGuardado = configuracionGuardada.nombre_restaurante || nuevoNombre;
           document.getElementById('conf-nombre').value = nombreGuardado;
           document.getElementById('nombre-restaurante-header').innerText = nombreGuardado;
-          estado.textContent = `Nombre actualizado: ${nombreGuardado}.`;
+          mostrarAviso(estado, `Nombre actualizado: ${nombreGuardado}.`, 'exito', 4500);
         } else {
           const anchoGuardado = Number(configuracionGuardada.printer_paper_width) === 58 ? 58 : 80;
           ANCHO_PAPEL_IMPRESORA = anchoGuardado;
           document.getElementById('conf-phone').value = configuracionGuardada.telefono || '';
           document.getElementById('conf-printer-width').value = String(anchoGuardado);
           actualizarVistaPreviaImpresora(false);
-          estado.textContent = `WhatsApp e impresión guardados. Las próximas comandas usarán papel de ${anchoGuardado} mm.`;
+          mostrarAviso(estado, `WhatsApp e impresión guardados. Las próximas comandas usarán papel de ${anchoGuardado} mm.`, 'exito', 4500);
         }
-        estado.className = 'rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200';
       } catch (err) {
         console.error("Error al guardar:", err);
-        estado.textContent = `No se guardaron los cambios. ${err.message || 'Inténtalo de nuevo.'}`;
-        estado.className = 'rounded-lg border border-red-800 bg-red-950/40 px-3 py-2 text-sm text-red-200';
+        mostrarAviso(estado, `No se guardaron los cambios. ${err.message || 'Inténtalo de nuevo.'}`, 'error');
       } finally {
         btn.innerText = textoOriginal;
         btn.disabled = false;
