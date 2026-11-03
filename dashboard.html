@@ -251,68 +251,68 @@
       <p id="producto-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
     </div>
 
-    <div class="rounded-xl border border-slate-700 bg-slate-800 p-3 sm:p-4 shadow-lg">
-      <div class="mb-3">
-        <h2 class="text-base font-bold text-white">Configuración de la carta</h2>
-        <p class="mt-1 text-xs text-slate-400">Controla cuándo pueden hacer pedidos tus clientes.</p>
-      </div>
-      <label class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900 px-3 py-3">
-        <span><span class="block text-sm font-semibold text-white">Carta disponible</span><span class="block text-xs text-slate-400">Pausa o activa los pedidos en línea.</span></span>
-        <input id="menu-activo" type="checkbox" class="h-5 w-5 accent-red-600">
-      </label>
-      <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-200">
-        <input id="horario-usar" type="checkbox" class="h-4 w-4 accent-red-600">
-        Aplicar horario semanal automáticamente
-      </label>
-      <p class="mt-1 text-xs text-slate-500">Sin horario automático, la carta permanece disponible mientras esté activada.</p>
-      <div id="horario-lista" class="mt-3 space-y-2"></div>
-      <p id="menu-config-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
-      <button type="button" id="btn-guardar-menu-config" onclick="guardarConfiguracionMenu()" class="mt-3 w-full rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-500">Guardar configuración</button>
-    </div>
 </section>
     <!-- SECCIÓN 3: CONFIGURACIÓN RESTAURANTE -->
     <section id="sec-configuracion" class="hidden max-w-2xl mx-auto space-y-3">
-      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg space-y-3">
-        <div><h2 class="text-xl font-bold text-white">⚙️ Ajustes</h2><p class="mt-1 text-xs sm:text-sm text-slate-400">Administra la información de tu negocio y cómo recibes e imprimes los pedidos.</p></div>
-        <nav aria-label="Categorías de ajustes" class="grid grid-cols-2 gap-2 rounded-xl border border-slate-700 bg-slate-900 p-1">
-          <button type="button" id="tab-ajustes-negocio" onclick="cambiarPestanaAjustes('negocio')" class="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white">🏪 Mi negocio</button>
-          <button type="button" id="tab-ajustes-contacto" onclick="cambiarPestanaAjustes('contacto')" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-400 hover:text-white">📲 WhatsApp e impresión</button>
-        </nav>
-        <form id="form-ajustes-negocio" onsubmit="guardarConfiguracion(event, 'negocio')" class="space-y-4">
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">Nombre del Restaurante</label>
-            <input type="text" id="conf-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
+      <div class="rounded-xl border border-slate-700 bg-slate-800 p-3 sm:p-4 shadow-lg">
+        <div id="ajustes-inicio">
+          <h2 class="text-lg font-bold text-white">⚙️ Ajustes</h2>
+          <p class="mt-1 mb-3 text-xs text-slate-400">Administra tu negocio y la operación de Velox.</p>
+          <p id="ajustes-inicio-status" class="mb-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+          <div class="space-y-2">
+            <button type="button" onclick="abrirCategoriaAjustes('negocio')" class="flex min-h-16 w-full items-center gap-3 rounded-lg border border-slate-700 bg-slate-900 p-3 text-left hover:border-red-500">
+              <span class="text-xl" aria-hidden="true">🏪</span><span class="min-w-0 flex-1"><strong class="block text-sm text-white">Datos del negocio</strong><small class="text-xs text-slate-400">Nombre, WhatsApp y horario de atención</small></span><span class="text-lg text-slate-500" aria-hidden="true">›</span>
+            </button>
+            <button type="button" onclick="abrirCategoriaAjustes('impresion')" class="flex min-h-16 w-full items-center gap-3 rounded-lg border border-slate-700 bg-slate-900 p-3 text-left hover:border-red-500">
+              <span class="text-xl" aria-hidden="true">🧾</span><span class="min-w-0 flex-1"><strong class="block text-sm text-white">Pedidos e impresión</strong><small class="text-xs text-slate-400">Tamaño del papel de tus comandas</small></span><span class="text-lg text-slate-500" aria-hidden="true">›</span>
+            </button>
           </div>
-          <p id="config-negocio-save-status" class="hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
-          <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white">Guardar nombre</button>
-        </form>
-        <form id="form-ajustes-contacto" onsubmit="guardarConfiguracion(event, 'contacto')" class="hidden space-y-4">
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">WhatsApp para recibir pedidos</label>
-            <input type="tel" id="conf-phone" required placeholder="300 123 4567" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
-          </div>
-          <div>
-            <label for="conf-printer-width" class="block text-xs text-slate-400 mb-1">Ancho del papel de la impresora</label>
-            <select id="conf-printer-width" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none">
-              <option value="58">58 mm — rollo angosto</option>
-              <option value="80">80 mm — rollo ancho</option>
-            </select>
-            <p class="mt-1 text-xs text-slate-500">Elige el ancho del rollo que usa tu impresora. Puedes cambiarlo cuando quieras.</p>
-            <div class="mt-3 rounded-lg border border-slate-700 bg-slate-900/70 p-3">
-              <div class="mb-2 flex items-center justify-between text-xs text-slate-400">
-                <span>Vista previa de la comanda</span>
-                <span id="printer-width-label" class="font-semibold text-amber-300">80 mm</span>
-              </div>
-              <div class="mx-auto max-w-xs rounded-md bg-white p-2 text-center font-mono text-[9px] text-slate-900 shadow-sm transition-all duration-200" id="printer-width-preview">
-                <div class="border-b border-dashed border-slate-400 pb-1 font-bold">VELOX · COMANDA</div>
-                <div class="py-1 text-left">1 × Producto de ejemplo</div>
-                <div class="border-t border-dashed border-slate-400 pt-1 text-right font-bold">TOTAL: $25.000</div>
-              </div>
+        </div>
+
+        <div id="ajustes-categoria" class="hidden">
+          <button type="button" onclick="volverAjustesInicio()" class="mb-3 rounded-md px-2 py-1 text-sm font-semibold text-amber-300 hover:bg-slate-700">‹ Ajustes</button>
+          <h2 id="ajustes-categoria-titulo" class="text-lg font-bold text-white"></h2>
+          <p id="ajustes-categoria-descripcion" class="mb-3 mt-1 text-xs text-slate-400"></p>
+          <p id="ajustes-status" class="mb-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+          <div id="ajustes-opciones" class="space-y-2"></div>
+        </div>
+
+        <div id="ajustes-editor" class="hidden">
+          <button type="button" onclick="volverAjustesCategoria()" class="mb-3 rounded-md px-2 py-1 text-sm font-semibold text-amber-300 hover:bg-slate-700">‹ Volver</button>
+          <h2 id="ajustes-editor-titulo" class="mb-3 text-lg font-bold text-white"></h2>
+          <form id="form-ajuste-nombre" onsubmit="guardarConfiguracion(event, 'negocio')" class="hidden space-y-3">
+            <label class="block text-xs text-slate-300" for="conf-nombre">Nombre del negocio<input type="text" id="conf-nombre" required maxlength="100" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2.5 text-sm text-white focus:border-red-500 focus:outline-none"></label>
+            <button type="submit" class="w-full rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-500">Guardar nombre</button>
+          </form>
+          <form id="form-ajuste-telefono" onsubmit="guardarConfiguracion(event, 'telefono')" class="hidden space-y-3">
+            <label class="block text-xs text-slate-300" for="conf-phone">Número de WhatsApp<input type="tel" id="conf-phone" required maxlength="30" placeholder="300 123 4567" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2.5 text-sm text-white focus:border-red-500 focus:outline-none"></label>
+            <button type="submit" class="w-full rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-500">Guardar número</button>
+          </form>
+          <form id="form-ajuste-horario" onsubmit="guardarConfiguracionMenu(event)" class="hidden space-y-3">
+            <label class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900 px-3 py-3">
+              <span><span class="block text-sm font-semibold text-white">Aceptar pedidos</span><span class="block text-xs text-slate-400">Pausa o activa los pedidos en línea.</span></span>
+              <input id="menu-activo" type="checkbox" class="h-5 w-5 accent-red-600">
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-200"><input id="horario-usar" type="checkbox" class="h-4 w-4 accent-red-600"> Aplicar horario semanal</label>
+            <p class="text-xs text-slate-500">Si no activas el horario, los pedidos estarán disponibles cuando la carta esté activa.</p>
+            <div id="horario-lista" class="space-y-2"></div>
+            <button type="submit" id="btn-guardar-menu-config" class="w-full rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-500">Guardar horario</button>
+          </form>
+          <form id="form-ajuste-impresion" onsubmit="guardarConfiguracion(event, 'impresion')" class="hidden space-y-3">
+            <label class="block text-xs text-slate-300" for="conf-printer-width">Ancho del papel de la impresora
+              <select id="conf-printer-width" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2.5 text-sm text-white focus:border-red-500 focus:outline-none"><option value="58">58 mm — rollo angosto</option><option value="80">80 mm — rollo ancho</option></select>
+            </label>
+            <p class="text-xs text-slate-500">Elige el ancho del rollo que usa tu impresora.</p>
+            <div class="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
+              <div class="mb-2 flex items-center justify-between text-xs text-slate-400"><span>Vista previa de la comanda</span><span id="printer-width-label" class="font-semibold text-amber-300">80 mm</span></div>
+              <div class="mx-auto max-w-xs rounded-md bg-white p-2 text-center font-mono text-[9px] text-slate-900 shadow-sm transition-all duration-200" id="printer-width-preview"><div class="border-b border-dashed border-slate-400 pb-1 font-bold">VELOX · COMANDA</div><div class="py-1 text-left">1 × Producto de ejemplo</div><div class="border-t border-dashed border-slate-400 pt-1 text-right font-bold">TOTAL: $25.000</div></div>
             </div>
-          </div>
-          <p id="config-contacto-save-status" class="hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
-          <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white">Guardar WhatsApp e impresión</button>
-        </form>
+            <button type="submit" class="w-full rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-500">Guardar tamaño de impresión</button>
+          </form>
+          <p id="config-negocio-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+          <p id="config-contacto-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+          <p id="menu-config-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+        </div>
       </div>
     </section>
 
@@ -321,6 +321,8 @@
   <script>
     let RESTAURANTE_ID = null;
     let ANCHO_PAPEL_IMPRESORA = 80;
+    let CONFIGURACION_ACTUAL = {};
+    let CATEGORIA_AJUSTES_ACTUAL = 'negocio';
     const SUPABASE_URL = 'https://ozailviyimrjmebrilbp.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96YWlsdml5aW1yam1lYnJpbGJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMTA5MTEsImV4cCI6MjEwMDY4NjkxMX0.rkWEtTGV4uFB_w62sC-vygZoLbfEgx_KKTSd9oS-5CM';
 
@@ -429,22 +431,71 @@
 
       if (seccion === 'menu') {
         cargarProductos();
-        cargarConfiguracionMenu();
       }
       if (seccion === 'configuracion') {
-        cambiarPestanaAjustes('negocio');
+        mostrarInicioAjustes();
+        mostrarAviso(document.getElementById('ajustes-inicio-status'), 'Cargando ajustes…', 'info');
         cargarConfiguracion();
       }
     }
 
-    function cambiarPestanaAjustes(pestana) {
-      const negocioActivo = pestana !== 'contacto';
-      document.getElementById('form-ajustes-negocio').classList.toggle('hidden', !negocioActivo);
-      document.getElementById('form-ajustes-contacto').classList.toggle('hidden', negocioActivo);
-      const claseActiva = 'rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white';
-      const claseInactiva = 'rounded-lg px-3 py-2 text-sm font-medium text-slate-400 hover:text-white';
-      document.getElementById('tab-ajustes-negocio').className = negocioActivo ? claseActiva : claseInactiva;
-      document.getElementById('tab-ajustes-contacto').className = negocioActivo ? claseInactiva : claseActiva;
+    function mostrarInicioAjustes() {
+      document.getElementById('ajustes-inicio').classList.remove('hidden');
+      document.getElementById('ajustes-categoria').classList.add('hidden');
+      document.getElementById('ajustes-editor').classList.add('hidden');
+    }
+
+    function abrirCategoriaAjustes(categoria) {
+      CATEGORIA_AJUSTES_ACTUAL = categoria === 'impresion' ? 'impresion' : 'negocio';
+      const esNegocio = CATEGORIA_AJUSTES_ACTUAL === 'negocio';
+      const titulo = esNegocio ? 'Datos del negocio' : 'Pedidos e impresión';
+      const descripcion = esNegocio ? 'Toca un dato para consultarlo o cambiarlo.' : 'Configura cómo salen las comandas del restaurante.';
+      const opciones = esNegocio
+        ? [
+            ['nombre', 'Nombre del negocio', CONFIGURACION_ACTUAL.nombre_restaurante || 'Sin configurar', '🏪'],
+            ['telefono', 'Número para recibir pedidos', CONFIGURACION_ACTUAL.telefono || 'Sin configurar', '📲'],
+            ['horario', 'Horario de atención', CONFIGURACION_ACTUAL.horario_atencion?.usar_horario ? 'Horario semanal activo' : 'Sin horario automático', '🕒']
+          ]
+        : [['impresion', 'Tamaño del papel', `${Number(CONFIGURACION_ACTUAL.printer_paper_width) === 58 ? 58 : 80} mm`, '🧾']];
+      document.getElementById('ajustes-categoria-titulo').textContent = titulo;
+      document.getElementById('ajustes-categoria-descripcion').textContent = descripcion;
+      document.getElementById('ajustes-status').classList.add('hidden');
+      document.getElementById('ajustes-opciones').innerHTML = opciones.map(([id, nombre, resumen, icono]) => `
+        <button type="button" onclick="abrirEditorAjustes('${id}')" class="flex min-h-16 w-full items-center gap-3 rounded-lg border border-slate-700 bg-slate-900 p-3 text-left hover:border-red-500">
+          <span class="text-lg" aria-hidden="true">${icono}</span><span class="min-w-0 flex-1"><strong class="block text-sm text-white">${nombre}</strong><small class="block truncate text-xs text-slate-400">${escaparHtmlUI(resumen)}</small></span><span class="text-lg text-slate-500" aria-hidden="true">›</span>
+        </button>`).join('');
+      document.getElementById('ajustes-inicio').classList.add('hidden');
+      document.getElementById('ajustes-editor').classList.add('hidden');
+      document.getElementById('ajustes-categoria').classList.remove('hidden');
+    }
+
+    function abrirEditorAjustes(campo) {
+      const editores = {
+        nombre: ['Nombre del negocio', 'form-ajuste-nombre'],
+        telefono: ['Número para recibir pedidos', 'form-ajuste-telefono'],
+        horario: ['Horario de atención', 'form-ajuste-horario'],
+        impresion: ['Tamaño del papel', 'form-ajuste-impresion']
+      };
+      const editor = editores[campo];
+      if (!editor) return;
+      document.querySelectorAll('#ajustes-editor form').forEach(form => form.classList.add('hidden'));
+      document.querySelectorAll('#ajustes-editor [role="status"]').forEach(estado => estado.classList.add('hidden'));
+      document.getElementById(editor[1]).classList.remove('hidden');
+      document.getElementById('ajustes-editor-titulo').textContent = editor[0];
+      document.getElementById('ajustes-categoria').classList.add('hidden');
+      document.getElementById('ajustes-editor').classList.remove('hidden');
+      if (campo === 'horario') renderizarHorarioMenu(CONFIGURACION_ACTUAL.horario_atencion || {});
+      if (campo === 'impresion') actualizarVistaPreviaImpresora(false);
+    }
+
+    function volverAjustesCategoria() {
+      document.getElementById('ajustes-editor').classList.add('hidden');
+      document.getElementById('ajustes-categoria').classList.remove('hidden');
+    }
+
+    function volverAjustesInicio() {
+      document.getElementById('ajustes-categoria').classList.add('hidden');
+      document.getElementById('ajustes-inicio').classList.remove('hidden');
     }
 
     async function cerrarSesion() {
@@ -956,16 +1007,21 @@ async function abrirMenuEnVivo() {
     // --- MÓDULO CONFIGURACIÓN ---
     async function cargarConfiguracion() {
       if (!RESTAURANTE_ID) return;
-      const { data } = await supabaseClient.from('restaurantes').select('*').eq('id', RESTAURANTE_ID).single();
-      if (data) {
-        document.getElementById('conf-nombre').value = data.nombre_restaurante || '';
-        document.getElementById('conf-phone').value = data.telefono || '';
-        document.getElementById('conf-printer-width').value = Number(data.printer_paper_width) === 58 ? '58' : '80';
-        actualizarVistaPreviaImpresora(false);
-        const estado = document.getElementById('config-contacto-save-status');
-        const anchoActual = Number(data.printer_paper_width) === 58 ? 58 : 80;
-        mostrarAviso(estado, `Configuración actual: próximas comandas en ${anchoActual} mm.`, 'info');
+      const { data, error } = await supabaseClient.from('restaurantes')
+        .select('nombre_restaurante, telefono, printer_paper_width, menu_activo, horario_atencion')
+        .eq('id', RESTAURANTE_ID).single();
+      if (error || !data) {
+        console.error('No se pudo cargar la configuración:', error);
+        mostrarAviso(document.getElementById('ajustes-inicio-status'), 'No se pudieron cargar los ajustes. Sal de esta sección y vuelve a entrar para intentarlo de nuevo.', 'error');
+        return;
       }
+      document.getElementById('ajustes-inicio-status').classList.add('hidden');
+      CONFIGURACION_ACTUAL = data;
+      document.getElementById('conf-nombre').value = data.nombre_restaurante || '';
+      document.getElementById('conf-phone').value = data.telefono || '';
+      document.getElementById('conf-printer-width').value = Number(data.printer_paper_width) === 58 ? '58' : '80';
+      document.getElementById('menu-activo').checked = data.menu_activo !== false;
+      actualizarVistaPreviaImpresora(false);
     }
 
     function renderizarHorarioMenu(horario = {}) {
@@ -997,23 +1053,8 @@ async function abrirMenuEnVivo() {
       if (event.target.matches('[data-horario-dia]')) actualizarCamposHorarioMenu();
     });
 
-    async function cargarConfiguracionMenu() {
-      if (!RESTAURANTE_ID) return;
-      const estado = document.getElementById('menu-config-status');
-      try {
-        const { data, error } = await supabaseClient.from('restaurantes')
-          .select('menu_activo, horario_atencion').eq('id', RESTAURANTE_ID).single();
-        if (error) throw error;
-        document.getElementById('menu-activo').checked = data.menu_activo !== false;
-        renderizarHorarioMenu(data.horario_atencion || {});
-        mostrarAviso(estado, data.menu_activo === false ? 'La carta está pausada y no acepta pedidos.' : 'Configuración de carta cargada.', 'info', 2500);
-      } catch (error) {
-        console.error('No se pudo cargar la configuración de la carta:', error);
-        mostrarAviso(estado, 'No se pudo cargar el horario. Revisa que la migración de configuración de carta esté aplicada.', 'error');
-      }
-    }
-
-    async function guardarConfiguracionMenu() {
+    async function guardarConfiguracionMenu(event) {
+      event.preventDefault();
       const boton = document.getElementById('btn-guardar-menu-config');
       const estado = document.getElementById('menu-config-status');
       const textoOriginal = boton.textContent;
@@ -1046,7 +1087,9 @@ async function abrirMenuEnVivo() {
           .select('menu_activo, horario_atencion').maybeSingle();
         if (error) throw error;
         if (!data) throw new Error('No se confirmó el guardado. Revisa tu sesión e inténtalo de nuevo.');
-        mostrarAviso(estado, data.menu_activo ? 'Configuración guardada. La carta ya está activa.' : 'Configuración guardada. La carta quedó pausada.', 'exito', 4500);
+        CONFIGURACION_ACTUAL = { ...CONFIGURACION_ACTUAL, ...data };
+        abrirCategoriaAjustes('negocio');
+        mostrarAviso(document.getElementById('ajustes-status'), data.menu_activo ? 'Horario y disponibilidad guardados.' : 'Cambios guardados. Los pedidos están pausados.', 'exito', 4500);
       } catch (error) {
         console.error('Error al guardar la configuración de la carta:', error);
         mostrarAviso(estado, error.message || 'No se pudo guardar la configuración de la carta.', 'error');
@@ -1073,20 +1116,17 @@ async function abrirMenuEnVivo() {
     async function guardarConfiguracion(event, grupo) {
       event.preventDefault();
       const btn = event.target.querySelector('button[type="submit"]');
-      const esNegocio = grupo === 'negocio';
-      const estado = document.getElementById(esNegocio ? 'config-negocio-save-status' : 'config-contacto-save-status');
+      const estado = document.getElementById(grupo === 'negocio' ? 'config-negocio-save-status' : 'config-contacto-save-status');
       const textoOriginal = btn.innerText;
       btn.innerText = "Guardando...";
       btn.disabled = true;
       mostrarAviso(estado, 'Guardando tus cambios…', 'info');
 
       try {
-        const nuevoNombre = document.getElementById('conf-nombre').value;
-        const nuevoTelefono = document.getElementById('conf-phone').value;
-        const anchoPapel = Number(document.getElementById('conf-printer-width').value) === 58 ? 58 : 80;
-        const cambios = esNegocio
-          ? { nombre_restaurante: nuevoNombre }
-          : { telefono: nuevoTelefono, printer_paper_width: anchoPapel };
+        let cambios;
+        if (grupo === 'negocio') cambios = { nombre_restaurante: document.getElementById('conf-nombre').value.trim() };
+        else if (grupo === 'telefono') cambios = { telefono: document.getElementById('conf-phone').value.trim() };
+        else cambios = { printer_paper_width: Number(document.getElementById('conf-printer-width').value) === 58 ? 58 : 80 };
 
         const { data: configuracionGuardada, error } = await supabaseClient
           .from('restaurantes')
@@ -1098,19 +1138,24 @@ async function abrirMenuEnVivo() {
         if (error) throw error;
         if (!configuracionGuardada) throw new Error('No se confirmó el guardado. Revisa tu sesión e inténtalo de nuevo.');
 
-        if (esNegocio) {
-          const nombreGuardado = configuracionGuardada.nombre_restaurante || nuevoNombre;
-          document.getElementById('conf-nombre').value = nombreGuardado;
-          document.getElementById('nombre-restaurante-header').innerText = nombreGuardado;
-          mostrarAviso(estado, `Nombre actualizado: ${nombreGuardado}.`, 'exito', 4500);
-        } else {
-          const anchoGuardado = Number(configuracionGuardada.printer_paper_width) === 58 ? 58 : 80;
-          ANCHO_PAPEL_IMPRESORA = anchoGuardado;
+        CONFIGURACION_ACTUAL = { ...CONFIGURACION_ACTUAL, ...configuracionGuardada };
+        if (grupo === 'negocio') {
+          document.getElementById('conf-nombre').value = configuracionGuardada.nombre_restaurante || '';
+          document.getElementById('nombre-restaurante-header').innerText = configuracionGuardada.nombre_restaurante || 'Mi Restaurante';
+        } else if (grupo === 'telefono') {
           document.getElementById('conf-phone').value = configuracionGuardada.telefono || '';
-          document.getElementById('conf-printer-width').value = String(anchoGuardado);
+        } else {
+          ANCHO_PAPEL_IMPRESORA = Number(configuracionGuardada.printer_paper_width) === 58 ? 58 : 80;
+          document.getElementById('conf-printer-width').value = String(ANCHO_PAPEL_IMPRESORA);
           actualizarVistaPreviaImpresora(false);
-          mostrarAviso(estado, `WhatsApp e impresión guardados. Las próximas comandas usarán papel de ${anchoGuardado} mm.`, 'exito', 4500);
         }
+        abrirCategoriaAjustes(CATEGORIA_AJUSTES_ACTUAL);
+        const mensaje = grupo === 'negocio'
+          ? 'Nombre del negocio guardado.'
+          : grupo === 'telefono'
+            ? 'Número para recibir pedidos guardado.'
+            : `Tamaño guardado. Las próximas comandas usarán papel de ${ANCHO_PAPEL_IMPRESORA} mm.`;
+        mostrarAviso(document.getElementById('ajustes-status'), mensaje, 'exito', 4500);
       } catch (err) {
         console.error("Error al guardar:", err);
         mostrarAviso(estado, `No se guardaron los cambios. ${err.message || 'Inténtalo de nuevo.'}`, 'error');
