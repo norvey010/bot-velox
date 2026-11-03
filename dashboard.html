@@ -87,13 +87,14 @@
     <!-- SECCIÓN 1: PEDIDOS -->
     <section id="sec-pedidos" class="space-y-4">
       <!-- Tarjetas de Métricas -->
+      <p id="pedidos-periodo-resumen" class="-mb-2 text-xs font-medium text-slate-400">Resumen del día</p>
       <div class="grid grid-cols-3 gap-2 sm:gap-3">
         <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Pedidos de hoy</p>
+          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Pedidos recibidos</p>
           <h3 id="total-pedidos-count" class="text-lg sm:text-2xl font-bold text-white mt-1">0</h3>
         </div>
         <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Ventas de hoy</p>
+          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Valor de pedidos</p>
           <h3 id="total-ventas-sum" class="text-base sm:text-2xl font-bold text-emerald-400 mt-1 whitespace-nowrap">$0</h3>
         </div>
         <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
@@ -108,7 +109,15 @@
           <input type="text" id="input-search" placeholder="🔍 Buscar por teléfono o cliente..." 
                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
         </div>
-        <button onclick="cargarPedidos()" class="w-full sm:w-auto bg-slate-700 hover:bg-slate-600 px-4 py-2.5 rounded-lg text-sm text-white transition">Actualizar pedidos</button>
+        <div class="flex w-full gap-2 sm:w-auto">
+          <select id="pedidos-periodo" aria-label="Período del resumen y pedidos" class="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white sm:flex-none">
+            <option value="hoy">Hoy</option>
+            <option value="7dias">Últimos 7 días</option>
+            <option value="mes">Este mes</option>
+          </select>
+          <button id="btn-actualizar-pedidos" onclick="actualizarPedidosManual()" class="w-full rounded-lg bg-slate-700 px-4 py-2.5 text-sm text-white transition hover:bg-slate-600 sm:w-auto">Actualizar pedidos</button>
+        </div>
+        <p id="pedidos-refresh-status" class="hidden w-full text-xs sm:text-right" role="status" aria-live="polite"></p>
       </div>
 
       <!-- Tabla de Pedidos -->
@@ -412,33 +421,93 @@
     }
 
     // --- MÓDULO PEDIDOS ---
-    async function cargarPedidos() {
-      if (!RESTAURANTE_ID) return;
+    function obtenerRangoPeriodoPedidos(periodo) {
+      const partes = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(new Date()).reduce((resultado, parte) => {
+        if (parte.type !== 'literal') resultado[parte.type] = Number(parte.value);
+        return resultado;
+      }, {});
+      const { year, month, day } = partes;
+      let inicio;
+      let fin;
+
+      if (periodo === 'mes') {
+        inicio = Date.UTC(year, month - 1, 1, 5);
+        fin = Date.UTC(year, month, 1, 5);
+      } else {
+        const diasAtras = periodo === '7dias' ? 6 : 0;
+        inicio = Date.UTC(year, month - 1, day - diasAtras, 5);
+        fin = Date.UTC(year, month - 1, day + 1, 5);
+      }
+
+      return { desde: new Date(inicio).toISOString(), hasta: new Date(fin).toISOString() };
+    }
+
+    async function cargarPedidos(opciones = {}) {
+      if (!RESTAURANTE_ID) return false;
+      const periodo = document.getElementById('pedidos-periodo').value;
+      const rango = obtenerRangoPeriodoPedidos(periodo);
       // Evita que caracteres de sintaxis del filtro PostgREST alteren la consulta.
       const busqueda = document.getElementById('input-search').value
         .slice(0, 80)
         .replace(/[()[\],.%\\]/g, ' ')
         .trim();
 
-      let query = supabaseClient
-        .from('pedidos')
-        .select('*', { count: 'exact' })
-        .eq('restaurante_id', RESTAURANTE_ID)
-        .order('created_at', { ascending: false })
-        .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
+      try {
+        let queryPedidos = supabaseClient
+          .from('pedidos')
+          .select('*', { count: 'exact' })
+          .eq('restaurante_id', RESTAURANTE_ID)
+          .gte('created_at', rango.desde)
+          .lt('created_at', rango.hasta)
+          .order('created_at', { ascending: false })
+          .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
 
-      if (busqueda) query = query.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
+        if (busqueda) queryPedidos = queryPedidos.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
 
-      const { data, count, error } = await query;
-      if (error) {
-        console.error("Error de Supabase:", error.message);
-        return;
+        const consultaMetricas = supabaseClient
+          .from('pedidos')
+          .select('total')
+          .eq('restaurante_id', RESTAURANTE_ID)
+          .gte('created_at', rango.desde)
+          .lt('created_at', rango.hasta);
+
+        const [resultadoPedidos, resultadoMetricas] = await Promise.all([queryPedidos, consultaMetricas]);
+        if (resultadoPedidos.error) throw resultadoPedidos.error;
+        if (resultadoMetricas.error) throw resultadoMetricas.error;
+
+        renderTablaPedidos(resultadoPedidos.data);
+        actualizarPaginacion(resultadoPedidos.count || 0);
+        calcularMetricas(resultadoMetricas.data || [], periodo);
+        if (opciones.mostrarExito) {
+          mostrarAviso(document.getElementById('pedidos-refresh-status'), 'Pedidos y resumen actualizados.', 'exito', 4000);
+        }
+        return true;
+      } catch (error) {
+        console.error('Error al actualizar pedidos:', error);
+        mostrarAviso(document.getElementById('pedidos-refresh-status'), 'No se pudieron actualizar los pedidos. Revisa tu conexión e inténtalo de nuevo.', 'error');
+        return false;
       }
-
-      renderTablaPedidos(data);
-      actualizarPaginacion(count);
-      calcularMetricas();
     }
+
+    async function actualizarPedidosManual() {
+      const boton = document.getElementById('btn-actualizar-pedidos');
+      const textoOriginal = boton.textContent;
+      boton.disabled = true;
+      boton.textContent = 'Actualizando…';
+      try {
+        await cargarPedidos({ mostrarExito: true });
+      } finally {
+        boton.disabled = false;
+        boton.textContent = textoOriginal;
+      }
+    }
+
+    document.getElementById('pedidos-periodo').addEventListener('change', () => {
+      paginaActual = 0;
+      cargarPedidos();
+    });
 
     function renderTablaPedidos(pedidos) {
       const tbody = document.getElementById('pedidos-body');
@@ -457,7 +526,7 @@
       }
 
       if (!pedidos || pedidos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8"><p class="font-semibold text-white">Todavía no hay pedidos</p><p class="mt-1 text-slate-400">Cuando tu carta esté lista, compártela para que tus clientes puedan pedir.</p><button type="button" onclick="cambiarSeccion('menu')" class="mt-4 rounded-lg bg-red-600 px-4 py-2 font-semibold text-white">Organizar mi menú</button></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8"><p class="font-semibold text-white">No hay pedidos en este período</p><p class="mt-1 text-slate-400">Prueba otro período o cambia la búsqueda.</p></td></tr>`;
         return;
       }
 
@@ -484,19 +553,15 @@
       });
     }
 
-    async function calcularMetricas() {
-      if (!RESTAURANTE_ID) return;
-      const { data } = await supabaseClient.from('pedidos').select('total, created_at').eq('restaurante_id', RESTAURANTE_ID);
-      if (data) {
-        const inicioHoy = new Date();
-        inicioHoy.setHours(0, 0, 0, 0);
-        const pedidosHoy = data.filter(p => new Date(p.created_at) >= inicioHoy);
-        const ventasHoy = pedidosHoy.reduce((sum, p) => sum + (Number(p.total) || 0), 0);
-        const promedioHoy = pedidosHoy.length ? Math.round(ventasHoy / pedidosHoy.length) : 0;
-        document.getElementById('total-pedidos-count').innerText = pedidosHoy.length;
-        document.getElementById('total-ventas-sum').innerText = `$${ventasHoy.toLocaleString('es-CO')}`;
-        document.getElementById('total-pedidos-hoy').innerText = `$${promedioHoy.toLocaleString('es-CO')}`;
-      }
+    function calcularMetricas(pedidos, periodo) {
+      const cantidad = pedidos.length;
+      const totalPeriodo = pedidos.reduce((suma, pedido) => suma + (Number(pedido.total) || 0), 0);
+      const promedio = cantidad ? Math.round(totalPeriodo / cantidad) : 0;
+      const periodoTexto = { hoy: 'del día', '7dias': 'de los últimos 7 días', mes: 'del mes' }[periodo] || 'del período';
+      document.getElementById('total-pedidos-count').innerText = cantidad.toLocaleString('es-CO');
+      document.getElementById('total-ventas-sum').innerText = `$${totalPeriodo.toLocaleString('es-CO')}`;
+      document.getElementById('total-pedidos-hoy').innerText = `$${promedio.toLocaleString('es-CO')}`;
+      document.getElementById('pedidos-periodo-resumen').textContent = `Resumen ${periodoTexto}`;
     }
 
     // --- MÓDULO GESTIÓN DE PRODUCTOS ---
