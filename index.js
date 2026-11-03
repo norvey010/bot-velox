@@ -195,7 +195,7 @@ async function obtenerRestaurante(phoneNumberId) {
     if (!supabaseAdmin) throw new Error('No está configurada la clave privada de Supabase para el webhook.');
     let { data: restaurante, error } = await supabaseAdmin
         .from('restaurantes')
-        .select('id, slug, nombre_restaurante, telefono')
+        .select('id, slug, nombre_restaurante, telefono, menu_activo, horario_atencion')
         .eq('phone_number_id', String(phoneNumberId).trim())
         .maybeSingle();
 
@@ -206,6 +206,51 @@ async function obtenerRestaurante(phoneNumberId) {
     }
 
     return restaurante;
+}
+
+function evaluarDisponibilidadMenu(restaurante, ahora = new Date()) {
+    if (restaurante?.menu_activo === false) return { disponible: false, motivo: 'Este restaurante pausó temporalmente los pedidos en línea.' };
+    const horario = restaurante?.horario_atencion;
+    if (!horario || horario.usar_horario !== true) return { disponible: true, motivo: '' };
+
+    const partes = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Bogota', weekday: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(ahora).reduce((resultado, parte) => {
+        if (parte.type !== 'literal') resultado[parte.type] = parte.value;
+        return resultado;
+    }, {});
+    const dias = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const indiceDia = dias.indexOf(String(partes.weekday || '').toLowerCase());
+    const minutoActual = Number(partes.hour) * 60 + Number(partes.minute);
+    const configDia = indice => horario.dias?.[dias[(indice + 7) % 7]];
+    const minutos = valor => {
+        const coincidencia = String(valor || '').match(/^(\d{2}):(\d{2})$/);
+        if (!coincidencia) return null;
+        const hora = Number(coincidencia[1]);
+        const minuto = Number(coincidencia[2]);
+        return hora < 24 && minuto < 60 ? hora * 60 + minuto : null;
+    };
+    const abiertoAhora = (config, minuto) => {
+        if (!config?.abierto) return false;
+        const inicio = minutos(config.desde);
+        const fin = minutos(config.hasta);
+        if (inicio === null || fin === null || inicio === fin) return false;
+        return inicio < fin ? minuto >= inicio && minuto < fin : minuto >= inicio;
+    };
+
+    const hoy = configDia(indiceDia);
+    let disponible = abiertoAhora(hoy, minutoActual);
+    if (!disponible) {
+        const ayer = configDia(indiceDia - 1);
+        const inicioAyer = minutos(ayer?.desde);
+        const finAyer = minutos(ayer?.hasta);
+        disponible = Boolean(ayer?.abierto && inicioAyer !== null && finAyer !== null
+            && inicioAyer > finAyer && minutoActual < finAyer);
+    }
+    return {
+        disponible,
+        motivo: disponible ? '' : 'En este momento estamos fuera del horario de atención. Vuelve durante nuestro horario.'
+    };
 }
 
 async function obtenerMenu(restauranteId) {
@@ -436,6 +481,12 @@ app.post('/webhook', async (req, res) => {
 
                     await enviarTextoWhatsApp(phoneNumberId, numeroRemitente,
                         `¡Listo! El restaurante recibió tu pedido del menú. Total: $${Number(pedidoVinculado.total || pedidoDeMenu.total || 0).toLocaleString('es-CO')}.`);
+                    return res.sendStatus(200);
+                }
+
+                const disponibilidadMenu = evaluarDisponibilidadMenu(restauranteData);
+                if (!disponibilidadMenu.disponible) {
+                    await enviarTextoWhatsApp(phoneNumberId, numeroRemitente, disponibilidadMenu.motivo);
                     return res.sendStatus(200);
                 }
 
@@ -698,7 +749,7 @@ app.get('/api/menu/:slug', async (req, res) => {
 
         const { data: restaurante, error: errorRestaurante } = await supabaseAdmin
             .from('restaurantes')
-            .select('id, slug, nombre_restaurante, telefono')
+            .select('id, slug, nombre_restaurante, telefono, menu_activo, horario_atencion')
             .eq('slug', slug)
             .maybeSingle();
         if (errorRestaurante) throw errorRestaurante;
@@ -711,8 +762,9 @@ app.get('/api/menu/:slug', async (req, res) => {
             .order('id', { ascending: true });
         if (errorProductos) throw errorProductos;
 
-        res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
-        return res.json({ restaurante, productos: productos || [] });
+        const disponibilidad = evaluarDisponibilidadMenu(restaurante);
+        res.set('Cache-Control', 'public, max-age=5, stale-while-revalidate=10');
+        return res.json({ restaurante: { ...restaurante, menu_disponible: disponibilidad.disponible, mensaje_cierre: disponibilidad.motivo }, productos: productos || [] });
     } catch (error) {
         console.error('No se pudo cargar la carta pública:', error.message || 'Error desconocido');
         return res.status(500).json({ error: 'No se pudo cargar el menú. Inténtalo de nuevo.' });
@@ -742,11 +794,13 @@ app.post('/api/pedidos', async (req, res) => {
 
         const { data: restaurante, error: errorRestaurante } = await supabaseAdmin
             .from('restaurantes')
-            .select('id, nombre_restaurante, telefono')
+            .select('id, nombre_restaurante, telefono, menu_activo, horario_atencion')
             .eq('id', restauranteId)
             .maybeSingle();
         if (errorRestaurante) throw errorRestaurante;
         if (!restaurante) return res.status(404).json({ error: 'No encontramos este restaurante.' });
+        const disponibilidadMenu = evaluarDisponibilidadMenu(restaurante);
+        if (!disponibilidadMenu.disponible) return res.status(409).json({ error: disponibilidadMenu.motivo });
         if (!String(restaurante.telefono || '').replace(/\D/g, '')) {
             return res.status(400).json({ error: 'Este restaurante todavía no tiene un WhatsApp configurado para recibir pedidos.' });
         }

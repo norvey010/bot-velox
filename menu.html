@@ -93,6 +93,7 @@
                     <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     Pedidos directos a cocina
                 </p>
+                <p id="estado-servicio" class="hidden mt-2 max-w-xl rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-200" role="status" aria-live="polite"></p>
             </div>
         </div>
         <!-- Las categorías permanecen visibles porque forman parte del encabezado fijo. -->
@@ -224,6 +225,12 @@ async function cargarMenu() {
 
     ID_RESTAURANTE_ACTUAL = restData.id;
     window.RESTAURANTE_ACTUAL = restData;
+    window.MENU_DISPONIBLE = restData.menu_disponible !== false;
+    const avisoServicio = document.getElementById('estado-servicio');
+    if (avisoServicio && !window.MENU_DISPONIBLE) {
+        avisoServicio.textContent = restData.mensaje_cierre || 'En este momento no estamos recibiendo pedidos.';
+        avisoServicio.classList.remove('hidden');
+    }
     var elNombre = document.getElementById('nombre-restaurante');
     if (elNombre) elNombre.innerText = restData.nombre_restaurante;
 
@@ -337,8 +344,8 @@ function renderizarProductos(listaProds) {
             const requierePersonalizacion = personalizacion.selectores.length > 0;
             const textoBoton = requierePersonalizacion ? textoBotonPersonalizacion(personalizacion.selectores) : '+ Agregar';
             const botonHtml = `
-                <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm transition shadow-lg shadow-red-950/30">
-                    ${textoBoton}
+                <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" ${window.MENU_DISPONIBLE === false ? 'disabled' : ''} class="w-full bg-red-600 hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm transition shadow-lg shadow-red-950/30">
+                    ${window.MENU_DISPONIBLE === false ? 'Pedidos cerrados por ahora' : textoBoton}
                 </button>
             `;
 
@@ -651,6 +658,7 @@ function escaparHtml(valor) {
 let productoPersonalizacionActual = null;
 
 function iniciarPersonalizacion(id) {
+    if (window.MENU_DISPONIBLE === false) return;
     const producto = todosLosProductos.find(p => String(p.id) === String(id));
     if (!producto) return;
 
@@ -732,6 +740,7 @@ document.addEventListener('click', event => {
 });
 
         function agregarAlCarrito(id, nombre, precio) {
+            if (window.MENU_DISPONIBLE === false) return;
             var item = cart.find(function(i) { return i.id === id; });
             if (item) {
                 item.cantidad++;
@@ -763,6 +772,7 @@ document.addEventListener('click', event => {
         }
 
        function abrirModalPedido() {
+    if (window.MENU_DISPONIBLE === false) return;
     if (cart.length === 0) return;
     
     var modal = document.getElementById('modal-pedido');
@@ -839,6 +849,10 @@ function eliminarItemCarrito(index) {
 
     async function confirmarYEnviarPedido(event) {
         event.preventDefault();
+        if (window.MENU_DISPONIBLE === false) {
+            alert(window.RESTAURANTE_ACTUAL?.mensaje_cierre || 'En este momento no estamos recibiendo pedidos.');
+            return;
+        }
 
         var direccion = document.getElementById('input-direccion').value.trim();
         var metodoPago = document.getElementById('select-pago').value;
