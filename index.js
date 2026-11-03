@@ -395,8 +395,12 @@ app.post('/webhook', async (req, res) => {
                 // Los pedidos iniciados desde la carta ya existen en Supabase. La referencia
                 // vincula el mensaje enviado por WhatsApp con esa misma comanda, sin duplicarla
                 // ni gastar una llamada a la IA.
-                if (/\bReferencia Velox\s*:/i.test(textoUsuario)) {
-                    const referencia = textoUsuario.match(/\bReferencia Velox\s*:\s*([a-z0-9-]{8,80})\b/i)?.[1];
+                const textoSinFormatoWhatsApp = String(textoUsuario)
+                    .replace(/[*_~`]/g, '')
+                    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                    .replace(/[‐‑‒–—]/g, '-');
+                if (/\bReferencia Velox\s*:/i.test(textoSinFormatoWhatsApp)) {
+                    const referencia = textoSinFormatoWhatsApp.match(/\bReferencia Velox\s*:\s*([a-z0-9-]{8,80})\b/i)?.[1];
                     if (!referencia) {
                         await enviarTextoWhatsApp(phoneNumberId, numeroRemitente,
                             'No pude leer la referencia del pedido. No creé otra comanda; por favor vuelve a abrir el pedido desde el menú.');
