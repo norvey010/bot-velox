@@ -890,7 +890,7 @@ function eliminarItemCarrito(index) {
                 `• *Total:* $ ${total.toLocaleString('es-CO')}\n` +
                 `• *Pago:* ${metodoPago}\n` +
                 (notas ? `• *Notas:* ${notas}\n` : '') +
-                `\n\n[/NUEVO_PEDIDO]`;
+                `\n*Referencia Velox:* ${resultado.pedido_id}`;
 
             cart = [];
             if (typeof actualizarBarraCarrito === 'function') actualizarBarraCarrito();

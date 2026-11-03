@@ -41,6 +41,7 @@ app.get([...archivosPublicos], (req, res) => {
     res.sendFile(path.join(__dirname, req.path.slice(1)));
 });
 const historiales = {};
+const pedidosPendientesWhatsApp = new Map();
 const PORT = process.env.PORT || 3000;
 
 // Limitador sencillo por proceso para encarecer el abuso de endpoints que consumen IA.
@@ -111,6 +112,7 @@ REGLAS DE ATENCIÓN:
 - Para armar el pedido pregunta lo que falte: productos y cantidades, opciones requeridas, dirección y método de pago. No pidas nombre ni teléfono: WhatsApp ya identifica al cliente.
 - Resume el pedido con sus precios y total calculado desde el catálogo, y espera que el cliente confirme explícitamente antes de registrarlo.
 - No incluyas productos, ingredientes ni variantes en el mensaje final de confirmación. La comanda sí debe conservar producto y opciones.
+- Cuando ya tengas todos los datos y presentes el resumen para pedir confirmación, añade al final un bloque oculto [PEDIDO_PENDIENTE] con el mismo formato de Items, Dirección y Pago definido abajo. El servidor lo quitará del mensaje visible y lo usará solo para registrar el pedido después del “sí”.
 - Al responder sobre el menú, comparte el enlace oficial exacto incluido en el contexto.
 - Si el cliente pide una aclaración después de un pedido confirmado, responde normalmente y añade al final [ACTUALIZAR_PEDIDO]Notas: {detalle}[/ACTUALIZAR_PEDIDO].
 
@@ -120,6 +122,13 @@ Items: {cantidad x nombre exacto del catálogo | Grupo=opción exacta; ...}
 Dirección: {dirección completa confirmada}
 Pago: {Efectivo | Transferencia (Nequi / Daviplata) | Datáfono}
 [/NUEVO_PEDIDO]
+
+Cuando estés pidiendo la confirmación final, emite en vez de NUEVO_PEDIDO este bloque oculto con los datos completos:
+[PEDIDO_PENDIENTE]
+Items: {cantidad x nombre exacto del catálogo | Grupo=opción exacta; ...}
+Dirección: {dirección completa confirmada}
+Pago: {Efectivo | Transferencia (Nequi / Daviplata) | Datáfono}
+[/PEDIDO_PENDIENTE]
 
 En Items separa cada producto con punto y coma. Para cada opción usa el grupo y nombre exactos del catálogo. No escribas precios en el bloque; el servidor los calcula.`;
 
@@ -276,6 +285,25 @@ function validarYCalcularItemsPedido(textoItems, productosMenu) {
     return { total: Math.round(total), detalle: detalleValidado.join(', ') };
 }
 
+function clasificarConfirmacionPedido(texto) {
+    const normalizado = String(texto || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[¿?¡!.,;:]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const tieneNo = /\bno\b/.test(normalizado);
+    const tieneSi = /\b(si|confirmo|correcto|dale|listo)\b/.test(normalizado);
+
+    if (tieneNo && tieneSi) return 'ambigua';
+    if (/^(si|confirmo|correcto|dale|de acuerdo|asi es|esta bien|ok|okay|listo)( por favor)?$/.test(normalizado)) {
+        return 'si';
+    }
+    if (tieneNo || /^(cancelar|cancelo|mejor no)$/.test(normalizado)) return 'no';
+    return 'cambio';
+}
+
 function normalizarMetodoPagoPedido(valor) {
     const metodo = normalizarTextoPedido(valor);
     if (metodo.includes('efectivo')) return 'Efectivo';
@@ -364,6 +392,49 @@ app.post('/webhook', async (req, res) => {
                     return res.sendStatus(200);
                 }
 
+                // Los pedidos iniciados desde la carta ya existen en Supabase. La referencia
+                // vincula el mensaje enviado por WhatsApp con esa misma comanda, sin duplicarla
+                // ni gastar una llamada a la IA.
+                if (/\bReferencia Velox\s*:/i.test(textoUsuario)) {
+                    const referencia = textoUsuario.match(/\bReferencia Velox\s*:\s*([a-z0-9-]{8,80})\b/i)?.[1];
+                    if (!referencia) {
+                        await enviarTextoWhatsApp(phoneNumberId, numeroRemitente,
+                            'No pude leer la referencia del pedido. No creé otra comanda; por favor vuelve a abrir el pedido desde el menú.');
+                        return res.sendStatus(200);
+                    }
+
+                    const { data: pedidoDeMenu, error: errorPedidoDeMenu } = await supabaseAdmin
+                        .from('pedidos')
+                        .select('id, total, whatsapp_message_id')
+                        .eq('id', referencia)
+                        .eq('restaurante_id', restauranteIdActual)
+                        .maybeSingle();
+                    if (errorPedidoDeMenu) throw errorPedidoDeMenu;
+                    if (!pedidoDeMenu) {
+                        await enviarTextoWhatsApp(phoneNumberId, numeroRemitente,
+                            'No encontré ese pedido del menú. No registré una segunda comanda; vuelve a abrir tu pedido desde el menú.');
+                        return res.sendStatus(200);
+                    }
+
+                    let pedidoVinculado = pedidoDeMenu;
+                    if (!pedidoDeMenu.whatsapp_message_id) {
+                        const { data, error } = await supabaseAdmin
+                            .from('pedidos')
+                            .update({ whatsapp_message_id: idMensajeWhatsApp, cliente_telefono: numeroRemitente, cliente_nombre: 'Cliente WhatsApp' })
+                            .eq('id', pedidoDeMenu.id)
+                            .eq('restaurante_id', restauranteIdActual)
+                            .is('whatsapp_message_id', null)
+                            .select('id, total')
+                            .maybeSingle();
+                        if (error) throw error;
+                        if (data) pedidoVinculado = data;
+                    }
+
+                    await enviarTextoWhatsApp(phoneNumberId, numeroRemitente,
+                        `¡Listo! El restaurante recibió tu pedido del menú. Total: $${Number(pedidoVinculado.total || pedidoDeMenu.total || 0).toLocaleString('es-CO')}.`);
+                    return res.sendStatus(200);
+                }
+
                 const productosMenu = await obtenerMenu(restauranteIdActual);
                 if (!productosMenu.length) {
                     await enviarTextoWhatsApp(phoneNumberId, numeroRemitente, 'Este restaurante aún no tiene productos disponibles en su menú.');
@@ -388,6 +459,77 @@ app.post('/webhook', async (req, res) => {
                     }
                     historiales[historialKey] = [];
                 }
+
+                const historialActual = historiales[historialKey];
+                const ultimaRespuestaBot = [...historialActual].reverse().find(mensaje => mensaje.role === 'assistant')?.content || '';
+                const esperaConfirmacion = /confirmas|confirmar|confirmo|confirmación/i.test(ultimaRespuestaBot)
+                    || pedidosPendientesWhatsApp.has(historialKey);
+                const confirmacionCliente = esperaConfirmacion ? clasificarConfirmacionPedido(textoUsuario) : null;
+
+                // Una respuesta negativa o mezclada nunca debe convertirse en una comanda.
+                // Las respuestas simples se resuelven aquí sin otra llamada a OpenAI.
+                if (esperaConfirmacion && ['no', 'ambigua'].includes(confirmacionCliente)) {
+                    if (confirmacionCliente === 'no') pedidosPendientesWhatsApp.delete(historialKey);
+                    const respuestaSegura = confirmacionCliente === 'no'
+                        ? 'Entendido, no registro el pedido todavía. Dime qué deseas cambiar; si quieres cancelarlo, escribe “cancelar pedido”.'
+                        : 'Para evitar errores, responde “Sí, confirmar” para registrar el pedido o “No, quiero cambiarlo”.';
+                    historiales[historialKey].push({ role: 'user', content: textoUsuario });
+                    historiales[historialKey].push({ role: 'assistant', content: respuestaSegura });
+                    historiales[historialKey] = historiales[historialKey].slice(-6);
+                    await enviarTextoWhatsApp(phoneNumberId, numeroRemitente, respuestaSegura);
+                    return res.sendStatus(200);
+                }
+
+                // Un “sí” claro se resuelve con los datos validados que ya guardó el bot al
+                // presentar el resumen: no requiere otra llamada a OpenAI.
+                let pedidoPendiente = esperaConfirmacion && confirmacionCliente === 'si'
+                    ? pedidosPendientesWhatsApp.get(historialKey)
+                    : null;
+                if (pedidoPendiente?.expiraEn <= Date.now()) {
+                    pedidosPendientesWhatsApp.delete(historialKey);
+                    pedidoPendiente = null;
+                    historiales[historialKey].push({ role: 'user', content: textoUsuario });
+                    const respuestaExpirada = 'Ese resumen ya venció. Envíame de nuevo los productos y te preparo el pedido para confirmar.';
+                    historiales[historialKey].push({ role: 'assistant', content: respuestaExpirada });
+                    historiales[historialKey] = historiales[historialKey].slice(-6);
+                    await enviarTextoWhatsApp(phoneNumberId, numeroRemitente, respuestaExpirada);
+                    return res.sendStatus(200);
+                }
+                if (pedidoPendiente) {
+                    const pedidoNuevo = {
+                        restaurante_id: restauranteIdActual,
+                        cliente_telefono: numeroRemitente,
+                        cliente_nombre: 'Cliente WhatsApp',
+                        items: pedidoPendiente.detalle,
+                        detalle: pedidoPendiente.detalle,
+                        total: pedidoPendiente.total,
+                        direccion: pedidoPendiente.direccion,
+                        metodo_pago: pedidoPendiente.metodo_pago,
+                        estado: 'Pendiente',
+                        whatsapp_message_id: idMensajeWhatsApp
+                    };
+                    const { error: errorGuardar } = await supabaseAdmin.from('pedidos').insert([pedidoNuevo]);
+                    let respuestaConfirmacion;
+                    if (errorGuardar?.code === '23505') {
+                        const { data: pedidoDuplicado, error } = await supabaseAdmin.from('pedidos')
+                            .select('total').eq('whatsapp_message_id', idMensajeWhatsApp).maybeSingle();
+                        if (error) throw error;
+                        respuestaConfirmacion = `Tu pedido ya fue recibido por el restaurante. Total: $${Number(pedidoDuplicado?.total || pedidoPendiente.total).toLocaleString('es-CO')}.`;
+                        pedidosPendientesWhatsApp.delete(historialKey);
+                    } else if (errorGuardar) {
+                        console.error('No se pudo registrar la comanda confirmada:', errorGuardar.message);
+                        respuestaConfirmacion = 'No pude registrar el pedido por un problema temporal. No se envió al restaurante; inténtalo de nuevo en un momento.';
+                    } else {
+                        respuestaConfirmacion = `¡Listo! Recibimos tu pedido y ya fue enviado al restaurante. Total: $${pedidoPendiente.total.toLocaleString('es-CO')}.`;
+                        pedidosPendientesWhatsApp.delete(historialKey);
+                    }
+                    historiales[historialKey].push({ role: 'user', content: textoUsuario });
+                    historiales[historialKey].push({ role: 'assistant', content: respuestaConfirmacion });
+                    historiales[historialKey] = historiales[historialKey].slice(-6);
+                    await enviarTextoWhatsApp(phoneNumberId, numeroRemitente, respuestaConfirmacion);
+                    return res.sendStatus(200);
+                }
+                if (esperaConfirmacion && confirmacionCliente === 'cambio') pedidosPendientesWhatsApp.delete(historialKey);
                 
                 // Agregamos el mensaje del usuario al historial
                 historiales[historialKey].push({ role: "user", content: textoUsuario });
@@ -414,9 +556,41 @@ app.post('/webhook', async (req, res) => {
                     total_tokens: usoOpenAI.total_tokens ?? null
                 }));
 
+                const matchPedidoPendiente = aiResponse.match(/\[PEDIDO_PENDIENTE\]([\s\S]*?)\[\/PEDIDO_PENDIENTE\]/);
                 const matchPedido = aiResponse.match(/\[NUEVO_PEDIDO\]([\s\S]*?)\[\/NUEVO_PEDIDO\]/);
-                let respuestaWhatsApp = aiResponse || 'Cuéntame qué producto deseas pedir y te ayudo.';
+                let respuestaWhatsApp = aiResponse
+                    .replace(/\[PEDIDO_PENDIENTE\][\s\S]*?\[\/PEDIDO_PENDIENTE\]/g, '')
+                    .replace(/\[NUEVO_PEDIDO\][\s\S]*?\[\/NUEVO_PEDIDO\]/g, '')
+                    .trim() || 'Cuéntame qué producto deseas pedir y te ayudo.';
+
+                if (matchPedidoPendiente) {
+                    const contenidoPendiente = matchPedidoPendiente[1];
+                    const itemsPendientes = contenidoPendiente.match(/Items:\s*([\s\S]*?)(?=\r?\n(?:Dirección|Pago):|$)/i);
+                    const direccionPendiente = String(contenidoPendiente.match(/Dirección:\s*(.+)/i)?.[1] || '')
+                        .replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+                    const metodoPagoPendiente = normalizarMetodoPagoPedido(contenidoPendiente.match(/Pago:\s*(.+)/i)?.[1]);
+                    const itemsValidadosPendientes = validarYCalcularItemsPedido(itemsPendientes?.[1], productosMenu);
+                    if (itemsValidadosPendientes.error || !direccionPendiente || direccionPendiente.length > 250 || !metodoPagoPendiente) {
+                        pedidosPendientesWhatsApp.delete(historialKey);
+                        respuestaWhatsApp = itemsValidadosPendientes.error
+                            || 'Me falta confirmar la dirección o el método de pago antes de registrar el pedido.';
+                    } else {
+                        if (pedidosPendientesWhatsApp.size >= 5000 && !pedidosPendientesWhatsApp.has(historialKey)) {
+                            pedidosPendientesWhatsApp.delete(pedidosPendientesWhatsApp.keys().next().value);
+                        }
+                        pedidosPendientesWhatsApp.set(historialKey, {
+                            detalle: itemsValidadosPendientes.detalle,
+                            total: itemsValidadosPendientes.total,
+                            direccion: direccionPendiente,
+                            metodo_pago: metodoPagoPendiente,
+                            expiraEn: Date.now() + 30 * 60 * 1000
+                        });
+                    }
+                }
                 if (matchPedido) {
+                    if (!esperaConfirmacion || confirmacionCliente !== 'si') {
+                        respuestaWhatsApp = 'Antes de registrar el pedido, necesito que confirmes claramente: responde “Sí, confirmar” o dime qué deseas cambiar.';
+                    } else {
                     const contenidoBloque = matchPedido[1];
                     const itemsMatch = contenidoBloque.match(/Items:\s*([\s\S]*?)(?=\r?\n(?:Dirección|Pago):|$)/i);
                     const direccionMatch = contenidoBloque.match(/Dirección:\s*(.+)/i);
@@ -457,6 +631,7 @@ app.post('/webhook', async (req, res) => {
                             respuestaWhatsApp = `¡Listo! Recibimos tu pedido y ya fue enviado al restaurante. Total: $${itemsValidados.total.toLocaleString('es-CO')}.`;
                             console.info('Pedido WhatsApp guardado:', JSON.stringify({ restaurante_id: restauranteIdActual, total: pedidoNuevo.total }));
                         }
+                    }
                     }
                 }
                 historiales[historialKey].push({ role: 'assistant', content: respuestaWhatsApp });
@@ -627,10 +802,11 @@ app.post('/api/pedidos', async (req, res) => {
             .select('id')
             .maybeSingle();
         if (errorGuardar) throw errorGuardar;
+        if (!pedidoGuardado?.id) throw new Error('El pedido se guardó sin devolver un identificador para vincular WhatsApp.');
 
         return res.status(201).json({
             success: true,
-            pedido_id: pedidoGuardado?.id || null,
+            pedido_id: pedidoGuardado.id,
             detalle,
             total: pedido.total,
             nombre_restaurante: restaurante.nombre_restaurante || 'Restaurante',
