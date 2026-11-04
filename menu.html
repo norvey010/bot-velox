@@ -11,6 +11,12 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+    :root { --velox-page: #101216; --velox-surface: #1b1f26; --velox-raised: #232831; --velox-inset: #14171d; --velox-border: #353b45; }
+    body { background: radial-gradient(ellipse at 8% 0%, rgb(127 29 29 / 10%), transparent 26%), var(--velox-page); }
+    .bg-slate-900 { background-color: var(--velox-inset) !important; }
+    .bg-slate-800 { background-color: var(--velox-surface) !important; }
+    .bg-slate-700 { background-color: var(--velox-raised) !important; }
+    .border-slate-700, .border-slate-800 { border-color: var(--velox-border) !important; }
     /* Mantiene ocultos los elementos plegados aunque Tailwind tarde en arrancar. */
     #modal-personalizar.hidden, #modal-pedido.hidden, #barra-carrito.hidden { display: none !important; }
     body.pb-28 { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
@@ -29,7 +35,7 @@
         padding: 6px;
         border: 1px solid rgba(255, 255, 255, .12);
         border-radius: 22px;
-        background: rgba(13, 14, 16, .88);
+        background: rgba(27, 31, 38, .92);
         box-shadow: 0 14px 40px rgba(0, 0, 0, .42);
         -webkit-backdrop-filter: blur(14px);
         backdrop-filter: blur(14px);
@@ -82,10 +88,10 @@
 </style>
 </head>
 
-<body class="bg-[#08090b] text-slate-100 min-h-screen pb-28">
+<body class="text-slate-100 min-h-screen pb-28">
 
     <!-- HEADER -->
-    <header class="bg-[#0d0e10]/95 border-b border-red-950/80 p-4 sticky top-0 z-40 shadow-[0_8px_30px_rgba(0,0,0,.28)] backdrop-blur-xl">
+    <header class="bg-[#171a20]/95 border-b border-red-950/80 p-4 sticky top-0 z-40 shadow-[0_8px_30px_rgba(0,0,0,.28)] backdrop-blur-xl">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
             <div>
                 <h1 id="nombre-restaurante" class="text-xl font-bold text-white" aria-live="polite"></h1>
@@ -106,9 +112,9 @@
     <main class="max-w-7xl mx-auto p-4 md:px-6 space-y-4" id="contenedor-menu">
         <div id="estado-carga" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-label="Cargando menú" role="status">
             <span class="sr-only">Cargando menú...</span>
-            <div class="h-28 rounded-2xl border border-slate-800 bg-[#111214] animate-pulse"></div>
-            <div class="h-28 rounded-2xl border border-slate-800 bg-[#111214] animate-pulse hidden sm:block"></div>
-            <div class="h-28 rounded-2xl border border-slate-800 bg-[#111214] animate-pulse hidden lg:block"></div>
+            <div class="h-28 rounded-2xl border border-slate-800 bg-[#1b1f26] animate-pulse"></div>
+            <div class="h-28 rounded-2xl border border-slate-800 bg-[#1b1f26] animate-pulse hidden sm:block"></div>
+            <div class="h-28 rounded-2xl border border-slate-800 bg-[#1b1f26] animate-pulse hidden lg:block"></div>
         </div>
     </main>
 
@@ -139,7 +145,7 @@
 
    <!-- MODAL DE CONFIRMACIÓN DEL PEDIDO -->
 <div id="modal-pedido" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-    <div class="bg-[#111214] border border-red-950/70 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100">
+    <div class="bg-[#1b1f26] border border-red-950/70 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100">
         <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
             <h3 class="text-xl font-bold text-white">Finalizar Pedido 🛒</h3>
             <button onclick="cerrarModalPedido()" class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
@@ -274,19 +280,19 @@ function obtenerVisualProducto(producto, imagenCompartida = '') {
     const texto = `${producto.categoria || ''} ${producto.nombre || ''}`
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const visuales = [
-        { claves: ['hamburg', 'burger'], iconos: ['🍔', '🍟', '🥪'], fondo: 'from-red-950 via-orange-950 to-[#111214]' },
-        { claves: ['arepa'], iconos: ['🫓', '🧀', '🌽'], fondo: 'from-amber-950 via-yellow-950 to-[#111214]' },
-        { claves: ['pizza'], iconos: ['🍕', '🧀', '🍅'], fondo: 'from-red-950 via-rose-950 to-[#111214]' },
-        { claves: ['bebida', 'jugo', 'gaseosa', 'limonada', 'coctel'], iconos: ['🥤', '🧃', '🍹'], fondo: 'from-cyan-950 via-blue-950 to-[#111214]' },
-        { claves: ['pollo', 'broaster', 'alita'], iconos: ['🍗', '🍟', '🍗'], fondo: 'from-orange-950 via-amber-950 to-[#111214]' },
-        { claves: ['perro', 'salchipapa', 'salchicha'], iconos: ['🌭', '🍟', '🌭'], fondo: 'from-yellow-950 via-orange-950 to-[#111214]' },
-        { claves: ['postre', 'torta', 'helado', 'dulce'], iconos: ['🍰', '🍨', '🧁'], fondo: 'from-fuchsia-950 via-rose-950 to-[#111214]' },
-        { claves: ['ensalada', 'vegetar', 'vegano'], iconos: ['🥗', '🥑', '🥬'], fondo: 'from-green-950 via-emerald-950 to-[#111214]' },
-        { claves: ['pasta', 'lasana', 'lasagna'], iconos: ['🍝', '🧀', '🍅'], fondo: 'from-orange-950 via-red-950 to-[#111214]' },
-        { claves: ['carne', 'parrilla', 'asado', 'chuzo'], iconos: ['🥩', '🍖', '🔥'], fondo: 'from-red-950 via-stone-900 to-[#111214]' }
+        { claves: ['hamburg', 'burger'], iconos: ['🍔', '🍟', '🥪'], fondo: 'from-red-950 via-orange-950 to-[#1b1f26]' },
+        { claves: ['arepa'], iconos: ['🫓', '🧀', '🌽'], fondo: 'from-amber-950 via-yellow-950 to-[#1b1f26]' },
+        { claves: ['pizza'], iconos: ['🍕', '🧀', '🍅'], fondo: 'from-red-950 via-rose-950 to-[#1b1f26]' },
+        { claves: ['bebida', 'jugo', 'gaseosa', 'limonada', 'coctel'], iconos: ['🥤', '🧃', '🍹'], fondo: 'from-cyan-950 via-blue-950 to-[#1b1f26]' },
+        { claves: ['pollo', 'broaster', 'alita'], iconos: ['🍗', '🍟', '🍗'], fondo: 'from-orange-950 via-amber-950 to-[#1b1f26]' },
+        { claves: ['perro', 'salchipapa', 'salchicha'], iconos: ['🌭', '🍟', '🌭'], fondo: 'from-yellow-950 via-orange-950 to-[#1b1f26]' },
+        { claves: ['postre', 'torta', 'helado', 'dulce'], iconos: ['🍰', '🍨', '🧁'], fondo: 'from-fuchsia-950 via-rose-950 to-[#1b1f26]' },
+        { claves: ['ensalada', 'vegetar', 'vegano'], iconos: ['🥗', '🥑', '🥬'], fondo: 'from-green-950 via-emerald-950 to-[#1b1f26]' },
+        { claves: ['pasta', 'lasana', 'lasagna'], iconos: ['🍝', '🧀', '🍅'], fondo: 'from-orange-950 via-red-950 to-[#1b1f26]' },
+        { claves: ['carne', 'parrilla', 'asado', 'chuzo'], iconos: ['🥩', '🍖', '🔥'], fondo: 'from-red-950 via-stone-900 to-[#1b1f26]' }
     ];
     const visual = visuales.find(item => item.claves.some(clave => texto.includes(clave))) || {
-        iconos: ['🍽️', '✨', '🥘'], fondo: 'from-amber-950 via-stone-900 to-[#111214]'
+        iconos: ['🍽️', '✨', '🥘'], fondo: 'from-amber-950 via-stone-900 to-[#1b1f26]'
     };
 
     // Selección estable por producto: el mismo plato conserva su visual al recargar.
@@ -350,8 +356,8 @@ function renderizarProductos(listaProds) {
             `;
 
             html += `
-                <div data-animacion-scroll class="menu-product-reveal group bg-[#111214] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-row sm:flex-col">
-                    <div class="w-24 h-24 shrink-0 bg-[#090a0c] overflow-hidden sm:w-full sm:h-44">${visualProducto}</div>
+                <div data-animacion-scroll class="menu-product-reveal group bg-[#1b1f26] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-row sm:flex-col">
+                    <div class="w-24 h-24 shrink-0 bg-[#11151b] overflow-hidden sm:w-full sm:h-44">${visualProducto}</div>
                     <div class="min-w-0 p-3 sm:p-4 flex flex-col flex-1">
                         <div class="flex-1">
                             <h3 class="font-extrabold text-white text-sm sm:text-lg leading-snug">${escaparHtml(producto.nombre)}</h3>
