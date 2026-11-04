@@ -119,9 +119,12 @@
 
       <!-- Barra de Filtros y Búsqueda -->
       <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col sm:flex-row gap-2 items-center justify-between">
-        <div class="w-full sm:flex-1">
-          <input type="text" id="input-search" placeholder="🔍 Buscar por teléfono o cliente..." 
-                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+        <div class="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex-1">
+          <input type="search" id="input-search" placeholder="Buscar cliente o teléfono" aria-label="Buscar pedidos por nombre o teléfono"
+                 class="min-w-0 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+          <label class="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2 text-[11px] text-slate-300" for="input-fecha-pedido">Fecha
+            <input type="date" id="input-fecha-pedido" aria-label="Filtrar pedidos por fecha" class="w-[118px] bg-transparent py-2 text-xs text-white focus:outline-none">
+          </label>
         </div>
         <div class="flex w-full sm:w-auto">
           <button id="btn-actualizar-pedidos" onclick="actualizarPedidosManual()" class="w-full rounded-lg bg-slate-700 px-4 py-2.5 text-sm text-white transition hover:bg-slate-600 sm:w-auto">Actualizar pedidos</button>
@@ -537,10 +540,21 @@
       return { desde: new Date(inicio).toISOString(), hasta: new Date(fin).toISOString() };
     }
 
+    function obtenerRangoFechaPedido(fecha) {
+      const coincidencia = String(fecha || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!coincidencia) return null;
+      const [, anio, mes, dia] = coincidencia;
+      const inicio = Date.UTC(Number(anio), Number(mes) - 1, Number(dia), 5);
+      const fechaValidada = new Date(inicio);
+      if (fechaValidada.getUTCFullYear() !== Number(anio) || fechaValidada.getUTCMonth() !== Number(mes) - 1 || fechaValidada.getUTCDate() !== Number(dia)) return null;
+      return { desde: new Date(inicio).toISOString(), hasta: new Date(inicio + 86400000).toISOString() };
+    }
+
     async function cargarPedidos(opciones = {}) {
       if (!RESTAURANTE_ID) return false;
       const periodo = periodoPedidosActual;
-      const rango = obtenerRangoPeriodoPedidos(periodo);
+      const fecha = document.getElementById('input-fecha-pedido').value;
+      const rango = fecha ? obtenerRangoFechaPedido(fecha) : obtenerRangoPeriodoPedidos(periodo);
       // Evita que caracteres de sintaxis del filtro PostgREST alteren la consulta.
       const busqueda = document.getElementById('input-search').value
         .slice(0, 80)
@@ -566,7 +580,7 @@
 
         renderTablaPedidos(resultadoPedidos.data);
         actualizarPaginacion(resultadoPedidos.count || 0);
-        if (resultadoMetricas) calcularMetricas(resultadoMetricas, periodo);
+        if (resultadoMetricas) calcularMetricas(resultadoMetricas, fecha ? 'fecha' : periodo, fecha);
         if (opciones.mostrarExito) {
           mostrarAviso(document.getElementById('pedidos-refresh-status'), 'Pedidos y resumen actualizados.', 'exito', 4000);
         }
@@ -593,8 +607,17 @@
 
     document.getElementById('pedidos-periodo-controles').addEventListener('click', event => {
       const botonPeriodo = event.target.closest('[data-periodo-pedidos]');
-      if (!botonPeriodo || botonPeriodo.dataset.periodoPedidos === periodoPedidosActual) return;
+      if (!botonPeriodo) return;
+      if (botonPeriodo.dataset.periodoPedidos === periodoPedidosActual && !document.getElementById('input-fecha-pedido').value) return;
       periodoPedidosActual = botonPeriodo.dataset.periodoPedidos;
+      document.getElementById('input-fecha-pedido').value = '';
+      actualizarBotonesPeriodoPedidos();
+      paginaActual = 0;
+      cargarPedidos();
+    });
+
+    document.getElementById('input-fecha-pedido').addEventListener('change', event => {
+      periodoPedidosActual = event.target.value ? 'fecha' : 'hoy';
       actualizarBotonesPeriodoPedidos();
       paginaActual = 0;
       cargarPedidos();
@@ -732,11 +755,15 @@
       });
     }
 
-    function calcularMetricas(metricas, periodo) {
+    function calcularMetricas(metricas, periodo, fecha = '') {
       const cantidad = metricas.cantidad;
       const totalPeriodo = metricas.total;
       const promedio = cantidad ? Math.round(totalPeriodo / cantidad) : 0;
-      const periodoTexto = { hoy: 'de hoy', '7dias': 'de los últimos 7 días', mes: 'de este mes', todo: 'de todo el historial' }[periodo] || 'del período';
+      const fechaLegible = fecha ? (() => {
+        const [anio, mes, dia] = fecha.split('-').map(Number);
+        return new Date(anio, mes - 1, dia, 12).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+      })() : '';
+      const periodoTexto = fechaLegible ? `del ${fechaLegible}` : ({ hoy: 'de hoy', '7dias': 'de los últimos 7 días', mes: 'de este mes', todo: 'de todo el historial' }[periodo] || 'del período');
       document.getElementById('total-pedidos-count').innerText = cantidad.toLocaleString('es-CO');
       document.getElementById('total-ventas-sum').innerText = `$${totalPeriodo.toLocaleString('es-CO')}`;
       document.getElementById('total-pedidos-hoy').innerText = `$${promedio.toLocaleString('es-CO')}`;
