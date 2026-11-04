@@ -52,6 +52,12 @@
       box-shadow: 0 0 0 2px rgb(248 113 113 / 22%);
     }
     #form-producto input[type="file"] { padding: .45rem; }
+    .pedido-resumen-movil {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
     @media (max-width: 640px) {
       main { padding: .75rem !important; }
       header { gap: .5rem !important; }
@@ -125,7 +131,10 @@
 
       <!-- Tabla de Pedidos -->
       <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
-        <div class="overflow-x-auto">
+        <div id="pedidos-cards" class="space-y-2 p-2 sm:hidden" aria-label="Lista compacta de pedidos">
+          <p class="p-5 text-center text-sm text-slate-400">Cargando pedidos...</p>
+        </div>
+        <div class="hidden overflow-x-auto sm:block">
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-slate-900/80 text-xs uppercase text-slate-400 border-b border-slate-700">
@@ -593,7 +602,9 @@
 
     function renderTablaPedidos(pedidos) {
       const tbody = document.getElementById('pedidos-body');
+      const tarjetas = document.getElementById('pedidos-cards');
       tbody.innerHTML = '';
+      tarjetas.innerHTML = '';
       pedidosRenderizados.clear();
 
       if (!tbody.dataset.handlersBound) {
@@ -606,33 +617,68 @@
         });
         tbody.dataset.handlersBound = 'true';
       }
+      if (!tarjetas.dataset.handlersBound) {
+        tarjetas.addEventListener('click', event => {
+          const boton = event.target.closest('[data-print-order]');
+          if (boton) {
+            const pedido = pedidosRenderizados.get(boton.dataset.printOrder);
+            if (pedido) imprimirTicketAutomatico(pedido, { permitirReimpresion: true });
+          }
+        });
+        tarjetas.dataset.handlersBound = 'true';
+      }
 
       if (!pedidos || pedidos.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center p-8"><p class="font-semibold text-white">No hay pedidos en este período</p><p class="mt-1 text-slate-400">Prueba otro período o cambia la búsqueda.</p></td></tr>`;
+        tarjetas.innerHTML = `<div class="rounded-lg border border-slate-700 bg-slate-900 p-5 text-center"><p class="font-semibold text-white">No hay pedidos en este período</p><p class="mt-1 text-xs text-slate-400">Prueba otro período o cambia la búsqueda.</p></div>`;
         return;
       }
 
+      const filas = [];
+      const tarjetasHtml = [];
       pedidos.forEach(p => {
         const pedidoId = String(p.id);
         pedidosRenderizados.set(pedidoId, p);
         const fecha = new Date(p.created_at).toLocaleString('es-CO');
+        const cliente = escaparHtmlUI(p.cliente_nombre || 'Cliente');
+        const telefono = escaparHtmlUI(p.cliente_telefono || 'Sin teléfono');
+        const detalle = escaparHtmlUI(p.items || 'Sin detalle');
+        const direccion = escaparHtmlUI(p.direccion || 'Sin dirección');
+        const total = Number(p.total) || 0;
+        const botonImprimir = `<button type="button" data-print-order="${escaparHtmlUI(pedidoId)}" class="rounded-md bg-slate-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-600" aria-label="Imprimir pedido">🖨️ Imprimir</button>`;
 
-        tbody.innerHTML += `
+        filas.push(`
           <tr class="hover:bg-slate-750 transition">
             <td class="p-2.5 sm:p-4 text-[11px] sm:text-xs text-slate-400 whitespace-nowrap">${fecha}</td>
             <td class="p-2.5 sm:p-4">
-              <div class="font-medium text-white">${escaparHtmlUI(p.cliente_nombre || 'Cliente')}</div>
+              <div class="font-medium text-white">${cliente}</div>
               <div class="text-xs text-slate-400">${escaparHtmlUI(p.cliente_telefono || '')}</div>
             </td>
-            <td class="p-2.5 sm:p-4 max-w-xs truncate text-xs text-slate-300" title="${escaparHtmlUI(p.items || 'Sin detalle')}">${escaparHtmlUI(p.items || 'Sin detalle')}</td>
-            <td class="p-2.5 sm:p-4 max-w-xs truncate text-xs text-slate-300" title="${escaparHtmlUI(p.direccion || 'Sin dirección')}">${escaparHtmlUI(p.direccion || 'Sin dirección')}</td>
-            <td class="p-2.5 sm:p-4 font-bold text-sm text-emerald-400">$${(p.total || 0).toLocaleString()}</td>
-            <td class="p-2.5 sm:p-4 text-center flex items-center justify-center gap-2">
-              <button type="button" data-print-order="${escaparHtmlUI(pedidoId)}" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs" aria-label="Imprimir pedido">🖨️</button>
-            </td>
+            <td class="p-2.5 sm:p-4 max-w-xs truncate text-xs text-slate-300" title="${detalle}">${detalle}</td>
+            <td class="p-2.5 sm:p-4 max-w-xs truncate text-xs text-slate-300" title="${direccion}">${direccion}</td>
+            <td class="p-2.5 sm:p-4 font-bold text-sm text-emerald-400">$${total.toLocaleString('es-CO')}</td>
+            <td class="p-2.5 sm:p-4 text-center">${botonImprimir}</td>
           </tr>
-        `;
+        `);
+        tarjetasHtml.push(`
+          <article class="rounded-lg border border-slate-700 bg-slate-900 p-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0"><p class="truncate text-sm font-semibold text-white">${cliente}</p><p class="text-[11px] text-slate-400">${fecha}</p></div>
+              <p class="shrink-0 text-sm font-bold text-emerald-400">$${total.toLocaleString('es-CO')}</p>
+            </div>
+            <p class="pedido-resumen-movil mt-2 text-xs leading-relaxed text-slate-300">${detalle}</p>
+            <div class="mt-2 flex items-center justify-between gap-2 border-t border-slate-700 pt-2">
+              <details class="min-w-0 flex-1 text-xs">
+                <summary class="cursor-pointer font-medium text-amber-300">Ver detalles</summary>
+                <dl class="mt-2 space-y-1.5 break-words text-slate-300"><div><dt class="inline font-semibold text-slate-400">Teléfono: </dt><dd class="inline">${telefono}</dd></div><div><dt class="inline font-semibold text-slate-400">Dirección: </dt><dd class="inline">${direccion}</dd></div><div><dt class="inline font-semibold text-slate-400">Pedido: </dt><dd class="inline">${detalle}</dd></div></dl>
+              </details>
+              ${botonImprimir}
+            </div>
+          </article>
+        `);
       });
+      tbody.innerHTML = filas.join('');
+      tarjetas.innerHTML = tarjetasHtml.join('');
     }
 
     async function obtenerMetricasPedidosPeriodo(rango) {
