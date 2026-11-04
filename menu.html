@@ -710,7 +710,7 @@ function confirmarPersonalizacion(event) {
         const selector = selectores[Number(input.dataset.selectorIndex)];
         const opcion = selector?.opciones[Number(input.value)];
         if (!selector || !opcion) return '';
-        return `${selector.grupo}: ${opcion.nombre}${opcion.descripcion ? ` — ${opcion.descripcion}` : ''}`;
+        return `${selector.grupo}: ${opcion.nombre}`;
     }).filter(Boolean);
 
     const nombreCompleto = `${producto.nombre}${selecciones.length ? ` (${selecciones.join(' · ')})` : ''}`;

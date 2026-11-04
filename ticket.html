@@ -105,7 +105,13 @@
             document.getElementById('ticket-notas-linea').style.display = 'block';
         }
 
-        const detalle = urlParams.get('items') || 'Sin detalle del pedido';
+        const detalle = (urlParams.get('items') || 'Sin detalle del pedido').replace(/\(([^()]*)\)/g, (parentesis, contenido) =>
+            `(${contenido.split(/(\s*[;·]\s*)/).map((parte, indice) => {
+                if (indice % 2) return parte;
+                const coincidencia = parte.match(/^([\s\S]*?)\s+[—–-]\s+[\s\S]*$/);
+                return coincidencia && coincidencia[1].includes(':') ? coincidencia[1].trimEnd() : parte;
+            }).join('').replace(/(?:\s*[;·]\s*)+$/, '')})`
+        );
         const ticketItems = document.getElementById('ticket-items');
         const productos = detalle.split(/,\s*(?=\d+\s*x\s)/i).filter(Boolean);
         for (const producto of productos) {

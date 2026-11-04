@@ -270,6 +270,16 @@ function normalizarTextoPedido(valor) {
         .toLocaleLowerCase('es').replace(/\s+/g, ' ').trim();
 }
 
+function limpiarDescripcionDeVariantes(nombre) {
+    return String(nombre || '').replace(/\(([^()]*)\)/g, (parentesis, contenido) =>
+        `(${contenido.split(/(\s*[;·]\s*)/).map((parte, indice) => {
+            if (indice % 2) return parte;
+            const coincidencia = parte.match(/^([\s\S]*?)\s+[—–-]\s+[\s\S]*$/);
+            return coincidencia && coincidencia[1].includes(':') ? coincidencia[1].trimEnd() : parte;
+        }).join('').replace(/(?:\s*[;·]\s*)+$/, '')})`
+    );
+}
+
 function validarYCalcularItemsPedido(textoItems, productosMenu) {
     if (!textoItems || !Array.isArray(productosMenu) || productosMenu.length === 0) {
         return { error: 'No pude verificar los productos. Dime nuevamente cuáles deseas pedir.' };
@@ -323,7 +333,7 @@ function validarYCalcularItemsPedido(textoItems, productosMenu) {
         if (cantidadTotal > 60) return { error: 'El pedido supera la cantidad máxima de productos. Reduce las cantidades e inténtalo de nuevo.' };
         total += precio * cantidad;
         const detalleOpciones = selecciones.map(opcion =>
-            `${opcion.grupo}: ${opcion.nombre}${opcion.descripcion ? ` — ${opcion.descripcion}` : ''}`
+            `${opcion.grupo}: ${opcion.nombre}`
         );
         detalleValidado.push(`${cantidad} x ${producto.nombre}${detalleOpciones.length ? ` (${detalleOpciones.join('; ')})` : ''}`);
     }
@@ -829,7 +839,7 @@ app.post('/api/pedidos', async (req, res) => {
             const producto = productosPorId.get(String(item.id));
             const cantidad = Number(item.cantidad);
             const precio = Number(producto?.precio);
-            const nombreEnviado = String(item.nombre || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+            const nombreEnviado = limpiarDescripcionDeVariantes(String(item.nombre || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim());
             if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 30
                 || !Number.isFinite(precio) || precio < 0
                 || !nombreEnviado.startsWith(String(producto.nombre))) {
