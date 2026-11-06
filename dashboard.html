@@ -68,6 +68,8 @@
     .carta-miniatura iframe { width: 390px; height: 532px; border: 0; transform: scale(.5641); transform-origin: top left; pointer-events: none; }
     .carta-miniatura:focus-visible { outline: 3px solid #fbbf24; outline-offset: 4px; }
     .carta-miniatura span { position: absolute; inset: auto 0 0; padding: 10px; background: #101216ee; color: #fff; font-size: 12px; font-weight: 600; }
+    #categoria-producto option { color: #f1f5f9; background: #14171d; }
+    #categoria-producto:focus-visible { outline: 2px solid #fbbf24; outline-offset: -3px; }
     #productos-editor-paginacion[hidden] { display: none; }
     #carta-ampliada { width: min(1200px, 96vw); max-width: 96vw; height: 94dvh; max-height: 94dvh; padding: 0; border: 1px solid var(--velox-border); border-radius: 14px; background: var(--velox-page); color: #fff; }
     #carta-ampliada::backdrop { background: rgb(0 0 0 / 75%); }
@@ -188,7 +190,7 @@
 
       <div class="space-y-3 divide-y divide-slate-700">
         <details id="importar-menu-fotos" class="rounded-lg border border-slate-700 p-3">
-          <summary class="cursor-pointer text-sm font-semibold text-white"><span id="cargar-carta-titulo">📷 Cargar carta desde fotos</span><small id="cargar-carta-ayuda" class="mt-1 block font-normal text-slate-400">Sube una carta completa para crear o reemplazar tu menú.</small></summary>
+          <summary class="cursor-pointer text-sm font-semibold text-white"><span id="cargar-carta-titulo">✨ Cargar carta con IA</span><small id="cargar-carta-ayuda" class="mt-1 block font-normal text-slate-400">Sube fotos y la IA leerá tus productos y precios para crear o reemplazar tu menú.</small></summary>
         <div class="pt-3">
           <div class="mb-2 flex items-center gap-2">
             <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-950 text-base">✨</span>
@@ -211,10 +213,15 @@
               <button type="button" onclick="nuevoProducto()" class="rounded-lg bg-red-600 px-4 py-3 font-semibold text-white">＋ Agregar producto</button>
             </div>
             <p class="text-xs text-slate-400">Toca «Editar» para cambiar un producto. Si se terminó, toca «Disponible» para marcarlo agotado.</p>
-            <label for="buscar-producto" class="block text-sm text-slate-300">Buscar un producto</label>
-            <input id="buscar-producto" type="search" oninput="renderizarProductos(true)" placeholder="Escribe su nombre…" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-white">
-            <label for="categoria-producto" class="block text-sm text-slate-300">Categoría</label>
-            <select id="categoria-producto" onchange="renderizarProductos(true)" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-white"><option value="">Todas las categorías</option></select>
+            <label for="buscar-producto" class="block text-sm text-slate-300">Buscar producto</label>
+            <div class="flex overflow-hidden rounded-lg border border-slate-700 bg-slate-900 focus-within:border-amber-400">
+              <input id="buscar-producto" type="search" oninput="buscarProductoMenu()" placeholder="Buscar producto" aria-describedby="buscar-producto-ayuda" class="min-w-0 flex-1 bg-transparent p-3 text-white outline-none">
+              <div class="relative w-12 shrink-0 border-l border-slate-700">
+                <select id="categoria-producto" onchange="seleccionarCategoriaProducto(this.value)" aria-label="Mostrar categorías del menú" title="Categorías del menú" class="h-full w-full cursor-pointer appearance-none bg-transparent text-transparent outline-none"><option value="">Todos los productos</option></select>
+                <span aria-hidden="true" class="pointer-events-none absolute inset-0 flex items-center justify-center text-lg text-slate-200">⌄</span>
+              </div>
+            </div>
+            <p id="buscar-producto-ayuda" class="text-xs text-slate-400">Escribe un producto o toca la flecha para elegir una categoría.</p>
             <p id="productos-editor-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
             <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
             <div id="productos-body" class="grid grid-cols-1 gap-2 lg:grid-cols-2"><p class="text-slate-400">Cargando productos…</p></div>
@@ -827,7 +834,7 @@
       }
       productosEditor = data || [];
       const primeraCarga = productosEditor.length === 0;
-      document.getElementById('cargar-carta-titulo').textContent = primeraCarga ? '📷 Empieza aquí: sube tu carta' : '📷 Cargar una carta nueva';
+      document.getElementById('cargar-carta-titulo').textContent = primeraCarga ? '✨ Empieza aquí: carga tu carta con IA' : '✨ Cargar carta con IA';
       document.getElementById('cargar-carta-ayuda').textContent = primeraCarga
         ? 'Sube fotos de tu carta. Velox leerá sus productos y precios. También puedes agregarlos uno a uno en Editar menú.'
         : 'Reemplaza tu menú completo desde fotos. Para cambios pequeños, usa Editar menú.';
@@ -844,8 +851,40 @@
       const selector = document.getElementById('categoria-producto');
       const seleccion = selector.value;
       const categorias = [...new Set(productosEditor.map(p => String(p.categoria || 'General')))].sort((a, b) => a.localeCompare(b, 'es'));
-      selector.innerHTML = '<option value="">Todas las categorías</option>' + categorias.map(c => `<option value="${escaparHtmlUI(c)}">${escaparHtmlUI(c)}</option>`).join('');
+      selector.innerHTML = '<option value="">Todos los productos</option>' + categorias.map(c => `<option value="${escaparHtmlUI(c)}">${escaparHtmlUI(c)}</option>`).join('');
       selector.value = categorias.includes(seleccion) ? seleccion : '';
+      if (seleccion && !selector.value) document.getElementById('buscar-producto').value = '';
+    }
+
+    function buscarProductoMenu() {
+      // Escribir reemplaza la categoría anterior: busca siempre en toda la carta.
+      document.getElementById('categoria-producto').value = '';
+      renderizarProductos(true);
+    }
+
+    function seleccionarCategoriaProducto(categoria) {
+      document.getElementById('categoria-producto').value = categoria;
+      document.getElementById('buscar-producto').value = categoria;
+      renderizarProductos(true);
+    }
+
+    function coincideBusquedaProducto(texto, busqueda) {
+      if (!busqueda || texto.includes(busqueda)) return true;
+      const palabras = texto.split(/\s+/);
+      return busqueda.split(/\s+/).every(termino => palabras.some(palabra => {
+        if (palabra.includes(termino)) return true;
+        if (palabra.length > 4 && palabra.endsWith('s')) palabra = palabra.slice(0, -1);
+        if (termino.length < 7 || Math.abs(palabra.length - termino.length) > 2) return false;
+        let fila = Array.from({ length: palabra.length + 1 }, (_, i) => i);
+        for (let i = 1; i <= termino.length; i++) {
+          const siguiente = [i];
+          for (let j = 1; j <= palabra.length; j++) siguiente[j] = Math.min(
+            siguiente[j - 1] + 1, fila[j] + 1, fila[j - 1] + (termino[i - 1] === palabra[j - 1] ? 0 : 1)
+          );
+          fila = siguiente;
+        }
+        return fila[palabra.length] <= 2;
+      }));
     }
 
     function renderizarProductos(reiniciarPagina = false) {
@@ -855,7 +894,7 @@
       const busqueda = normalizar(document.getElementById('buscar-producto').value.trim());
       const categoria = document.getElementById('categoria-producto').value;
       const productos = productosEditor.filter(p => (!categoria || String(p.categoria || 'General') === categoria)
-        && normalizar(`${p.nombre} ${p.categoria || 'General'}`).includes(busqueda));
+        && (categoria || coincideBusquedaProducto(normalizar(`${p.nombre} ${p.categoria || 'General'}`), busqueda)));
       const totalPaginas = Math.ceil(productos.length / PRODUCTOS_POR_PAGINA);
       paginaProductos = Math.max(0, Math.min(paginaProductos, totalPaginas - 1));
       const inicio = paginaProductos * PRODUCTOS_POR_PAGINA;

@@ -115,3 +115,11 @@ test('eliminar el último producto de una página ajusta la página y muestra el
   assert(d.el('productos-editor-resumen').textContent.includes('1–6 de 6'));assert(d.el('productos-editor-paginacion').hidden);
   d.run('productosEditor=[];renderizarProductos();');assert(d.el('productos-body').innerHTML.includes('Tu menú está vacío'));assert(d.el('productos-editor-paginacion').hidden);
 });
+
+test('el buscador único alterna categorías y texto sin dejar filtros invisibles',()=>{
+  const d=dashboard();d.run('productosEditor=[{id:"1",nombre:"Clásica",categoria:"Hamburguesas",precio:10000},{id:"2",nombre:"Doble",categoria:"Hamburguesas",precio:15000},{id:"3",nombre:"Limonada",categoria:"Bebidas",precio:5000}];actualizarCategoriasProductos();');
+  assert(d.el('categoria-producto').innerHTML.includes('Hamburguesas'));assert(d.el('categoria-producto').innerHTML.includes('Bebidas'));
+  d.context.seleccionarCategoriaProducto('Bebidas');assert.equal(d.el('buscar-producto').value,'Bebidas');assert(!d.el('productos-body').innerHTML.includes('Clásica'));assert(d.el('productos-body').innerHTML.includes('Limonada'));
+  d.el('buscar-producto').value='hamburquega';d.context.buscarProductoMenu();assert.equal(d.el('categoria-producto').value,'');assert(d.el('productos-body').innerHTML.includes('Clásica'));assert(d.el('productos-body').innerHTML.includes('Doble'));assert(!d.el('productos-body').innerHTML.includes('Limonada'));
+  d.context.seleccionarCategoriaProducto('');assert.equal(d.el('buscar-producto').value,'');assert.equal((d.el('productos-body').innerHTML.match(/<article /g)||[]).length,3);
+});
