@@ -23,7 +23,7 @@ test('validación permite precio pendiente solo en borrador y nunca multiplica l
 function servidor({incompleto=false}={}){
  const routes=new Map(),calls=[],rpcCalls=[];let writes=0;
  const user={from(){return{select(){return this},eq(){return this},maybeSingle:async()=>({data:{id:'rest-1'}}),delete(){writes++;throw Error('No debe escribir')},insert(){writes++;throw Error('No debe escribir')}}},rpc:async(name,args)=>{rpcCalls.push({name,args});return{data:'a'.repeat(32)}}};
- const context={console:{info(){},error(){}},Buffer,process:{env:{}},prepararFuentesMenu,validarProductosMenu,errorMenu,upload:{array:()=>()=>{}},autenticarImportacionMenu(){},multer:{MulterError:class{}},app:{post:(route,...handlers)=>routes.set(route,handlers.at(-1))},openai:{chat:{completions:{create:async input=>{calls.push(input);return{choices:[{finish_reason:incompleto&&calls.length===2?'length':'stop',message:{content:JSON.stringify({productos:[{...producto('Producto '+calls.length,500),familia:'',es_combo:false,familia_combo:''}],variantes:[]})}}],usage:{},model:'modelo-prueba'}}}}}};
+ const context={console:{info(){},error(){}},Buffer,process:{env:{}},prepararFuentesMenu,validarProductosMenu,errorMenu,upload:{array:()=>()=>{}},autenticarImportacionMenu(){},multer:{MulterError:class{}},app:{use(){},post:(route,...handlers)=>routes.set(route,handlers.at(-1))},openai:{chat:{completions:{create:async input=>{calls.push(input);return{choices:[{finish_reason:incompleto&&calls.length===2?'length':'stop',message:{content:JSON.stringify({productos:[{...producto('Producto '+calls.length,500),familia:'',es_combo:false,familia_combo:''}],variantes:[]})}}],usage:{},model:'modelo-prueba'}}}}}};
  vm.createContext(context);const source=read('index.js');vm.runInContext(source.slice(source.indexOf('const uploadMenuFiles ='),source.indexOf('function normalizarTextoImagen')),context);
  const response=()=>({statusCode:200,status(n){this.statusCode=n;return this},json(data){this.data=data;return this}});
  return{routes,calls,rpcCalls,user,response,get writes(){return writes}};
@@ -55,4 +55,14 @@ test('descartar no publica y una publicación fallida conserva el borrador',asyn
 });
 test('precio pendiente debe corregirse antes de publicar',async()=>{
  const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});n.context.editarDatoBorrador(0,'precio','0');await n.context.publicarMenuRevisado({preventDefault(){}});assert.equal(n.requests.length,1);assert(n.el('importacion-menu-status').textContent.includes('precio'));
+});
+
+test('un corte al leer se explica en español y no dispara lecturas automáticas',async()=>{
+ const n=navegador();let intentos=0;n.context.fetch=async()=>{intentos++;throw new TypeError('Failed to fetch')};await n.context.enviarMenuConIA({preventDefault(){}});assert.equal(intentos,1);assert(n.el('importacion-menu-status').textContent.includes('Se interrumpió la conexión'));assert(n.el('importacion-menu-status').textContent.includes('Tu carta actual no cambió'));assert(!n.el('importacion-menu-status').textContent.includes('Failed to fetch'));assert.equal(n.el('btn-procesar-ia').disabled,false);
+});
+test('fallo de conexión al validar sesión se distingue de una lectura de PDF',async()=>{
+ const n=navegador();n.context.supabaseClient.auth.getSession=async()=>{throw new TypeError('Failed to fetch')};await n.context.enviarMenuConIA({preventDefault(){}});assert.equal(n.requests.length,0);assert(n.el('importacion-menu-status').textContent.includes('validar tu sesión'));
+});
+test('respuesta perdida al publicar conserva revisión y pide comprobar la carta',async()=>{
+ const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});n.context.fetch=async()=>{throw new TypeError('Failed to fetch')};await n.context.publicarMenuRevisado({preventDefault(){}});assert(n.el('importacion-menu-status').textContent.includes('confirmar la publicación'));assert(n.el('importacion-menu-status').textContent.includes('Revisa tu carta'));assert.equal(n.el('revision-menu').hidden,false);
 });

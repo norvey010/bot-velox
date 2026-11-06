@@ -944,6 +944,22 @@ async function autenticarImportacionMenu(req, res, next) {
 // Se conserva la posibilidad de subir varias páginas durante las pruebas de lectura.
 const uploadMenuFiles = upload.array('menuFile', 10);
 
+// Diagnóstico de conexión sin registrar archivos, credenciales ni contenido de la carta.
+app.use('/api/importar-menu', (req, res, next) => {
+    if (req.method !== 'POST') return next();
+    const recibida=String(req.headers['x-velox-request-id'] || '');
+    const id=/^[a-f0-9-]{36}$/i.test(recibida) ? recibida : crypto.randomUUID();
+    const inicio=Date.now();
+    req.idLectura=id;
+    res.setHeader('X-Velox-Request-Id', id);
+    console.info('Lectura menú iniciada:', JSON.stringify({id, bytes:req.headers['content-length'] || null}));
+    res.once('finish', () => console.info('Lectura menú respondida:', JSON.stringify({id, status:res.statusCode, duracion_ms:Date.now()-inicio})));
+    res.once('close', () => {
+        if (!res.writableFinished) console.warn('Conexión de lectura interrumpida:', JSON.stringify({id, duracion_ms:Date.now()-inicio}));
+    });
+    next();
+});
+
 app.post('/api/importar-menu', autenticarImportacionMenu, (req, res, next) => {
     // Devolver un error claro si Multer no puede recibir los archivos.
     uploadMenuFiles(req, res, (error) => {
@@ -1076,6 +1092,7 @@ REGLAS OBLIGATORIAS:
         const eleccion = response.choices?.[0];
         const uso = response.usage || {};
         console.info("Respuesta OpenAI importar-menu:", JSON.stringify({
+            id_lectura: req.idLectura || null,
             restaurante_id,
             model: response.model || modeloImportacionMenu,
             finish_reason: eleccion?.finish_reason || null,
@@ -1244,7 +1261,7 @@ app.post('/api/publicar-menu', autenticarImportacionMenu, async (req, res) => {
         return res.json({success:true,count:data});
     } catch (error) {
         console.error('No se pudo publicar la carta:', error.message);
-        return res.status(error.publicMessage ? error.status : 500).json({error:error.publicMessage || 'No se pudo publicar. La carta anterior se conserva y puedes reintentar.'});
+        return res.status(error.publicMessage ? error.status : 500).json({error:error.publicMessage || 'No pudimos confirmar la publicación. Revisa tu carta antes de reintentar.'});
     }
 });
 

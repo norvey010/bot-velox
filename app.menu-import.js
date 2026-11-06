@@ -10,10 +10,23 @@ function actualizarResumenFotosMenu() {
   resumen.textContent=files.length ? `${files.length} archivo${files.length===1?'':'s'} seleccionado${files.length===1?'':'s'}.` : '';
   resumen.classList.toggle('hidden',files.length===0);
 }
+function mensajeErrorImportacion(error, accion='lectura') {
+  const mensaje=String(error?.message || '');
+  const falloRed=/failed to fetch|fetch failed|networkerror|network request failed|load failed/i.test(mensaje);
+  if(falloRed) {
+    if(accion==='publicacion') return 'No pudimos confirmar la publicación. Revisa tu carta antes de reintentar.';
+    if(accion==='sesion') return 'No pudimos validar tu sesión por un problema de conexión. Vuelve a intentarlo.';
+    return 'Se interrumpió la conexión al leer el archivo. Tu carta actual no cambió.';
+  }
+  return mensaje || (accion==='publicacion' ? 'No se pudo confirmar la publicación. Revisa tu carta.' : 'No se pudo leer el archivo. Tu carta actual no cambió.');
+}
 async function sesionImportacion() {
-  const {data:{session},error}=await supabaseClient.auth.getSession();
-  if(error || !session?.access_token) throw new Error('Tu sesión venció. Inicia sesión de nuevo.');
-  return session.access_token;
+  try {
+    const {data:{session},error}=await supabaseClient.auth.getSession();
+    if(error) throw error;
+    if(!session?.access_token) throw new Error('Tu sesión venció. Inicia sesión de nuevo.');
+    return session.access_token;
+  } catch(error) { throw new Error(mensajeErrorImportacion(error,'sesion')); }
 }
 async function enviarMenuConIA(event) {
   event.preventDefault();
@@ -30,14 +43,16 @@ async function enviarMenuConIA(event) {
   try {
     const token=await sesionImportacion();
     const formData=new FormData(document.getElementById('form-importar-ia'));formData.set('restaurante_id',RESTAURANTE_ID);
-    const respuesta=await fetch('/api/importar-menu',{method:'POST',headers:{Authorization:`Bearer ${token}`},body:formData});
+    const referencia=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : '';
+    const respuesta=await fetch('/api/importar-menu',{method:'POST',headers:{Authorization:`Bearer ${token}`, ...(referencia ? {'X-Velox-Request-Id':referencia} : {})},body:formData});
+    if([502,503,504].includes(respuesta.status)) throw new Error('El servidor no pudo completar la lectura. Tu carta actual no cambió.');
     const resultado=await respuesta.json().catch(()=>({}));
     if(!respuesta.ok || !resultado.success || !resultado.borrador || !Array.isArray(resultado.productos)) throw new Error(resultado.error || 'No se pudo leer la carta. La carta publicada se conserva.');
     borradorMenu={restaurante_id:RESTAURANTE_ID,version:resultado.version,productos:resultado.productos};paginaRevisionMenu=0;
     document.getElementById('revision-menu').hidden=false;renderizarRevisionMenu();
     estadoImportacion(`${resultado.productos.length} productos detectados. Revisa y publica.`,'exito');
     document.getElementById('revision-menu').scrollIntoView({behavior:'smooth',block:'start'});
-  } catch(error) { estadoImportacion(error.message || 'La lectura falló. Tu carta publicada se conserva.','error'); }
+  } catch(error) { estadoImportacion(mensajeErrorImportacion(error),'error'); }
   finally { leyendoMenu=false;boton.disabled=false;boton.textContent='Leer con IA'; }
 }
 function renderizarRevisionMenu() {
@@ -85,7 +100,7 @@ async function publicarMenuRevisado(event) {
     if(!respuesta.ok || !resultado.success)throw new Error(resultado.error || 'No se pudo publicar. Revisa tu carta publicada antes de reintentar.');
     borradorMenu=null;document.getElementById('revision-menu').hidden=true;document.getElementById('form-importar-ia').reset();actualizarResumenFotosMenu();
     await cargarProductos();estadoImportacion(`Carta publicada: ${resultado.count} productos.`,'exito');
-  } catch(error) {estadoImportacion(error.message || 'No se pudo confirmar la publicación. Revisa tu carta antes de reintentar.','error');}
+  } catch(error) {estadoImportacion(mensajeErrorImportacion(error,'publicacion'),'error');}
   finally {publicandoMenu=false;document.getElementById('revision-menu').removeAttribute('inert');boton.disabled=false;boton.textContent='Publicar carta';}
 }
 document.getElementById('menuFile').addEventListener('change',actualizarResumenFotosMenu);
