@@ -21,6 +21,7 @@
     button:hover:not(:disabled) { transform: translateY(-1px); }
     summary { list-style: none; }
     summary::-webkit-details-marker { display: none; }
+    #revision-menu[hidden] { display: none; }
     #editor-producto[hidden], #reintentar-productos[hidden] { display: none; }
     #form-producto {
       border: 1px solid #34363d;
@@ -190,19 +191,31 @@
 
       <div class="space-y-3 divide-y divide-slate-700">
         <details id="importar-menu-fotos" class="rounded-lg border border-slate-700 p-3">
-          <summary class="cursor-pointer text-sm font-semibold text-white"><span id="cargar-carta-titulo">✨ Cargar carta con IA</span><small id="cargar-carta-ayuda" class="mt-1 block font-normal text-slate-400">Sube fotos y la IA leerá tus productos y precios para crear o reemplazar tu menú.</small></summary>
+          <summary class="cursor-pointer text-sm font-semibold text-white"><span id="cargar-carta-titulo">✨ Cargar carta con IA</span><small id="cargar-carta-ayuda" class="mt-1 block font-normal text-slate-400">Sube fotos o PDF. Revisa los productos antes de publicar. Tu carta actual no cambia durante la lectura.</small></summary>
         <div class="pt-3">
           <div class="mb-2 flex items-center gap-2">
             <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-950 text-base">✨</span>
-            <div><h3 class="text-sm font-semibold text-white">Leer los productos de tus fotos</h3><p class="text-xs text-slate-400">Esto reemplaza los productos actuales. Usa esta opción para cargar una carta completa.</p></div>
+            <div><h3 class="text-sm font-semibold text-white">Leer fotos o PDF con IA</h3><p class="text-xs text-slate-400">Primero leeremos los archivos. Después podrás revisar y corregir los productos antes de reemplazar tu carta.</p></div>
           </div>
           <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-2">
             <input type="hidden" id="ai-restaurante-id">
-            <label for="menuFile" class="block text-xs font-semibold text-slate-200">Fotos de la carta</label>
-            <input type="file" id="menuFile" name="menuFile" accept="image/*" multiple aria-describedby="menu-file-summary" class="block w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-600">
+            <label for="menuFile" class="block text-xs font-semibold text-slate-200">Fotos o PDF de la carta</label>
+            <input type="file" id="menuFile" name="menuFile" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" multiple aria-describedby="menu-limites menu-file-summary" class="block w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-600">
+            <p id="menu-limites" class="text-xs text-slate-400">Hasta 10 archivos · 8 MB por archivo · 25 MB en total · 20 páginas entre fotos y PDF.</p>
             <p id="menu-file-summary" class="hidden text-xs text-slate-400" aria-live="polite"></p>
-            <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700">Procesar menú</button>
+            <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700">Leer con IA</button>
           </form>
+          <p id="importacion-menu-status" class="mt-3 hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
+          <section id="revision-menu" hidden class="mt-4 space-y-3 rounded-xl border border-slate-600 p-3" aria-labelledby="revision-menu-titulo">
+            <h3 id="revision-menu-titulo" class="text-base font-bold text-white">Revisa tu carta antes de publicar</h3>
+            <p class="text-sm text-slate-300">Corrige nombres, ingredientes, opciones y precios. Al publicar, esta lista reemplazará tu carta actual.</p>
+            <p id="revision-menu-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
+            <form id="form-revision-menu" onsubmit="publicarMenuRevisado(event)" class="space-y-3">
+              <div id="revision-menu-lista" class="space-y-3"></div>
+              <div class="flex justify-between gap-2"><button id="revision-anterior" type="button" onclick="cambiarPaginaRevision(-1)" class="min-h-11 rounded-lg border border-slate-600 px-3 text-sm text-white disabled:opacity-40">‹ Anterior</button><button id="revision-siguiente" type="button" onclick="cambiarPaginaRevision(1)" class="min-h-11 rounded-lg border border-slate-600 px-3 text-sm text-white disabled:opacity-40">Siguiente ›</button></div>
+              <div class="flex flex-wrap gap-2"><button id="btn-publicar-menu" type="submit" class="min-h-11 flex-1 rounded-lg bg-red-600 px-4 py-2 font-bold text-white hover:bg-red-700">Publicar carta</button><button type="button" onclick="descartarRevisionMenu()" class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm text-white">Descartar lectura</button></div>
+            </form>
+          </section>
         </div>
 
         </details>
@@ -848,8 +861,8 @@
           const primeraCarga = productosEditor.length === 0;
           document.getElementById('cargar-carta-titulo').textContent = primeraCarga ? '✨ Empieza aquí: carga tu carta con IA' : '✨ Cargar carta con IA';
           document.getElementById('cargar-carta-ayuda').textContent = primeraCarga
-            ? 'Sube fotos de tu carta. Velox leerá sus productos y precios. También puedes agregarlos uno a uno en Editar menú.'
-            : 'Reemplaza tu menú completo desde fotos. Para cambios pequeños, usa Editar menú.';
+            ? 'Sube fotos o PDF de tu carta. Velox leerá sus productos y precios. También puedes agregarlos uno a uno en Editar menú.'
+            : 'Lee una carta nueva desde fotos o PDF. Revisarás los productos antes de publicarla. Para cambios pequeños, usa Editar menú.';
           if (primeraCarga) document.getElementById('importar-menu-fotos').open = true;
           actualizarCategoriasProductos();
           renderizarProductos();
@@ -1200,87 +1213,6 @@
       document.getElementById('carta-miniatura').focus();
     });
 
-    // --- MÓDULO MENÚ IA (Múltiples imágenes dinámicas) ---
-    function actualizarResumenFotosMenu() {
-      const cantidad = document.getElementById('menuFile').files.length;
-      const resumen = document.getElementById('menu-file-summary');
-      resumen.textContent = cantidad ? `${cantidad} ${cantidad === 1 ? 'foto seleccionada' : 'fotos seleccionadas'}.` : '';
-      resumen.classList.toggle('hidden', cantidad === 0);
-    }
-
-    document.getElementById('menuFile').addEventListener('change', actualizarResumenFotosMenu);
-    document.getElementById('editar-menu').addEventListener('toggle', event => {
-      if (event.currentTarget.open) cargarProductos();
-    });
-
-    async function enviarMenuConIA(event) {
-      event.preventDefault();
-      
-      const inputFiles = document.getElementById('menuFile');
-      const btnProcesar = document.getElementById('btn-procesar-ia');
-      const formElement = document.getElementById('form-importar-ia');
-      
-      const inputOculto = document.getElementById('ai-restaurante-id');
-      const idRestauranteFinal = (inputOculto ? inputOculto.value : null) || RESTAURANTE_ID;
-
-      if (!inputFiles.files || inputFiles.files.length === 0) {
-        alert('Selecciona al menos una foto de tu menú para continuar.');
-        return;
-      }
-
-      if (!idRestauranteFinal) {
-        alert('Cargando datos del restaurante... Por favor espera 2 segundos y vuelve a intentar.');
-        return;
-      }
-
-      if (productosEditor.length && !confirm('Esta acción reemplazará TODOS los productos de tu menú por los de las fotos. ¿Quieres continuar?')) return;
-      const formData = new FormData(formElement);
-      formData.set('restaurante_id', idRestauranteFinal);
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (!session?.access_token) {
-        alert('Tu sesión venció. Inicia sesión de nuevo antes de importar el menú.');
-        return;
-      }
-
-      if (btnProcesar) {
-        btnProcesar.innerText = 'Leyendo menú…';
-        btnProcesar.disabled = true;
-      }
-
-      try {
-        const respuesta = await fetch('/api/importar-menu', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${session.access_token}` },
-          body: formData
-        });
-
-        const resultado = await respuesta.json();
-
-        if (respuesta.ok && resultado.success) {
-          const mensajeVariantes = typeof resultado.productosConVariantes === 'number'
-            ? (resultado.productosConVariantes > 0
-              ? ` Se asociaron variantes a ${resultado.productosConVariantes} productos.`
-              : ' Atención: no se detectaron variantes para elegir. Revisa que la foto incluya claramente esa lista.')
-            : ' El servidor no devolvió el diagnóstico de variantes; comprueba que Railway tenga la última versión.';
-          formElement.reset();
-          actualizarResumenFotosMenu();
-          const estadoMenu = document.getElementById('producto-save-status');
-          mostrarAviso(estadoMenu, 'Menú importado y guardado correctamente.' + mensajeVariantes, 'exito', 6000);
-          cambiarSeccion('menu'); // Te lleva a revisar la carta recién importada
-        } else {
-          alert('Error: ' + (resultado.error || 'No se pudo procesar el archivo.'));
-        }
-      } catch (error) {
-        console.error(error);
-        alert('Ocurrió un error de conexión con el servidor.');
-      } finally {
-        if (btnProcesar) {
-          btnProcesar.innerText = 'Procesar menú';
-          btnProcesar.disabled = false;
-        }
-      }
-    }
-
     // --- MÓDULO CONFIGURACIÓN ---
     async function cargarConfiguracion() {
       if (!RESTAURANTE_ID) return;
@@ -1618,5 +1550,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
+  <script src="/app.menu-import.js"></script>
 </body>
 </html>
