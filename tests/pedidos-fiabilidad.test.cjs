@@ -57,7 +57,7 @@ function dashboard() {
   const html=read('dashboard.html');
   const script=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n').replace(/    inicializarDashboard\(\);/,'');
   const els=new Map(),timers=new Map(),channels=[]; let timerId=0; const events={}; const queries=[];
-  function el(id){ if(!els.has(id))els.set(id,{value:'',style:{},classList:{contains:()=>false,add(){},remove(){},toggle(){}},addEventListener(){},textContent:''});return els.get(id); }
+  function el(id){ if(!els.has(id))els.set(id,{value:'',style:{},classList:{contains:()=>false,add(){},remove(){},toggle(){}},addEventListener(){},textContent:'',setAttribute(name,value){this[name]=value;},scrollIntoView(){},focus(){},reset(){}});return els.get(id); }
   const client={auth:{getSession:async()=>({data:{session:{access_token:'test-session'}}})},realtime:{setAuth:async token=>events.token=token},removeChannel:async c=>events.removed=c,channel(name){const c={name,handlers:[],on(type,filter,fn){this.handlers.push({filter,fn});return this},subscribe(fn){this.notify=fn;return this}};channels.push(c);return c}};
   const context={console,URL,URLSearchParams,Map,Set,WeakMap,Date,navigator:{onLine:true},supabase:{createClient:()=>client},setTimeout:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout:id=>timers.delete(id),window:{location:{origin:'https://velox.test'},addEventListener:(n,fn)=>events[n]=fn},document:{hidden:false,addEventListener:(n,fn)=>events[n]=fn,getElementById:el}};
   vm.createContext(context);vm.runInContext(script,context);vm.runInContext('cargarPedidos = async () => { consultasPrueba.push(1); return true; }; imprimirTicketAutomatico = p => impresionesPrueba.push(p.id);',Object.assign(context,{consultasPrueba:queries,impresionesPrueba:[]}));
@@ -122,4 +122,27 @@ test('el buscador único alterna categorías y texto sin dejar filtros invisible
   d.context.seleccionarCategoriaProducto('Bebidas');assert.equal(d.el('buscar-producto').value,'Bebidas');assert(!d.el('productos-body').innerHTML.includes('Clásica'));assert(d.el('productos-body').innerHTML.includes('Limonada'));
   d.el('buscar-producto').value='hamburquega';d.context.buscarProductoMenu();assert.equal(d.el('categoria-producto').value,'');assert(d.el('productos-body').innerHTML.includes('Clásica'));assert(d.el('productos-body').innerHTML.includes('Doble'));assert(!d.el('productos-body').innerHTML.includes('Limonada'));
   d.context.seleccionarCategoriaProducto('');assert.equal(d.el('buscar-producto').value,'');assert.equal((d.el('productos-body').innerHTML.match(/<article /g)||[]).length,3);
+});
+
+function consultaProductos(d, resolver) {
+  d.context.supabase.createClient().from=()=>({select(){return this},eq(){return this},order:resolver});
+  d.run('RESTAURANTE_ID="rest-1"');
+}
+
+test('carga de productos muestra lista, error o vacío sin dejar el indicador pegado',async()=>{
+  const d=dashboard();consultaProductos(d,async()=>({data:[{id:'1',nombre:'Hamburguesa',precio:10000}],error:null}));
+  assert.equal(await d.context.cargarProductos(),true);assert(d.el('productos-body').innerHTML.includes('Hamburguesa'));assert(!d.el('productos-body').innerHTML.includes('Cargando'));assert.equal(d.el('productos-body')['aria-busy'],'false');
+  consultaProductos(d,async()=>({data:null,error:{message:'Sin permisos'}}));assert.equal(await d.context.cargarProductos(),false);assert.equal(d.el('reintentar-productos').hidden,false);assert(d.el('productos-body').innerHTML.includes('Hamburguesa'));
+  consultaProductos(d,async()=>({data:[],error:null}));assert.equal(await d.context.cargarProductos(),true);assert(d.el('productos-body').innerHTML.includes('Tu menú está vacío'));assert(d.el('reintentar-productos').hidden);
+});
+test('timeout de carga termina en Reintentar y una respuesta tardía no pisa el siguiente intento',async()=>{
+  const d=dashboard();let resolverAnterior;consultaProductos(d,()=>new Promise(resolve=>resolverAnterior=resolve));const anterior=d.context.cargarProductos();
+  const timeout=[...d.timers.values()].find(t=>t.ms===15000);assert(timeout);timeout.fn();assert.equal(await anterior,false);assert(!d.el('productos-body').innerHTML.includes('Cargando'));assert(!d.el('reintentar-productos').hidden);
+  consultaProductos(d,async()=>({data:[{id:'nuevo',nombre:'Producto nuevo',precio:5000}],error:null}));await d.context.cargarProductos();resolverAnterior({data:[{id:'viejo',nombre:'Resultado viejo',precio:1000}],error:null});await Promise.resolve();assert(d.el('productos-body').innerHTML.includes('Producto nuevo'));assert(!d.el('productos-body').innerHTML.includes('Resultado viejo'));
+});
+test('dos aperturas durante la misma carga comparten una sola consulta',async()=>{
+  const d=dashboard();let consultas=0,resolver;consultaProductos(d,()=>{consultas++;return new Promise(resolve=>resolver=resolve)});const primera=d.context.cargarProductos(),segunda=d.context.cargarProductos();assert.equal(consultas,1);resolver({data:[],error:null});await Promise.all([primera,segunda]);
+});
+test('formulario tiene encabezado de datos y una sola acción Agregar producto',()=>{
+  const html=read('dashboard.html');assert.equal((html.match(/onclick="nuevoProducto\(\)"/g)||[]).length,1);assert(!html.includes('id="details-producto-form"'));assert(html.includes('<section id="editor-producto" hidden'));assert(html.includes('id="producto-form-summary-text">Datos del producto</span>'));assert(html.includes("if (!document.getElementById('sec-menu-ia').classList.contains('hidden')) cargarProductos();"));
 });
