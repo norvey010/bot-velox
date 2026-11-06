@@ -64,7 +64,7 @@
         background: linear-gradient(115deg, rgba(127, 29, 29, .46), rgba(30, 30, 34, .96));
         box-shadow: inset 0 0 0 1px rgba(248, 113, 113, .14), 0 8px 22px rgba(127, 29, 29, .12);
     }
-    .velox-option:has(input:checked) .velox-option-title { color: #fbbf24; }
+    .velox-option:has(input:checked) .velox-option-title { color: #f9fafb; }
     @keyframes menuCategoryFromRight {
         from { opacity: 0; transform: translate3d(34px, 0, 0) scale(.985); filter: blur(3px); }
         to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
@@ -86,6 +86,7 @@
         .menu-product-reveal { opacity: 1; transform: none; transition: none; }
     }
 </style>
+    <link rel="stylesheet" href="/velox-theme.css">
 </head>
 
 <body class="text-slate-100 min-h-screen pb-28">
@@ -95,7 +96,7 @@
         <div class="max-w-7xl mx-auto flex items-center justify-between">
             <div>
                 <h1 id="nombre-restaurante" class="text-xl font-bold text-white" aria-live="polite"></h1>
-                <p class="text-xs text-amber-400 flex items-center gap-1">
+                <p class="text-xs text-white flex items-center gap-1">
                     <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     Pedidos directos a cocina
                 </p>
@@ -120,7 +121,7 @@
 
     <!-- BARRA CARRITO -->
     <div id="barra-carrito" class="fixed bottom-4 left-4 right-4 max-w-2xl mx-auto hidden z-40">
-        <button onclick="abrirModalPedido()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-5 rounded-2xl shadow-xl shadow-red-950/30 flex items-center justify-between">
+        <button onclick="abrirModalPedido()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-5 rounded-2xl shadow-xl shadow-red-950/30 flex items-center justify-between">
             <span class="bg-black/20 px-3 py-1 rounded-lg text-sm" id="cant-items">0 ítems</span>
             <span>Ver Pedido 🚀</span>
             <span id="total-carrito">$0</span>
@@ -132,13 +133,13 @@
     <form id="form-personalizar" onsubmit="confirmarPersonalizacion(event)" class="relative bg-[#101114] border border-red-900/50 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-[0_24px_80px_rgba(0,0,0,.65)] text-slate-100 max-h-[90vh] overflow-y-auto">
         <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-red-500/80 to-transparent"></div>
         <div class="flex justify-between items-start gap-4 mb-5 border-b border-white/10 pb-4">
-            <div><p class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[.18em] text-amber-400 font-extrabold"><span class="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,.9)]"></span>Personaliza tu pedido</p><h3 id="titulo-personalizar" class="text-xl font-extrabold text-white mt-2">Elige cómo lo quieres</h3><p id="nombre-personalizar" class="text-sm text-slate-400 mt-1"></p></div>
-            <button type="button" onclick="cerrarModalPersonalizar()" aria-label="Cerrar" class="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:border-red-400/50 hover:bg-red-500/10 hover:text-white text-2xl leading-none transition">&times;</button>
+            <div><p class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[.18em] text-white font-extrabold"><span class="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,.9)]"></span>Personaliza tu pedido</p><h3 id="titulo-personalizar" class="text-xl font-extrabold text-white mt-2">Elige cómo lo quieres</h3><p id="nombre-personalizar" class="text-sm text-slate-400 mt-1"></p></div>
+            <button type="button" onclick="cerrarModalPersonalizar()" aria-label="Cerrar" class="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:border-red-400/50 hover:bg-red-700/10 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div id="campos-personalizar" class="space-y-4"></div>
         <div class="mt-6 flex gap-3">
             <button type="button" onclick="cerrarModalPersonalizar()" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl text-sm font-semibold">Cancelar</button>
-            <button type="submit" class="w-2/3 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-sm">Agregar al pedido</button>
+            <button type="submit" class="w-2/3 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm">Agregar al pedido</button>
         </div>
     </form>
 </div>
@@ -159,7 +160,7 @@
             </div>
             <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-800 font-bold">
                 <span class="text-sm text-slate-300">Total estimado:</span>
-            <span id="total-modal-carrito" class="text-amber-400 text-base">$0</span>
+            <span id="total-modal-carrito" class="text-white text-base">$0</span>
             </div>
         </div>
 
@@ -183,7 +184,7 @@
             </div>
             <div class="pt-2 flex gap-3">
                 <button type="button" onclick="cerrarModalPedido()" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl text-sm transition">Cancelar</button>
-                <button type="submit" class="w-2/3 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-sm transition">Confirmar Pedido 🚀</button>
+                <button type="submit" class="w-2/3 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm transition">Confirmar Pedido 🚀</button>
             </div>
         </form>
     </div>
@@ -280,19 +281,19 @@ function obtenerVisualProducto(producto, imagenCompartida = '') {
     const texto = `${producto.categoria || ''} ${producto.nombre || ''}`
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const visuales = [
-        { claves: ['hamburg', 'burger'], iconos: ['🍔', '🍟', '🥪'], fondo: 'from-red-950 via-orange-950 to-[#1b1f26]' },
-        { claves: ['arepa'], iconos: ['🫓', '🧀', '🌽'], fondo: 'from-amber-950 via-yellow-950 to-[#1b1f26]' },
-        { claves: ['pizza'], iconos: ['🍕', '🧀', '🍅'], fondo: 'from-red-950 via-rose-950 to-[#1b1f26]' },
-        { claves: ['bebida', 'jugo', 'gaseosa', 'limonada', 'coctel'], iconos: ['🥤', '🧃', '🍹'], fondo: 'from-cyan-950 via-blue-950 to-[#1b1f26]' },
-        { claves: ['pollo', 'broaster', 'alita'], iconos: ['🍗', '🍟', '🍗'], fondo: 'from-orange-950 via-amber-950 to-[#1b1f26]' },
-        { claves: ['perro', 'salchipapa', 'salchicha'], iconos: ['🌭', '🍟', '🌭'], fondo: 'from-yellow-950 via-orange-950 to-[#1b1f26]' },
-        { claves: ['postre', 'torta', 'helado', 'dulce'], iconos: ['🍰', '🍨', '🧁'], fondo: 'from-fuchsia-950 via-rose-950 to-[#1b1f26]' },
-        { claves: ['ensalada', 'vegetar', 'vegano'], iconos: ['🥗', '🥑', '🥬'], fondo: 'from-green-950 via-emerald-950 to-[#1b1f26]' },
-        { claves: ['pasta', 'lasana', 'lasagna'], iconos: ['🍝', '🧀', '🍅'], fondo: 'from-orange-950 via-red-950 to-[#1b1f26]' },
-        { claves: ['carne', 'parrilla', 'asado', 'chuzo'], iconos: ['🥩', '🍖', '🔥'], fondo: 'from-red-950 via-stone-900 to-[#1b1f26]' }
+        { claves: ['hamburg', 'burger'], iconos: ['🍔', '🍟', '🥪'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
+        { claves: ['arepa'], iconos: ['🫓', '🧀', '🌽'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
+        { claves: ['pizza'], iconos: ['🍕', '🧀', '🍅'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
+        { claves: ['bebida', 'jugo', 'gaseosa', 'limonada', 'coctel'], iconos: ['🥤', '🧃', '🍹'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
+        { claves: ['pollo', 'broaster', 'alita'], iconos: ['🍗', '🍟', '🍗'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
+        { claves: ['perro', 'salchipapa', 'salchicha'], iconos: ['🌭', '🍟', '🌭'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
+        { claves: ['postre', 'torta', 'helado', 'dulce'], iconos: ['🍰', '🍨', '🧁'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
+        { claves: ['ensalada', 'vegetar', 'vegano'], iconos: ['🥗', '🥑', '🥬'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
+        { claves: ['pasta', 'lasana', 'lasagna'], iconos: ['🍝', '🧀', '🍅'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
+        { claves: ['carne', 'parrilla', 'asado', 'chuzo'], iconos: ['🥩', '🍖', '🔥'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' }
     ];
     const visual = visuales.find(item => item.claves.some(clave => texto.includes(clave))) || {
-        iconos: ['🍽️', '✨', '🥘'], fondo: 'from-amber-950 via-stone-900 to-[#1b1f26]'
+        iconos: ['🍽️', '✨', '🥘'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]'
     };
 
     // Selección estable por producto: el mismo plato conserva su visual al recargar.
@@ -340,7 +341,7 @@ function renderizarProductos(listaProds) {
             .map(producto => String(producto.imagen_url || '').trim())
             .find(url => url.startsWith('http') && !url.includes('photo-1504674900247-0877df9cc836')) || '';
         const claseAnimacion = direccionAnimacionMenu === 'previous' ? 'menu-category-enter-previous' : 'menu-category-enter-next';
-        html += `<div class="mb-8 ${claseAnimacion}"><h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-amber-400">✦</span> ${escaparHtml(categoria)}</h2>`;
+        html += `<div class="mb-8 ${claseAnimacion}"><h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-white">✦</span> ${escaparHtml(categoria)}</h2>`;
         html += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">';
         lista.forEach(producto => {
             const comparteImagenPizza = productosPorTamanoPizza.includes(producto);
@@ -350,7 +351,7 @@ function renderizarProductos(listaProds) {
             const requierePersonalizacion = personalizacion.selectores.length > 0;
             const textoBoton = requierePersonalizacion ? textoBotonPersonalizacion(personalizacion.selectores) : '+ Agregar';
             const botonHtml = `
-                <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" ${window.MENU_DISPONIBLE === false ? 'disabled' : ''} class="w-full bg-red-600 hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm transition shadow-lg shadow-red-950/30">
+                <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" ${window.MENU_DISPONIBLE === false ? 'disabled' : ''} class="w-full bg-red-600 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm transition shadow-lg shadow-red-950/30">
                     ${window.MENU_DISPONIBLE === false ? 'Pedidos cerrados por ahora' : textoBoton}
                 </button>
             `;
@@ -364,7 +365,7 @@ function renderizarProductos(listaProds) {
                             <p class="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed lowercase">${producto.descripcion ? escaparHtml(producto.descripcion).toLowerCase() : ''}</p>
                         </div>
                         <div class="mt-2 sm:mt-5 flex flex-col gap-2 sm:gap-3">
-                            <span class="font-extrabold text-amber-400 text-base sm:text-xl">$${Number(producto.precio).toLocaleString('es-CO')}</span>
+                            <span class="font-extrabold text-white text-base sm:text-xl">$${Number(producto.precio).toLocaleString('es-CO')}</span>
                             ${botonHtml}
                         </div>
                     </div>
@@ -690,9 +691,9 @@ function iniciarPersonalizacion(id) {
                 </span>
             </label>
         `).join('');
-        return `<section aria-labelledby="${idCampo}-label"><h4 id="${idCampo}-label" class="mb-2.5 flex items-center gap-2 text-sm font-bold text-slate-200"><span class="h-5 w-1 rounded-full bg-gradient-to-b from-red-500 to-amber-400"></span>${escaparHtml(selector.etiqueta)}</h4><div class="velox-option-list max-h-[42vh] space-y-2 overflow-y-auto rounded-2xl border border-white/5 bg-black/15 p-2">${opcionesHtml}</div></section>`;
+        return `<section aria-labelledby="${idCampo}-label"><h4 id="${idCampo}-label" class="mb-2.5 flex items-center gap-2 text-sm font-bold text-slate-200"><span class="h-5 w-1 rounded-full bg-red-400"></span>${escaparHtml(selector.etiqueta)}</h4><div class="velox-option-list max-h-[42vh] space-y-2 overflow-y-auto rounded-2xl border border-white/5 bg-black/15 p-2">${opcionesHtml}</div></section>`;
     }).join('');
-    campos.innerHTML = `<p class="mb-4 rounded-xl border border-amber-400/15 bg-amber-400/[.06] px-3.5 py-2.5 text-xs leading-relaxed text-slate-300">Selecciona una opción para cada grupo y luego agrégala al pedido.</p>${html}`;
+    campos.innerHTML = `<p class="mb-4 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-xs leading-relaxed text-slate-300">Selecciona una opción para cada grupo y luego agrégala al pedido.</p>${html}`;
 
     const modal = document.getElementById('modal-personalizar');
     modal.classList.remove('hidden');
@@ -807,7 +808,7 @@ function renderizarCarritoModal() {
             <div class="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl border border-slate-700/50 mb-2">
                 <div class="flex-1 pr-2">
                     <h4 class="text-white font-bold text-sm">${escaparHtml(item.nombre)}</h4>
-                    <p class="text-amber-400 text-xs font-semibold">$${item.precio.toLocaleString('es-CO')} c/u</p>
+                    <p class="text-white text-xs font-semibold">$${item.precio.toLocaleString('es-CO')} c/u</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="cambiarCantidadItem(${index}, -1)" class="w-7 h-7 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold flex items-center justify-center">-</button>
