@@ -1,0 +1,27 @@
+/* Paleta común: marca/acción, contenido y estados conservan funciones distintas. */
+:root {
+  color-scheme: dark;
+  --velox-page: #101216;
+  --velox-surface: #1b1f26;
+  --velox-raised: #232831;
+  --velox-inset: #14171d;
+  --velox-border: #454c57;
+  --velox-text: #f9fafb;
+  --velox-muted: #94a3b8;
+  --velox-primary: #dc2626;
+  --velox-primary-hover: #b91c1c;
+  --velox-focus: #f87171;
+  --velox-success: #6ee7b7;
+  --velox-warning: #fcd34d;
+}
+body { color: var(--velox-text); }
+.bg-red-600 { background-color: var(--velox-primary); }
+.hover\:bg-red-700:hover { background-color: var(--velox-primary-hover); }
+.text-white { color: var(--velox-text); }
+.text-slate-400 { color: var(--velox-muted); }
+/* El foco no depende únicamente del color de borde ni cambia el significado del estado. */
+:where(a, button, summary, input, select, textarea):focus-visible {
+  outline: 2px solid var(--velox-focus);
+  outline-offset: 3px;
+}
+button:disabled { cursor: not-allowed; }
