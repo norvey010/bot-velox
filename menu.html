@@ -853,8 +853,28 @@ function eliminarItemCarrito(index) {
             modal.classList.remove('flex');
         }
 
+    let enviandoPedido = false;
+    let intentoPedidoActual = null;
+
+    function prepararIntentoPedido(datos) {
+        const huella = JSON.stringify(datos);
+        if (intentoPedidoActual?.huella === huella) return intentoPedidoActual.id;
+        try {
+            const guardado = JSON.parse(sessionStorage.getItem('velox-intento-pedido') || 'null');
+            if (guardado?.huella === huella && /^[0-9a-f-]{36}$/i.test(guardado.id || '')) {
+                intentoPedidoActual = guardado;
+                return guardado.id;
+            }
+        } catch {}
+        // Se conserva el mismo ID si hay un corte o una respuesta perdida.
+        intentoPedidoActual = { huella, id: crypto.randomUUID() };
+        try { sessionStorage.setItem('velox-intento-pedido', JSON.stringify(intentoPedidoActual)); } catch {}
+        return intentoPedidoActual.id;
+    }
+
     async function confirmarYEnviarPedido(event) {
         event.preventDefault();
+        if (enviandoPedido) return;
         if (window.MENU_DISPONIBLE === false) {
             alert(window.RESTAURANTE_ACTUAL?.mensaje_cierre || 'En este momento no estamos recibiendo pedidos.');
             return;
@@ -870,6 +890,7 @@ function eliminarItemCarrito(index) {
             return;
         }
 
+        enviandoPedido = true;
         var botonEnviar = document.querySelector('#form-confirmar-pedido button[type="submit"]');
         if (botonEnviar) {
             botonEnviar.disabled = true;
@@ -878,18 +899,16 @@ function eliminarItemCarrito(index) {
 
         try {
             // El servidor consulta los productos y recalcula el total con los precios oficiales.
+            var datosPedido = {
+                restaurante_id: window.RESTAURANTE_ACTUAL.id,
+                direccion, metodo_pago: metodoPago, notas,
+                items: cart.map(item => ({ id: item.id, nombre: item.nombre, cantidad: item.cantidad }))
+            };
+            var solicitudId = prepararIntentoPedido(datosPedido);
             var respuesta = await fetch('/api/pedidos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    restaurante_id: window.RESTAURANTE_ACTUAL.id,
-                    direccion: direccion,
-                    metodo_pago: metodoPago,
-                    notas: notas,
-                    items: cart.map(function(item) {
-                        return { id: item.id, nombre: item.nombre, cantidad: item.cantidad };
-                    })
-                })
+                body: JSON.stringify({ ...datosPedido, solicitud_id: solicitudId })
             });
             var resultado = await respuesta.json().catch(function() { return {}; });
             if (!respuesta.ok || !resultado.success) {
@@ -912,6 +931,8 @@ function eliminarItemCarrito(index) {
                 (notas ? `• *Notas:* ${notas}\n` : '') +
                 `\n*Referencia Velox:* ${resultado.pedido_id}`;
 
+            intentoPedidoActual = null;
+            try { sessionStorage.removeItem('velox-intento-pedido'); } catch {}
             cart = [];
             if (typeof actualizarBarraCarrito === 'function') actualizarBarraCarrito();
             if (typeof cerrarModalPedido === 'function') cerrarModalPedido();
@@ -925,6 +946,7 @@ function eliminarItemCarrito(index) {
             console.error('Error inesperado al confirmar pedido:', err);
             alert('No se pudo registrar el pedido. Revisa tu conexión e inténtalo de nuevo.');
         } finally {
+            enviandoPedido = false;
             if (botonEnviar) {
                 botonEnviar.disabled = false;
                 botonEnviar.textContent = 'Confirmar Pedido 🚀';
