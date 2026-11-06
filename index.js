@@ -792,6 +792,10 @@ app.post('/api/pedidos', async (req, res) => {
         const metodoPago = String(req.body?.metodo_pago || '').trim();
         const notas = String(req.body?.notas || '').trim();
         const itemsSolicitados = req.body?.items;
+        const solicitudId = String(req.body?.solicitud_id || '').trim();
+        if (solicitudId && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(solicitudId)) {
+            return res.status(400).json({ error: 'El identificador del pedido no es válido.' });
+        }
         const metodosPagoPermitidos = new Set(['Efectivo', 'Transferencia (Nequi / Daviplata)', 'Datáfono']);
 
         if (!restauranteId || restauranteId.length > 80 || !direccion || direccion.length > 250
@@ -799,6 +803,10 @@ app.post('/api/pedidos', async (req, res) => {
             || !Array.isArray(itemsSolicitados) || itemsSolicitados.length === 0 || itemsSolicitados.length > 30) {
             return res.status(400).json({ error: 'Revisa la dirección, el método de pago y los productos del pedido.' });
         }
+        const huellaSolicitud = solicitudId ? crypto.createHash('sha256').update(JSON.stringify({
+            restaurante_id: restauranteId, direccion, metodo_pago: metodoPago, notas,
+            items: itemsSolicitados.map(item => ({ id: String(item?.id || ''), nombre: String(item?.nombre || ''), cantidad: Number(item?.cantidad) }))
+        })).digest('hex') : null;
         if (!limitarAccion(`pedido:${restauranteId}`, 60, 60 * 1000)) {
             return res.status(429).json({ error: 'El restaurante recibió muchos pedidos seguidos. Espera un momento y vuelve a intentar.' });
         }
@@ -810,6 +818,25 @@ app.post('/api/pedidos', async (req, res) => {
             .maybeSingle();
         if (errorRestaurante) throw errorRestaurante;
         if (!restaurante) return res.status(404).json({ error: 'No encontramos este restaurante.' });
+        const responderPedido = (guardado, codigo = 200) => res.status(codigo).json({
+            success: true, pedido_id: guardado.id, detalle: guardado.detalle || guardado.items,
+            total: Number(guardado.total), nombre_restaurante: restaurante.nombre_restaurante || 'Restaurante',
+            telefono_restaurante: restaurante.telefono || ''
+        });
+        const buscarSolicitud = async () => {
+            const { data, error } = await supabaseAdmin.from('pedidos')
+                .select('id, detalle, items, total, solicitud_hash')
+                .eq('restaurante_id', restauranteId).eq('solicitud_id', solicitudId).maybeSingle();
+            if (error) throw error;
+            return data;
+        };
+        if (solicitudId) {
+            const existente = await buscarSolicitud();
+            if (existente) {
+                if (existente.solicitud_hash !== huellaSolicitud) return res.status(409).json({ error: 'Este intento ya corresponde a otro pedido. Actualiza la carta para crear uno nuevo.' });
+                return responderPedido(existente);
+            }
+        }
         const disponibilidadMenu = evaluarDisponibilidadMenu(restaurante);
         if (!disponibilidadMenu.disponible) return res.status(409).json({ error: disponibilidadMenu.motivo });
         if (!String(restaurante.telefono || '').replace(/\D/g, '')) {
@@ -863,24 +890,23 @@ app.post('/api/pedidos', async (req, res) => {
             total: Math.round(total),
             estado: 'Pendiente',
             metodo_pago: metodoPago,
-            notas
+            notas,
+            ...(solicitudId ? { solicitud_id: solicitudId, solicitud_hash: huellaSolicitud } : {})
         };
         const { data: pedidoGuardado, error: errorGuardar } = await supabaseAdmin
             .from('pedidos')
             .insert([pedido])
             .select('id')
             .maybeSingle();
+        if (errorGuardar?.code === '23505' && solicitudId) {
+            const existente = await buscarSolicitud();
+            if (existente?.solicitud_hash === huellaSolicitud) return responderPedido(existente);
+            return res.status(409).json({ error: 'El intento de pedido cambió. Actualiza la carta y vuelve a intentarlo.' });
+        }
         if (errorGuardar) throw errorGuardar;
         if (!pedidoGuardado?.id) throw new Error('El pedido se guardó sin devolver un identificador para vincular WhatsApp.');
 
-        return res.status(201).json({
-            success: true,
-            pedido_id: pedidoGuardado.id,
-            detalle,
-            total: pedido.total,
-            nombre_restaurante: restaurante.nombre_restaurante || 'Restaurante',
-            telefono_restaurante: restaurante.telefono || ''
-        });
+        return responderPedido({ ...pedido, id: pedidoGuardado.id }, 201);
     } catch (error) {
         console.error('No se pudo registrar el pedido:', error.message || 'Error desconocido');
         return res.status(500).json({ error: 'No se pudo registrar el pedido. Inténtalo de nuevo en un momento.' });
