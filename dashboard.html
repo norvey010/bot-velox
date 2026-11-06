@@ -195,29 +195,24 @@
     <div class="rounded-xl border border-slate-700 bg-slate-800 p-3 sm:p-4 shadow-lg">
       <div class="mb-3">
         <h2 class="text-lg font-bold text-white">Tu menú</h2>
-        <p class="text-xs text-slate-400">Mira tu carta o entra a editar lo que necesites.</p>
       </div>
 
       <div class="space-y-3 divide-y divide-slate-700">
         <details id="importar-menu-fotos" class="rounded-lg border border-slate-700 p-3">
-          <summary class="cursor-pointer text-sm font-semibold text-white"><span id="cargar-carta-titulo">✨ Cargar carta con IA</span><small id="cargar-carta-ayuda" class="mt-1 block font-normal text-slate-400">Sube fotos o PDF. Revisa los productos antes de publicar. Tu carta actual no cambia durante la lectura.</small></summary>
+          <summary class="cursor-pointer text-sm font-semibold text-white"><span id="cargar-carta-titulo">✨ Cargar carta con IA</span><small id="cargar-carta-ayuda" class="sr-only">Fotos o PDF</small></summary>
         <div class="pt-3">
-          <div class="mb-2 flex items-center gap-2">
-            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-950 text-base">✨</span>
-            <div><h3 class="text-sm font-semibold text-white">Leer fotos o PDF con IA</h3><p class="text-xs text-slate-400">Primero leeremos los archivos. Después podrás revisar y corregir los productos antes de reemplazar tu carta.</p></div>
-          </div>
           <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-2">
             <input type="hidden" id="ai-restaurante-id">
-            <label for="menuFile" class="block text-xs font-semibold text-slate-200">Fotos o PDF de la carta</label>
+            <label for="menuFile" class="block text-xs font-semibold text-slate-200">Fotos o PDF</label>
             <input type="file" id="menuFile" name="menuFile" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" multiple aria-describedby="menu-limites menu-file-summary" class="block w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-600">
-            <p id="menu-limites" class="text-xs text-slate-400">Hasta 10 archivos · 8 MB por archivo · 25 MB en total · 20 páginas entre fotos y PDF.</p>
+            <details class="text-xs text-slate-400"><summary class="cursor-pointer py-2">Formatos y límites</summary><p id="menu-limites" class="pb-2 leading-relaxed">JPG, PNG, WEBP, GIF o PDF. Hasta 10 archivos, 8 MB cada uno, 25 MB en total y 20 páginas.</p></details>
             <p id="menu-file-summary" class="hidden text-xs text-slate-400" aria-live="polite"></p>
             <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700">Leer con IA</button>
           </form>
           <p id="importacion-menu-status" class="mt-3 hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
           <section id="revision-menu" hidden class="mt-4 space-y-3 rounded-xl border border-slate-600 p-3" aria-labelledby="revision-menu-titulo">
-            <h3 id="revision-menu-titulo" class="text-base font-bold text-white">Revisa tu carta antes de publicar</h3>
-            <p class="text-sm text-slate-300">Corrige nombres, ingredientes, opciones y precios. Al publicar, esta lista reemplazará tu carta actual.</p>
+            <h3 id="revision-menu-titulo" class="text-base font-bold text-white">Revisar carta</h3>
+            <p class="text-sm text-slate-300">Al publicar, reemplazas tu carta actual.</p>
             <p id="revision-menu-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
             <form id="form-revision-menu" onsubmit="publicarMenuRevisado(event)" class="space-y-3">
               <div id="revision-menu-lista" class="space-y-3"></div>
@@ -229,13 +224,12 @@
 
         </details>
         <details id="editar-menu" class="rounded-xl border border-slate-700 p-3">
-          <summary class="cursor-pointer flex items-center justify-between gap-3 text-white"><span><strong class="block text-base">✏️ Editar menú</strong><small class="text-slate-400">Fotos, precios y productos, todo aquí.</small></span><span aria-hidden="true">⌄</span></summary>
+          <summary class="cursor-pointer flex items-center justify-between gap-3 text-white"><span><strong class="block text-base">✏️ Editar menú</strong></span><span aria-hidden="true">⌄</span></summary>
           <div class="mt-4 space-y-4">
             <div class="flex flex-wrap gap-2">
               <button type="button" onclick="nuevoProducto()" class="rounded-lg bg-red-600 px-4 py-3 font-semibold text-white">＋ Agregar producto</button>
             </div>
-            <p class="text-xs text-slate-400">Toca «Editar» para cambiar un producto. Si se terminó, toca «Disponible» para marcarlo agotado.</p>
-            <label for="buscar-producto" class="block text-sm text-slate-300">Buscar producto</label>
+            <label for="buscar-producto" class="sr-only">Buscar producto</label>
             <div class="flex overflow-hidden rounded-lg border border-slate-700 bg-slate-900 focus-within:border-red-400">
               <input id="buscar-producto" type="search" oninput="buscarProductoMenu()" placeholder="Buscar producto" aria-describedby="buscar-producto-ayuda" class="min-w-0 flex-1 bg-transparent p-3 text-white outline-none">
               <div class="relative w-12 shrink-0 border-l border-slate-700">
@@ -243,7 +237,7 @@
                 <span aria-hidden="true" class="pointer-events-none absolute inset-0 flex items-center justify-center text-lg text-slate-200">⌄</span>
               </div>
             </div>
-            <p id="buscar-producto-ayuda" class="text-xs text-slate-400">Escribe un producto o toca la flecha para elegir una categoría.</p>
+            <p id="buscar-producto-ayuda" class="sr-only">Escribe un producto o toca la flecha para elegir una categoría.</p>
             <p id="productos-editor-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
             <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
             <button id="reintentar-productos" type="button" onclick="cargarProductos()" hidden class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-white">Reintentar</button>
@@ -298,11 +292,11 @@
           </div>
         </details>
         <div class="space-y-3 pt-3">
-          <div><h3 class="text-sm font-semibold text-white">Vista previa de mi carta</h3><p class="text-xs text-slate-400">Toca la miniatura para ver tu carta en tamaño completo.</p></div>
+          <h3 class="text-sm font-semibold text-white">Vista previa</h3>
           <p id="carta-preview-status" class="text-xs text-slate-400" role="status">Cargando vista previa…</p>
           <button id="carta-miniatura" type="button" onclick="abrirMenuEnVivo()" class="carta-miniatura" aria-label="Ampliar vista previa de mi carta" aria-haspopup="dialog" hidden>
             <iframe id="carta-preview-frame" title="Miniatura de la carta" tabindex="-1" aria-hidden="true" loading="lazy"></iframe>
-            <span aria-hidden="true">⤢ Toca para ampliar</span>
+            <span aria-hidden="true">⤢ Ampliar</span>
           </button>
         </div>
       </div>
@@ -868,10 +862,8 @@
           if (!Array.isArray(data)) throw new Error('La respuesta de productos no es válida.');
           productosEditor = data;
           const primeraCarga = productosEditor.length === 0;
-          document.getElementById('cargar-carta-titulo').textContent = primeraCarga ? '✨ Empieza aquí: carga tu carta con IA' : '✨ Cargar carta con IA';
-          document.getElementById('cargar-carta-ayuda').textContent = primeraCarga
-            ? 'Sube fotos o PDF de tu carta. Velox leerá sus productos y precios. También puedes agregarlos uno a uno en Editar menú.'
-            : 'Lee una carta nueva desde fotos o PDF. Revisarás los productos antes de publicarla. Para cambios pequeños, usa Editar menú.';
+          document.getElementById('cargar-carta-titulo').textContent = primeraCarga ? '✨ Crear carta con IA' : '✨ Cargar carta con IA';
+          document.getElementById('cargar-carta-ayuda').textContent = 'Fotos o PDF';
           if (primeraCarga) document.getElementById('importar-menu-fotos').open = true;
           actualizarCategoriasProductos();
           renderizarProductos();
@@ -1187,7 +1179,8 @@
       const estado = document.getElementById('carta-preview-status');
       const miniatura = document.getElementById('carta-miniatura');
       if (!String(slug || '').trim()) {
-        estado.textContent = 'Tu restaurante todavía no tiene un enlace de carta disponible.';
+        estado.hidden = false;
+        estado.textContent = 'Tu carta aún no tiene enlace.';
         miniatura.hidden = true;
         urlVistaPreviaCarta = '';
         return;
@@ -1196,7 +1189,8 @@
       url.searchParams.set('slug', String(slug).trim());
       urlVistaPreviaCarta = url.href;
       miniatura.hidden = false;
-      estado.textContent = 'Vista de la carta publicada. Toca para ampliarla.';
+      estado.hidden = true;
+      estado.textContent = '';
       actualizarVistaPreviaCarta();
     }
 
