@@ -68,6 +68,7 @@
     .carta-miniatura iframe { width: 390px; height: 532px; border: 0; transform: scale(.5641); transform-origin: top left; pointer-events: none; }
     .carta-miniatura:focus-visible { outline: 3px solid #fbbf24; outline-offset: 4px; }
     .carta-miniatura span { position: absolute; inset: auto 0 0; padding: 10px; background: #101216ee; color: #fff; font-size: 12px; font-weight: 600; }
+    #productos-editor-paginacion[hidden] { display: none; }
     #carta-ampliada { width: min(1200px, 96vw); max-width: 96vw; height: 94dvh; max-height: 94dvh; padding: 0; border: 1px solid var(--velox-border); border-radius: 14px; background: var(--velox-page); color: #fff; }
     #carta-ampliada::backdrop { background: rgb(0 0 0 / 75%); }
     #carta-ampliada[open] { display: flex; flex-direction: column; }
@@ -211,9 +212,17 @@
             </div>
             <p class="text-xs text-slate-400">Toca «Editar» para cambiar un producto. Si se terminó, toca «Disponible» para marcarlo agotado.</p>
             <label for="buscar-producto" class="block text-sm text-slate-300">Buscar un producto</label>
-            <input id="buscar-producto" type="search" oninput="renderizarProductos()" placeholder="Escribe su nombre…" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-white">
+            <input id="buscar-producto" type="search" oninput="renderizarProductos(true)" placeholder="Escribe su nombre…" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-white">
+            <label for="categoria-producto" class="block text-sm text-slate-300">Categoría</label>
+            <select id="categoria-producto" onchange="renderizarProductos(true)" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-white"><option value="">Todas las categorías</option></select>
+            <p id="productos-editor-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
             <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
-            <div id="productos-body" class="space-y-5"><p class="text-slate-400">Cargando productos…</p></div>
+            <div id="productos-body" class="grid grid-cols-1 gap-2 lg:grid-cols-2"><p class="text-slate-400">Cargando productos…</p></div>
+            <nav id="productos-editor-paginacion" class="flex flex-wrap items-center justify-between gap-2" aria-label="Páginas de productos" hidden>
+              <button type="button" id="productos-editor-anterior" onclick="cambiarPaginaProductos(-1)" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm text-white disabled:opacity-40">‹ Anterior</button>
+              <span id="productos-editor-pagina" class="text-xs text-slate-300"></span>
+              <button type="button" id="productos-editor-siguiente" onclick="cambiarPaginaProductos(1)" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm text-white disabled:opacity-40">Siguiente ›</button>
+            </nav>
 
         <div class="py-3">
           <details id="details-producto-form" hidden>
@@ -823,33 +832,65 @@
         ? 'Sube fotos de tu carta. Velox leerá sus productos y precios. También puedes agregarlos uno a uno en Editar menú.'
         : 'Reemplaza tu menú completo desde fotos. Para cambios pequeños, usa Editar menú.';
       if (primeraCarga) document.getElementById('importar-menu-fotos').open = true;
+      actualizarCategoriasProductos();
       renderizarProductos();
     }
 
     let productosEditor = [];
-    function renderizarProductos() {
+    let paginaProductos = 0;
+    const PRODUCTOS_POR_PAGINA = 6;
+
+    function actualizarCategoriasProductos() {
+      const selector = document.getElementById('categoria-producto');
+      const seleccion = selector.value;
+      const categorias = [...new Set(productosEditor.map(p => String(p.categoria || 'General')))].sort((a, b) => a.localeCompare(b, 'es'));
+      selector.innerHTML = '<option value="">Todas las categorías</option>' + categorias.map(c => `<option value="${escaparHtmlUI(c)}">${escaparHtmlUI(c)}</option>`).join('');
+      selector.value = categorias.includes(seleccion) ? seleccion : '';
+    }
+
+    function renderizarProductos(reiniciarPagina = false) {
+      if (reiniciarPagina) paginaProductos = 0;
       const contenedor = document.getElementById('productos-body');
-      const busqueda = document.getElementById('buscar-producto').value.trim().toLocaleLowerCase('es');
-      const productos = productosEditor.filter(p => `${p.nombre} ${p.categoria || ''}`.toLocaleLowerCase('es').includes(busqueda));
+      const normalizar = valor => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
+      const busqueda = normalizar(document.getElementById('buscar-producto').value.trim());
+      const categoria = document.getElementById('categoria-producto').value;
+      const productos = productosEditor.filter(p => (!categoria || String(p.categoria || 'General') === categoria)
+        && normalizar(`${p.nombre} ${p.categoria || 'General'}`).includes(busqueda));
+      const totalPaginas = Math.ceil(productos.length / PRODUCTOS_POR_PAGINA);
+      paginaProductos = Math.max(0, Math.min(paginaProductos, totalPaginas - 1));
+      const inicio = paginaProductos * PRODUCTOS_POR_PAGINA;
+      const visibles = productos.slice(inicio, inicio + PRODUCTOS_POR_PAGINA);
+      const paginacion = document.getElementById('productos-editor-paginacion');
+      paginacion.hidden = totalPaginas <= 1;
+      document.getElementById('productos-editor-anterior').disabled = paginaProductos === 0;
+      document.getElementById('productos-editor-siguiente').disabled = paginaProductos >= totalPaginas - 1;
+      document.getElementById('productos-editor-pagina').textContent = `Página ${paginaProductos + 1} de ${totalPaginas || 1}`;
+      document.getElementById('productos-editor-resumen').textContent = productos.length
+        ? `Mostrando ${inicio + 1}–${inicio + visibles.length} de ${productos.length} productos${busqueda || categoria ? ' encontrados' : ''}`
+        : '0 productos encontrados';
       if (!productos.length) {
-        contenedor.innerHTML = `<p class="rounded-lg bg-slate-900 p-5 text-sm text-slate-400">${productosEditor.length ? 'No encontramos ese producto. Prueba otro nombre.' : 'Tu menú está vacío. Toca “Agregar producto” o carga fotos de tu carta.'}</p>`;
+        contenedor.innerHTML = `<p class="rounded-lg bg-slate-900 p-4 text-sm text-slate-400 lg:col-span-2">${productosEditor.length ? 'No encontramos ese producto. Prueba otro nombre o categoría.' : 'Tu menú está vacío. Toca “Agregar producto” o carga fotos de tu carta.'}</p>`;
         return;
       }
-      const grupos = new Map();
-      productos.forEach(p => { const categoria = p.categoria || 'General'; if (!grupos.has(categoria)) grupos.set(categoria, []); grupos.get(categoria).push(p); });
-      contenedor.innerHTML = Array.from(grupos, ([categoria, lista]) => `
-        <section><h3 class="mb-3 text-sm font-bold text-amber-300">${escaparHtmlUI(categoria)} · ${lista.length}</h3>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">${lista.map(p => {
-            const id = escaparHtmlUI(JSON.stringify(String(p.id)));
-            let foto = '';
-            try { const url = new URL(p.imagen_url); if (['https:', 'http:'].includes(url.protocol)) foto = url.href; } catch {}
-            return `<article class="overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
-              ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="${escaparHtmlUI(p.nombre)}" loading="lazy" class="h-36 w-full object-cover">` : '<div class="flex h-36 items-center justify-center bg-slate-800 text-sm text-slate-400">Sin foto todavía</div>'}
-              <div class="space-y-3 p-3"><div><h4 class="font-bold text-white">${escaparHtmlUI(p.nombre)}</h4><p class="text-lg font-bold text-amber-300">$${Number(p.precio).toLocaleString('es-CO')}</p><p class="line-clamp-2 text-xs text-slate-400">${escaparHtmlUI(p.descripcion || 'Sin descripción')}</p></div>
-              <div class="flex flex-wrap gap-2"><button type="button" onclick="prepararEdicionProducto(${id})" class="flex-1 rounded-lg bg-slate-700 px-4 py-3 text-sm font-semibold text-white">✏️ Editar</button>
-              <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${p.disponible === false}, this)" aria-label="${p.disponible === false ? 'Volver a ofrecer' : 'Marcar agotado'}: ${escaparHtmlUI(p.nombre)}" aria-pressed="${p.disponible !== false}" class="rounded-lg border border-slate-600 px-3 py-3 text-xs font-semibold ${p.disponible === false ? 'text-amber-300' : 'text-green-300'}">${p.disponible === false ? 'Agotado · Activar' : 'Disponible ✓'}</button></div></div>
-            </article>`;
-          }).join('')}</div></section>`).join('');
+      contenedor.innerHTML = visibles.map(p => {
+        const id = escaparHtmlUI(JSON.stringify(String(p.id)));
+        let foto = '';
+        try { const url = new URL(p.imagen_url); if (['https:', 'http:'].includes(url.protocol)) foto = url.href; } catch {}
+        return `<article class="rounded-lg border border-slate-700 bg-slate-900 p-3">
+          <div class="flex items-center gap-3">
+            ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="${escaparHtmlUI(p.nombre)}" loading="lazy" width="56" height="56" class="h-14 w-14 shrink-0 rounded-lg object-cover">` : '<div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-center text-xs text-slate-400">Sin foto</div>'}
+            <div class="min-w-0 flex-1"><h3 class="break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre)}</h3><p class="text-sm font-bold text-amber-300">$${Number(p.precio).toLocaleString('es-CO')}</p><p class="truncate text-xs text-slate-400">${escaparHtmlUI(p.categoria || 'General')}</p></div>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-2"><button type="button" onclick="prepararEdicionProducto(${id})" class="min-h-11 flex-1 rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white">✏️ Editar</button>
+          <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${p.disponible === false}, this)" aria-label="${p.disponible === false ? 'Volver a ofrecer' : 'Marcar agotado'}: ${escaparHtmlUI(p.nombre)}" aria-pressed="${p.disponible !== false}" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold ${p.disponible === false ? 'text-amber-300' : 'text-green-300'}">${p.disponible === false ? 'Agotado · Activar' : 'Disponible ✓'}</button></div>
+        </article>`;
+      }).join('');
+    }
+
+    function cambiarPaginaProductos(delta) {
+      paginaProductos += delta;
+      renderizarProductos();
+      document.getElementById('productos-editor-resumen').scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     async function cambiarDisponibilidadProducto(id, disponible, boton) {
