@@ -21,6 +21,7 @@
     button:hover:not(:disabled) { transform: translateY(-1px); }
     summary { list-style: none; }
     summary::-webkit-details-marker { display: none; }
+    #editor-producto[hidden], #reintentar-productos[hidden] { display: none; }
     #form-producto {
       border: 1px solid #34363d;
       border-radius: .75rem;
@@ -223,7 +224,8 @@
             <p id="buscar-producto-ayuda" class="text-xs text-slate-400">Escribe un producto o toca la flecha para elegir una categoría.</p>
             <p id="productos-editor-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
             <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
-            <div id="productos-body" class="grid grid-cols-1 gap-2 lg:grid-cols-2"><p class="text-slate-400">Cargando productos…</p></div>
+            <button id="reintentar-productos" type="button" onclick="cargarProductos()" hidden class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-white">Reintentar</button>
+            <div id="productos-body" class="grid grid-cols-1 gap-2 lg:grid-cols-2"><p class="text-sm text-slate-400">Tus productos aparecerán aquí.</p></div>
             <nav id="productos-editor-paginacion" class="flex flex-wrap items-center justify-between gap-2" aria-label="Páginas de productos" hidden>
               <button type="button" id="productos-editor-anterior" onclick="cambiarPaginaProductos(-1)" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm text-white disabled:opacity-40">‹ Anterior</button>
               <span id="productos-editor-pagina" class="text-xs text-slate-300"></span>
@@ -231,11 +233,8 @@
             </nav>
 
         <div class="py-3">
-          <details id="details-producto-form" hidden>
-            <summary id="producto-form-summary" class="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-red-500">
-              <span class="flex items-center gap-2"><span id="producto-form-icon" class="flex h-6 w-6 items-center justify-center rounded-md bg-red-950 text-base text-red-300">＋</span><span id="producto-form-summary-text">Agregar producto</span></span>
-              <span id="producto-form-chevron" class="text-slate-400 transition-transform" aria-hidden="true">⌄</span>
-            </summary>
+          <section id="editor-producto" hidden aria-labelledby="producto-form-summary-text">
+            <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-white"><span id="producto-form-icon" aria-hidden="true">＋</span><span id="producto-form-summary-text">Datos del producto</span></h3>
             <form id="form-producto" onsubmit="guardarProducto(event)" class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
               <input type="hidden" id="prod-id">
               <p class="text-xs text-slate-400 md:col-span-3">Los campos con <span class="font-bold text-red-400">*</span> son obligatorios.</p>
@@ -271,7 +270,7 @@
                 <button type="submit" class="rounded-lg bg-red-600 px-5 py-2 text-xs font-bold text-white hover:bg-red-700">Guardar producto</button>
               </div>
             </form>
-          </details>
+          </section>
         </div>
 
           </div>
@@ -455,6 +454,7 @@
       // 3. Asignar ID global y en el DOM de forma segura
       RESTAURANTE_ID = restaurante.id;
       configurarVistaPreviaCarta(restaurante.slug);
+      if (!document.getElementById('sec-menu-ia').classList.contains('hidden')) cargarProductos();
       ANCHO_PAPEL_IMPRESORA = Number(restaurante.printer_paper_width) === 58 ? 58 : 80;
       const inputOculto = document.getElementById('ai-restaurante-id');
       if (inputOculto) inputOculto.value = restaurante.id;
@@ -818,28 +818,57 @@
     }
 
     // --- MÓDULO GESTIÓN DE PRODUCTOS ---
-    async function cargarProductos() {
-      if (!RESTAURANTE_ID) return;
-      actualizarVistaPreviaCarta();
-      const { data, error } = await supabaseClient
-        .from('productos')
-        .select('*')
-        .eq('restaurante_id', RESTAURANTE_ID)
-        .order('id', { ascending: true });
-
-      if (error) {
-        mostrarAviso(document.getElementById('editor-menu-status'), 'No pudimos cargar tus productos. Vuelve a entrar a Menú para intentarlo de nuevo.', 'error');
-        return;
+    let promesaCargaProductos = null;
+    function cargarProductos() {
+      if (!RESTAURANTE_ID) return Promise.resolve(false);
+      if (promesaCargaProductos) return promesaCargaProductos;
+      const contenedor = document.getElementById('productos-body');
+      const estado = document.getElementById('editor-menu-status');
+      contenedor.setAttribute('aria-busy', 'true');
+      estado.classList.add('hidden');
+      document.getElementById('reintentar-productos').hidden = true;
+      if (!productosEditor.length) {
+        contenedor.innerHTML = '<p class="text-sm text-slate-400" role="status">Cargando productos…</p>';
+        document.getElementById('productos-editor-paginacion').hidden = true;
       }
-      productosEditor = data || [];
-      const primeraCarga = productosEditor.length === 0;
-      document.getElementById('cargar-carta-titulo').textContent = primeraCarga ? '✨ Empieza aquí: carga tu carta con IA' : '✨ Cargar carta con IA';
-      document.getElementById('cargar-carta-ayuda').textContent = primeraCarga
-        ? 'Sube fotos de tu carta. Velox leerá sus productos y precios. También puedes agregarlos uno a uno en Editar menú.'
-        : 'Reemplaza tu menú completo desde fotos. Para cambios pequeños, usa Editar menú.';
-      if (primeraCarga) document.getElementById('importar-menu-fotos').open = true;
-      actualizarCategoriasProductos();
-      renderizarProductos();
+      promesaCargaProductos = (async () => {
+        let temporizador;
+        try {
+          const consulta = supabaseClient.from('productos').select('*')
+            .eq('restaurante_id', RESTAURANTE_ID).order('id', { ascending: true });
+          const { data, error } = await Promise.race([
+            consulta,
+            new Promise((_, rechazar) => {
+              temporizador = setTimeout(() => rechazar(new Error('La carga del menú tardó demasiado.')), 15000);
+            })
+          ]);
+          if (error) throw error;
+          if (!Array.isArray(data)) throw new Error('La respuesta de productos no es válida.');
+          productosEditor = data;
+          const primeraCarga = productosEditor.length === 0;
+          document.getElementById('cargar-carta-titulo').textContent = primeraCarga ? '✨ Empieza aquí: carga tu carta con IA' : '✨ Cargar carta con IA';
+          document.getElementById('cargar-carta-ayuda').textContent = primeraCarga
+            ? 'Sube fotos de tu carta. Velox leerá sus productos y precios. También puedes agregarlos uno a uno en Editar menú.'
+            : 'Reemplaza tu menú completo desde fotos. Para cambios pequeños, usa Editar menú.';
+          if (primeraCarga) document.getElementById('importar-menu-fotos').open = true;
+          actualizarCategoriasProductos();
+          renderizarProductos();
+          actualizarVistaPreviaCarta();
+          return true;
+        } catch (error) {
+          console.error('No se pudo cargar el menú:', error.message || 'Error de conexión');
+          if (!productosEditor.length) {
+            contenedor.innerHTML = '<p class="text-sm text-slate-400">No se pudo cargar la lista de productos.</p>';
+          }
+          mostrarAviso(estado, 'No pudimos actualizar tu menú. Revisa tu conexión y toca Reintentar.', 'error');
+          document.getElementById('reintentar-productos').hidden = false;
+          return false;
+        } finally {
+          clearTimeout(temporizador);
+          contenedor.setAttribute('aria-busy', 'false');
+        }
+      })().finally(() => { promesaCargaProductos = null; });
+      return promesaCargaProductos;
     }
 
     let productosEditor = [];
@@ -946,9 +975,8 @@
 
     function nuevoProducto() {
       limpiarFormProducto();
-      document.getElementById('details-producto-form').hidden = false;
-      document.getElementById('details-producto-form').open = true;
-      document.getElementById('details-producto-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('editor-producto').hidden = false;
+      document.getElementById('editor-producto').scrollIntoView({ behavior: 'smooth', block: 'center' });
       document.getElementById('prod-nombre').focus({ preventScroll: true });
     }
     function abrirImportacionMenu() {
@@ -1021,9 +1049,8 @@
         document.getElementById('form-producto').reset();
         document.getElementById('prod-id').value = '';
         if (fileInput) fileInput.value = '';
-        document.getElementById('details-producto-form').hidden = true;
-        document.getElementById('details-producto-form').open = false;
-        summaryText.textContent = 'Agregar producto';
+        document.getElementById('editor-producto').hidden = true;
+        summaryText.textContent = 'Datos del producto';
         summaryIcon.textContent = '＋';
         document.getElementById('producto-edicion-acciones').classList.add('hidden');
         mostrarAviso(status, `Producto ${accion} correctamente.`, 'exito', 4500);
@@ -1116,22 +1143,20 @@
       document.getElementById('prod-precio').value = formatearPrecioCOP(data.precio || '');
       document.getElementById('prod-descripcion').value = data.descripcion || '';
       document.getElementById('prod-categoria').value = data.categoria || '';
-      document.getElementById('details-producto-form').hidden = false;
-      document.getElementById('details-producto-form').open = true;
+      document.getElementById('editor-producto').hidden = false;
       document.getElementById('producto-form-summary-text').textContent = 'Editar producto';
       document.getElementById('producto-form-icon').textContent = '✏️';
       const status = document.getElementById('producto-save-status');
       status.classList.add('hidden');
-      document.getElementById('details-producto-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('editor-producto').scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     function limpiarFormProducto() {
       document.getElementById('producto-edicion-acciones').classList.add('hidden');
       document.getElementById('form-producto').reset();
       document.getElementById('prod-id').value = '';
-      document.getElementById('details-producto-form').hidden = true;
-      document.getElementById('details-producto-form').open = false;
-      document.getElementById('producto-form-summary-text').textContent = 'Agregar producto';
+      document.getElementById('editor-producto').hidden = true;
+      document.getElementById('producto-form-summary-text').textContent = 'Datos del producto';
       document.getElementById('producto-form-icon').textContent = '＋';
     }
     let urlVistaPreviaCarta = '';
@@ -1184,8 +1209,8 @@
     }
 
     document.getElementById('menuFile').addEventListener('change', actualizarResumenFotosMenu);
-    document.getElementById('details-producto-form').addEventListener('toggle', event => {
-      document.getElementById('producto-form-chevron').classList.toggle('rotate-180', event.currentTarget.open);
+    document.getElementById('editar-menu').addEventListener('toggle', event => {
+      if (event.currentTarget.open) cargarProductos();
     });
 
     async function enviarMenuConIA(event) {
