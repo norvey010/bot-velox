@@ -769,6 +769,7 @@ app.get('/api/menu/:slug', async (req, res) => {
             .from('productos')
             .select('id, nombre, descripcion, precio, categoria, imagen_url, opciones')
             .eq('restaurante_id', restaurante.id)
+            .eq('disponible', true)
             .order('id', { ascending: true });
         if (errorProductos) throw errorProductos;
 
