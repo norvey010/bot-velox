@@ -186,20 +186,8 @@
       </div>
 
       <div class="space-y-3 divide-y divide-slate-700">
-        <details id="editar-menu" class="rounded-xl border border-slate-700 p-3">
-          <summary class="cursor-pointer flex items-center justify-between gap-3 text-white"><span><strong class="block text-base">✏️ Editar menú</strong><small class="text-slate-400">Fotos, precios y productos, todo aquí.</small></span><span aria-hidden="true">⌄</span></summary>
-          <div class="mt-4 space-y-4">
-            <div class="flex flex-wrap gap-2">
-              <button type="button" onclick="nuevoProducto()" class="rounded-lg bg-red-600 px-4 py-3 font-semibold text-white">＋ Agregar producto</button>
-              <button type="button" onclick="abrirImportacionMenu()" class="rounded-lg border border-slate-600 px-4 py-3 text-sm text-white">Cargar carta desde fotos</button>
-            </div>
-            <p class="text-xs text-slate-400">Toca «Editar» para cambiar un producto. Si se terminó, toca «Disponible» para marcarlo agotado.</p>
-            <label for="buscar-producto" class="block text-sm text-slate-300">Buscar un producto</label>
-            <input id="buscar-producto" type="search" oninput="renderizarProductos()" placeholder="Escribe su nombre…" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-white">
-            <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
-            <div id="productos-body" class="space-y-5"><p class="text-slate-400">Cargando productos…</p></div>
         <details id="importar-menu-fotos" class="rounded-lg border border-slate-700 p-3">
-          <summary class="cursor-pointer text-sm font-semibold text-white">Cargar carta desde fotos</summary>
+          <summary class="cursor-pointer text-sm font-semibold text-white"><span id="cargar-carta-titulo">📷 Cargar carta desde fotos</span><small id="cargar-carta-ayuda" class="mt-1 block font-normal text-slate-400">Sube una carta completa para crear o reemplazar tu menú.</small></summary>
         <div class="pt-3">
           <div class="mb-2 flex items-center gap-2">
             <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-950 text-base">✨</span>
@@ -215,6 +203,18 @@
         </div>
 
         </details>
+        <details id="editar-menu" class="rounded-xl border border-slate-700 p-3">
+          <summary class="cursor-pointer flex items-center justify-between gap-3 text-white"><span><strong class="block text-base">✏️ Editar menú</strong><small class="text-slate-400">Fotos, precios y productos, todo aquí.</small></span><span aria-hidden="true">⌄</span></summary>
+          <div class="mt-4 space-y-4">
+            <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="nuevoProducto()" class="rounded-lg bg-red-600 px-4 py-3 font-semibold text-white">＋ Agregar producto</button>
+            </div>
+            <p class="text-xs text-slate-400">Toca «Editar» para cambiar un producto. Si se terminó, toca «Disponible» para marcarlo agotado.</p>
+            <label for="buscar-producto" class="block text-sm text-slate-300">Buscar un producto</label>
+            <input id="buscar-producto" type="search" oninput="renderizarProductos()" placeholder="Escribe su nombre…" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-white">
+            <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
+            <div id="productos-body" class="space-y-5"><p class="text-slate-400">Cargando productos…</p></div>
+
         <div class="py-3">
           <details id="details-producto-form" hidden>
             <summary id="producto-form-summary" class="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-red-500">
@@ -812,6 +812,12 @@
         return;
       }
       productosEditor = data || [];
+      const primeraCarga = productosEditor.length === 0;
+      document.getElementById('cargar-carta-titulo').textContent = primeraCarga ? '📷 Empieza aquí: sube tu carta' : '📷 Cargar una carta nueva';
+      document.getElementById('cargar-carta-ayuda').textContent = primeraCarga
+        ? 'Sube fotos de tu carta. Velox leerá sus productos y precios. También puedes agregarlos uno a uno en Editar menú.'
+        : 'Reemplaza tu menú completo desde fotos. Para cambios pequeños, usa Editar menú.';
+      if (primeraCarga) document.getElementById('importar-menu-fotos').open = true;
       renderizarProductos();
     }
 
