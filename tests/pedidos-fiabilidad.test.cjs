@@ -97,3 +97,21 @@ test('recorrido integrado: carta → servidor → pedido → panel y enlace What
   assert(outbound.solicitud_id);assert.equal(api.orders.length,1);assert.equal(api.orders[0].total,30000);assert.equal(d.context.impresionesPrueba[0],api.orders[0].id);assert.equal(context.cart.length,0);
   const whatsapp=new URL(context.window.location.href);assert.equal(whatsapp.hostname,'wa.me');assert(whatsapp.searchParams.get('text').includes('Referencia Velox:* pedido-1'));assert(whatsapp.searchParams.get('text').includes('30.000'));
 });
+
+test('un menú de 200 productos solo muestra seis tarjetas y navega sin perder productos',()=>{
+  const d=dashboard();d.el('productos-editor-resumen').scrollIntoView=()=>{};
+  d.run('productosEditor=Array.from({length:200},(_,i)=>({id:String(i+1),nombre:`Producto ${i+1}`,precio:10000,categoria:i%2?"Bebidas":"Comidas",disponible:true}));actualizarCategoriasProductos();renderizarProductos();');
+  assert.equal((d.el('productos-body').innerHTML.match(/<article /g)||[]).length,6);assert.equal(d.el('productos-editor-resumen').textContent,'Mostrando 1–6 de 200 productos');assert(d.el('productos-editor-anterior').disabled);assert(!d.el('productos-editor-paginacion').hidden);
+  const vistos=new Set();for(let pagina=0;pagina<34;pagina++){for(const m of d.el('productos-body').innerHTML.matchAll(/<h3[^>]*>Producto (\d+)<\/h3>/g))vistos.add(m[1]);if(pagina<33)d.context.cambiarPaginaProductos(1);}
+  assert.equal(vistos.size,200);assert.equal((d.el('productos-body').innerHTML.match(/<article /g)||[]).length,2);assert(d.el('productos-editor-siguiente').disabled);
+});
+test('buscar y filtrar consulta todos los productos y vuelve a la primera página',()=>{
+  const d=dashboard();d.run('productosEditor=Array.from({length:200},(_,i)=>({id:String(i+1),nombre:i===199?"Pizza Jamón":"Producto "+(i+1),precio:10000,categoria:i%2?"Bebidas":"Comidas"}));paginaProductos=20');
+  d.el('buscar-producto').value='jamon';d.context.renderizarProductos(true);assert(d.el('productos-body').innerHTML.includes('Pizza Jamón'));assert.equal(d.el('productos-editor-resumen').textContent,'Mostrando 1–1 de 1 productos encontrados');assert(d.el('productos-editor-paginacion').hidden);
+  d.el('buscar-producto').value='';d.el('categoria-producto').value='Comidas';d.context.renderizarProductos(true);assert(d.el('productos-editor-resumen').textContent.includes('de 100 productos'));assert(!d.el('productos-body').innerHTML.includes('Pizza Jamón'));
+});
+test('eliminar el último producto de una página ajusta la página y muestra el vacío correctamente',()=>{
+  const d=dashboard();d.run('productosEditor=Array.from({length:7},(_,i)=>({id:String(i),nombre:"Producto "+i,precio:1000}));paginaProductos=1;renderizarProductos();productosEditor.pop();renderizarProductos();');
+  assert(d.el('productos-editor-resumen').textContent.includes('1–6 de 6'));assert(d.el('productos-editor-paginacion').hidden);
+  d.run('productosEditor=[];renderizarProductos();');assert(d.el('productos-body').innerHTML.includes('Tu menú está vacío'));assert(d.el('productos-editor-paginacion').hidden);
+});
