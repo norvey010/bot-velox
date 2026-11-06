@@ -26,7 +26,7 @@ async function enviarMenuConIA(event) {
   if(!RESTAURANTE_ID) { estadoImportacion('Espera a que termine de cargar tu restaurante.','error');return; }
   leyendoMenu=true;
   const boton=document.getElementById('btn-procesar-ia');boton.disabled=true;boton.textContent='Leyendo archivos…';
-  estadoImportacion('Leyendo tu carta. Los archivos grandes pueden tardar unos minutos. Tu carta publicada no cambia.');
+  estadoImportacion('Leyendo archivos… Tu carta actual no cambia.');
   try {
     const token=await sesionImportacion();
     const formData=new FormData(document.getElementById('form-importar-ia'));formData.set('restaurante_id',RESTAURANTE_ID);
@@ -35,7 +35,7 @@ async function enviarMenuConIA(event) {
     if(!respuesta.ok || !resultado.success || !resultado.borrador || !Array.isArray(resultado.productos)) throw new Error(resultado.error || 'No se pudo leer la carta. La carta publicada se conserva.');
     borradorMenu={restaurante_id:RESTAURANTE_ID,version:resultado.version,productos:resultado.productos};paginaRevisionMenu=0;
     document.getElementById('revision-menu').hidden=false;renderizarRevisionMenu();
-    estadoImportacion(`Se detectaron ${resultado.productos.length} productos en ${resultado.paginas} páginas. Revisa nombres, ingredientes, opciones y precios antes de publicar.`,'exito');
+    estadoImportacion(`${resultado.productos.length} productos detectados. Revisa y publica.`,'exito');
     document.getElementById('revision-menu').scrollIntoView({behavior:'smooth',block:'start'});
   } catch(error) { estadoImportacion(error.message || 'La lectura falló. Tu carta publicada se conserva.','error'); }
   finally { leyendoMenu=false;boton.disabled=false;boton.textContent='Leer con IA'; }
