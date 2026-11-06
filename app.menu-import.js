@@ -28,6 +28,24 @@ async function sesionImportacion() {
     return session.access_token;
   } catch(error) { throw new Error(mensajeErrorImportacion(error,'sesion')); }
 }
+async function leerArchivosLocalesMenu(files) {
+  const preparados=[];
+  for(const [indice,file] of files.entries()) {
+    let limite;
+    try {
+      const bytes=await Promise.race([
+        file.arrayBuffer(),
+        new Promise((_,rechazar)=>{limite=setTimeout(()=>rechazar(new Error('Lectura local agotada')),15000);})
+      ]);
+      if(bytes.byteLength!==file.size || bytes.byteLength>8*1024*1024) throw new Error('El archivo cambió');
+      // El envío usa una copia estable: no depende del acceso temporal del selector del teléfono.
+      preparados.push({blob:new Blob([bytes],{type:file.type}),nombre:file.name || `carta-${indice+1}${file.type==='application/pdf'?'.pdf':'.jpg'}`});
+    } catch {
+      throw new Error('No pudimos leer el archivo en tu dispositivo. Vuelve a seleccionarlo desde Archivos o Descargas.');
+    } finally { clearTimeout(limite); }
+  }
+  return preparados;
+}
 async function enviarMenuConIA(event) {
   event.preventDefault();
   if(leyendoMenu || publicandoMenu) return;
@@ -39,10 +57,14 @@ async function enviarMenuConIA(event) {
   if(!RESTAURANTE_ID) { estadoImportacion('Espera a que termine de cargar tu restaurante.','error');return; }
   leyendoMenu=true;
   const boton=document.getElementById('btn-procesar-ia');boton.disabled=true;boton.textContent='Leyendo archivos…';
-  estadoImportacion('Leyendo archivos… Tu carta actual no cambia.');
+  estadoImportacion('Preparando archivos…');
   try {
+    const archivos=await leerArchivosLocalesMenu(files);
     const token=await sesionImportacion();
-    const formData=new FormData(document.getElementById('form-importar-ia'));formData.set('restaurante_id',RESTAURANTE_ID);
+    const formData=new FormData();
+    for(const archivo of archivos) formData.append('menuFile',archivo.blob,archivo.nombre);
+    formData.set('restaurante_id',RESTAURANTE_ID);
+    estadoImportacion('Leyendo archivos… Tu carta actual no cambia.');
     const referencia=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : '';
     const respuesta=await fetch('/api/importar-menu',{method:'POST',headers:{Authorization:`Bearer ${token}`, ...(referencia ? {'X-Velox-Request-Id':referencia} : {})},body:formData});
     if([502,503,504].includes(respuesta.status)) throw new Error('El servidor no pudo completar la lectura. Tu carta actual no cambió.');

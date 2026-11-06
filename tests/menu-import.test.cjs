@@ -42,8 +42,8 @@ test('publicación usa RPC autenticado y detecta carta cambiada',async()=>{
 });
 function navegador(){
  const elements=new Map(),requests=[];const el=id=>{if(!elements.has(id))elements.set(id,{files:[],value:'',hidden:true,classList:{toggle(){},add(){},remove(){}},addEventListener(){},scrollIntoView(){},setAttribute(k,v){this[k]=v},removeAttribute(k){delete this[k]},reset(){this.files=[]}});return elements.get(id)};
- const context={console,RESTAURANTE_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',supabaseClient:{auth:{getSession:async()=>({data:{session:{access_token:'sesion-prueba'}}})}},document:{getElementById:el},window:{addEventListener(){}},FormData:class{set(){}},escaparHtmlUI:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),formatearPrecioCOP:n=>String(n),mostrarAviso:(el,msg)=>el.textContent=msg,cargarProductos:async()=>{},fetch:async(url,req)=>{requests.push({url,req});return{ok:true,json:async()=>url==='/api/importar-menu'?{success:true,borrador:true,productos:[producto()],version:'a'.repeat(32),paginas:1}:{success:true,count:1}}}};
- vm.createContext(context);vm.runInContext(read('app.menu-import.js'),context);el('menuFile').files=[{type:'application/pdf',size:100}];return{context,el,requests,run:s=>vm.runInContext(s,context)};
+ const context={console,RESTAURANTE_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',supabaseClient:{auth:{getSession:async()=>({data:{session:{access_token:'sesion-prueba'}}})}},document:{getElementById:el},window:{addEventListener(){}},Blob,setTimeout,clearTimeout,FormData:class{set(){}append(nombre,blob,archivo){this.archivos??=[];this.archivos.push({nombre,blob,archivo})}},escaparHtmlUI:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),formatearPrecioCOP:n=>String(n),mostrarAviso:(el,msg)=>el.textContent=msg,cargarProductos:async()=>{},fetch:async(url,req)=>{requests.push({url,req});return{ok:true,json:async()=>url==='/api/importar-menu'?{success:true,borrador:true,productos:[producto()],version:'a'.repeat(32),paginas:1}:{success:true,count:1}}}};
+ vm.createContext(context);vm.runInContext(read('app.menu-import.js'),context);el('menuFile').files=[{name:'carta.pdf',type:'application/pdf',size:100,arrayBuffer:async()=>new ArrayBuffer(100)}];return{context,el,requests,run:s=>vm.runInContext(s,context)};
 }
 test('revisión en navegador: leer no publica; corregir y publicar envía el precio revisado',async()=>{
  const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});assert.equal(n.requests.length,1);assert.equal(n.requests[0].url,'/api/importar-menu');assert.equal(n.el('revision-menu').hidden,false);
@@ -65,4 +65,14 @@ test('fallo de conexión al validar sesión se distingue de una lectura de PDF',
 });
 test('respuesta perdida al publicar conserva revisión y pide comprobar la carta',async()=>{
  const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});n.context.fetch=async()=>{throw new TypeError('Failed to fetch')};await n.context.publicarMenuRevisado({preventDefault(){}});assert(n.el('importacion-menu-status').textContent.includes('confirmar la publicación'));assert(n.el('importacion-menu-status').textContent.includes('Revisa tu carta'));assert.equal(n.el('revision-menu').hidden,false);
+});
+
+test('un archivo inaccesible en el teléfono se detecta antes de enviar o llamar IA',async()=>{
+ const n=navegador();n.el('menuFile').files=[{type:'application/pdf',size:100,arrayBuffer:async()=>{throw new Error('NotReadableError')}}];await n.context.enviarMenuConIA({preventDefault(){}});assert.equal(n.requests.length,0);assert(n.el('importacion-menu-status').textContent.includes('leer el archivo en tu dispositivo'));assert.equal(n.el('btn-procesar-ia').disabled,false);
+});
+test('la subida contiene una copia Blob estable con el nombre del PDF',async()=>{
+ const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});const archivo=n.requests[0].req.body.archivos[0];assert.equal(archivo.nombre,'menuFile');assert.equal(archivo.archivo,'carta.pdf');assert.equal(archivo.blob.type,'application/pdf');assert.equal(archivo.blob.size,100);assert.equal((await archivo.blob.arrayBuffer()).byteLength,100);
+});
+test('un selector de archivos bloqueado termina sin quedarse leyendo ni enviar una carga parcial',async()=>{
+ const n=navegador();n.context.setTimeout=(fn)=>{fn();return 1};n.context.clearTimeout=()=>{};n.el('menuFile').files=[{type:'application/pdf',size:100,arrayBuffer:()=>new Promise(()=>{})}];await n.context.enviarMenuConIA({preventDefault(){}});assert.equal(n.requests.length,0);assert(n.el('importacion-menu-status').textContent.includes('Vuelve a seleccionarlo'));assert.equal(n.el('btn-procesar-ia').disabled,false);
 });
