@@ -447,7 +447,8 @@
       const headerNombre = document.getElementById('nombre-restaurante-header');
       if (headerNombre) headerNombre.innerText = restaurante.nombre_restaurante || 'Mi Restaurante';
 
-      cargarPedidos();
+      await cargarPedidos();
+      iniciarConexionPedidos();
     }
 
     // --- NAVEGACIÓN ENTRE PESTAÑAS ---
@@ -537,6 +538,7 @@
     }
 
     async function cerrarSesion() {
+      detenerConexionPedidos();
       await supabaseClient.auth.signOut();
       window.location.href = '/login.html';
     }
@@ -576,8 +578,10 @@
       return { desde: new Date(inicio).toISOString(), hasta: new Date(inicio + 86400000).toISOString() };
     }
 
+    let revisionCargaPedidos = 0;
     async function cargarPedidos(opciones = {}) {
       if (!RESTAURANTE_ID) return false;
+      const revision = ++revisionCargaPedidos;
       const periodo = periodoPedidosActual;
       const fecha = document.getElementById('input-fecha-pedido').value;
       const rango = fecha ? obtenerRangoFechaPedido(fecha) : obtenerRangoPeriodoPedidos(periodo);
@@ -602,6 +606,7 @@
         const promesas = [queryPedidos];
         if (!opciones.omitirMetricas) promesas.push(obtenerMetricasPedidosPeriodo(rango));
         const [resultadoPedidos, resultadoMetricas] = await Promise.all(promesas);
+        if (revision !== revisionCargaPedidos) return true;
         if (resultadoPedidos.error) throw resultadoPedidos.error;
 
         renderTablaPedidos(resultadoPedidos.data);
@@ -1371,33 +1376,126 @@
       iframe.src = url;
     }
 
+    let canalPedidos = null;
+    let estadoConexionPedidos = 'CONNECTING';
+    let temporizadorRespaldoPedidos = null;
+    let temporizadorReconexionPedidos = null;
+    let conectandoPedidos = false;
+    let actualizandoRespaldo = false;
+    let conexionPedidosActiva = false;
+
     function actualizarIndicadorConexion(estado) {
+      estadoConexionPedidos = estado;
       const indicador = document.getElementById('connection-status');
       const conectado = estado === 'SUBSCRIBED';
-      const fallida = ['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(estado);
       const mensajes = {
         SUBSCRIBED: '● Pedidos en vivo',
-        CHANNEL_ERROR: '● Sin conexión en vivo',
-        TIMED_OUT: '● Conexión lenta',
-        CLOSED: '● Conexión cerrada'
+        CHANNEL_ERROR: '● Reconectando · respaldo cada 15 s',
+        TIMED_OUT: '● Conexión lenta · respaldo cada 15 s',
+        CLOSED: '● Reconectando · respaldo cada 15 s',
+        OFFLINE: '● Sin internet · reconexión automática',
+        REFRESH_ERROR: '● No se pudieron actualizar los pedidos',
+        FALLBACK_OK: '● Pedidos actualizados · respaldo cada 15 s',
+        AUTH_ERROR: '● Sesión vencida · vuelve a ingresar'
       };
       indicador.textContent = mensajes[estado] || '● Conectando pedidos…';
-      indicador.className = `px-3 py-1.5 rounded-full border text-xs whitespace-nowrap ${conectado ? 'bg-emerald-950/50 text-emerald-300 border-emerald-800' : fallida ? 'bg-red-950/50 text-red-300 border-red-800' : 'bg-slate-900 text-slate-300 border-slate-700'}`;
+      indicador.className = `px-3 py-1.5 rounded-full border text-xs whitespace-nowrap ${conectado ? 'bg-emerald-950/50 text-emerald-300 border-emerald-800' : ['OFFLINE', 'AUTH_ERROR', 'REFRESH_ERROR'].includes(estado) ? 'bg-red-950/50 text-red-300 border-red-800' : 'bg-amber-950/50 text-amber-300 border-amber-800'}`;
     }
 
-    supabaseClient
-      .channel('pedidos-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, payload => {
-        if (payload.new.restaurante_id === RESTAURANTE_ID) {
-          const actualizadoDesdeCache = periodoPedidosActual === 'todo' && sumarPedidoAlHistorialEnVivo(payload.new);
-          cargarPedidos({ omitirMetricas: actualizadoDesdeCache });
-          imprimirTicketAutomatico(payload.new);
+    function programarRespaldoPedidos() {
+      clearTimeout(temporizadorRespaldoPedidos);
+      if (!conexionPedidosActiva) return;
+      temporizadorRespaldoPedidos = setTimeout(async () => {
+        await recuperarPedidos();
+        programarRespaldoPedidos();
+      }, estadoConexionPedidos === 'SUBSCRIBED' ? 60000 : 15000);
+    }
+
+    async function recuperarPedidos() {
+      if (!conexionPedidosActiva || !RESTAURANTE_ID || actualizandoRespaldo || document.hidden
+          || document.getElementById('sec-pedidos').classList.contains('hidden')) return;
+      if (navigator.onLine === false) { actualizarIndicadorConexion('OFFLINE'); return; }
+      actualizandoRespaldo = true;
+      try {
+        const actualizado = await cargarPedidos();
+        if (!actualizado) actualizarIndicadorConexion('REFRESH_ERROR');
+        else if (estadoConexionPedidos !== 'SUBSCRIBED') actualizarIndicadorConexion('FALLBACK_OK');
+      } finally { actualizandoRespaldo = false; }
+    }
+
+    async function iniciarConexionPedidos() {
+      if (!RESTAURANTE_ID || conectandoPedidos) return;
+      conexionPedidosActiva = true;
+      conectandoPedidos = true;
+      clearTimeout(temporizadorReconexionPedidos);
+      try {
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        if (!conexionPedidosActiva) return;
+        if (error || !session?.access_token) {
+          detenerConexionPedidos();
+          actualizarIndicadorConexion('AUTH_ERROR');
+          return;
         }
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pedidos' }, payload => {
-        if (payload.new.restaurante_id === RESTAURANTE_ID) cargarPedidos({ omitirMetricas: true });
-      })
-      .subscribe(actualizarIndicadorConexion);
+        if (canalPedidos) {
+          const anterior = canalPedidos;
+          canalPedidos = null;
+          await supabaseClient.removeChannel(anterior);
+        }
+        if (!conexionPedidosActiva) return;
+        await supabaseClient.realtime.setAuth(session.access_token);
+        if (!conexionPedidosActiva) return;
+        const canal = supabaseClient.channel(`pedidos:${RESTAURANTE_ID}`);
+        canalPedidos = canal;
+        const filtro = { schema: 'public', table: 'pedidos', filter: `restaurante_id=eq.${RESTAURANTE_ID}` };
+        canal
+          .on('postgres_changes', { ...filtro, event: 'INSERT' }, payload => {
+            if (String(payload.new.restaurante_id) !== String(RESTAURANTE_ID)) return;
+            const actualizadoDesdeCache = periodoPedidosActual === 'todo' && sumarPedidoAlHistorialEnVivo(payload.new);
+            cargarPedidos({ omitirMetricas: actualizadoDesdeCache });
+            imprimirTicketAutomatico(payload.new);
+          })
+          .on('postgres_changes', { ...filtro, event: 'UPDATE' }, payload => {
+            if (String(payload.new.restaurante_id) === String(RESTAURANTE_ID)) cargarPedidos();
+          })
+          .subscribe(estado => {
+            if (!conexionPedidosActiva || canalPedidos !== canal) return;
+            actualizarIndicadorConexion(estado);
+            programarRespaldoPedidos();
+            clearTimeout(temporizadorReconexionPedidos);
+            if (estado === 'SUBSCRIBED') recuperarPedidos();
+            else if (['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(estado)) {
+              temporizadorReconexionPedidos = setTimeout(iniciarConexionPedidos, 15000);
+            }
+          });
+      } catch (error) {
+        console.warn('No se pudo iniciar la conexión de pedidos:', error.message);
+        actualizarIndicadorConexion('CHANNEL_ERROR');
+        temporizadorReconexionPedidos = setTimeout(iniciarConexionPedidos, 15000);
+      } finally {
+        conectandoPedidos = false;
+        programarRespaldoPedidos();
+      }
+    }
+
+    function detenerConexionPedidos() {
+      conexionPedidosActiva = false;
+      clearTimeout(temporizadorRespaldoPedidos);
+      clearTimeout(temporizadorReconexionPedidos);
+      const anterior = canalPedidos;
+      canalPedidos = null;
+      if (anterior) supabaseClient.removeChannel(anterior);
+    }
+
+    window.addEventListener('offline', () => actualizarIndicadorConexion('OFFLINE'));
+    window.addEventListener('online', () => {
+      if (conexionPedidosActiva) { iniciarConexionPedidos(); recuperarPedidos(); }
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && conexionPedidosActiva) {
+        recuperarPedidos();
+        if (estadoConexionPedidos !== 'SUBSCRIBED') iniciarConexionPedidos();
+      }
+    });
 
     function cambiarPagina(delta) {
       paginaActual += delta;
