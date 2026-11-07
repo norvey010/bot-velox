@@ -60,6 +60,7 @@
       box-shadow: 0 0 0 2px rgb(248 113 113 / 22%);
     }
     #form-producto input[type="file"] { padding: .45rem; }
+    #producto-imagen-preview button:has(img[hidden]) { display: none; }
     .pedido-resumen-movil {
       display: -webkit-box;
       -webkit-box-orient: vertical;
@@ -337,7 +338,7 @@
   </main>
   <dialog id="editor-producto" aria-labelledby="producto-form-summary-text">
     <div class="px-4 pt-3 sm:px-5">
-      <button type="button" onclick="cerrarEditorProducto()" class="mb-2 min-h-11 rounded-md px-2 text-sm font-semibold text-slate-200 hover:bg-slate-700" autofocus>‹ Volver</button>
+      <button type="button" onclick="cerrarEditorProducto()" class="mb-2 min-h-11 rounded-lg border border-red-800 bg-red-950 px-3 text-sm font-semibold text-red-100 hover:bg-red-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400" autofocus>‹ Volver</button>
       <h2 id="producto-form-summary-text" class="text-lg font-bold text-white">Agregar producto</h2>
     </div>
     <form id="form-producto" onsubmit="guardarProducto(event)" class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5">
@@ -366,9 +367,8 @@
         <label for="prod-imagen-file">Foto del producto (opcional)</label>
         <input type="file" id="prod-imagen-file" accept="image/*" aria-describedby="producto-foto-ayuda" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
         <figure id="producto-imagen-preview" class="mt-3" hidden>
-          <button type="button" onclick="document.getElementById('prod-imagen-file').click()" aria-controls="prod-imagen-file" class="inline-flex items-center gap-3 rounded-lg border border-slate-700 px-2 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+          <button type="button" onclick="document.getElementById('prod-imagen-file').click()" aria-controls="prod-imagen-file" aria-label="Cambiar foto" class="inline-flex rounded-lg border border-slate-700 p-1 hover:border-red-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400">
             <img id="producto-imagen-miniatura" alt="" width="96" height="96" class="h-24 w-24 rounded-lg bg-slate-900 object-contain">
-            <span>Cambiar foto</span>
           </button>
           <figcaption id="producto-imagen-estado" class="mt-1 text-xs text-slate-300" aria-live="polite"></figcaption>
         </figure>
