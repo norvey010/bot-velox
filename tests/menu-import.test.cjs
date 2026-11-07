@@ -76,3 +76,13 @@ test('la subida contiene una copia Blob estable con el nombre del PDF',async()=>
 test('un selector de archivos bloqueado termina sin quedarse leyendo ni enviar una carga parcial',async()=>{
  const n=navegador();n.context.setTimeout=(fn)=>{fn();return 1};n.context.clearTimeout=()=>{};n.el('menuFile').files=[{type:'application/pdf',size:100,arrayBuffer:()=>new Promise(()=>{})}];await n.context.enviarMenuConIA({preventDefault(){}});assert.equal(n.requests.length,0);assert(n.el('importacion-menu-status').textContent.includes('Vuelve a seleccionarlo'));assert.equal(n.el('btn-procesar-ia').disabled,false);
 });
+
+test('fotos y PDF se eligen por separado y se envían juntos',async()=>{
+ const n=navegador();n.el('menuFile').files=[{name:'foto.jpg',type:'image/jpeg',size:50,arrayBuffer:async()=>new ArrayBuffer(50)}];n.el('menuPdf').files=[{name:'carta.pdf',type:'application/pdf',size:100,arrayBuffer:async()=>new ArrayBuffer(100)}];n.context.actualizarResumenFotosMenu();assert.equal(n.el('menu-file-summary').textContent,'1 foto · 1 PDF');await n.context.enviarMenuConIA({preventDefault(){}});const archivos=n.requests[0].req.body.archivos;assert.equal(archivos.length,2);assert.equal(archivos[0].archivo,'foto.jpg');assert.equal(archivos[1].archivo,'carta.pdf');assert(archivos.every(x=>x.nombre==='menuFile'));
+});
+test('el límite de 10 archivos se aplica a fotos y PDF combinados',async()=>{
+ const n=navegador();n.el('menuFile').files=Array.from({length:6},()=>({type:'image/jpeg',size:50}));n.el('menuPdf').files=Array.from({length:5},()=>({type:'application/pdf',size:50}));await n.context.enviarMenuConIA({preventDefault(){}});assert.equal(n.requests.length,0);assert(n.el('importacion-menu-status').textContent.includes('10 fotos o PDF'));
+});
+test('el selector de fotos no fuerza captura y el de PDF filtra documentos',()=>{
+ const html=read('dashboard.html');assert(/id="menuFile"[^>]*accept="image\/\*"/.test(html));assert(/id="menuPdf"[^>]*accept="application\/pdf,.pdf"/.test(html));assert(!/<input[^>]*id="menuFile"[^>]*capture/.test(html));assert(html.includes('Elegir fotos'));assert(html.includes('Elegir PDF'));
+});
