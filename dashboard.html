@@ -19,6 +19,22 @@
     input, select, textarea { min-height: 42px; }
     button { transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
     button:hover:not(:disabled) { transform: translateY(-1px); }
+    .velox-volver {
+      min-height: 44px;
+      padding: 0 .25rem;
+      border: 0;
+      background: transparent;
+      color: var(--velox-focus);
+      font-size: .875rem;
+      font-weight: 600;
+    }
+    .velox-volver:hover,
+    .velox-volver:focus-visible {
+      color: #fca5a5;
+      text-decoration: underline;
+      text-underline-offset: .25em;
+    }
+    .velox-volver:focus-visible { outline: none; }
     summary { list-style: none; }
     summary::-webkit-details-marker { display: none; }
     #revision-menu[hidden] { display: none; }
@@ -235,7 +251,7 @@
           <summary class="cursor-pointer flex items-center justify-between gap-3 text-white"><span><strong class="block text-base">✏️ Editar menú</strong></span><span aria-hidden="true">⌄</span></summary>
           <div class="mt-4 space-y-4">
             <div class="flex flex-wrap gap-2">
-              <button type="button" onclick="nuevoProducto()" aria-haspopup="dialog" class="rounded-lg bg-red-600 px-4 py-3 font-semibold text-white">＋ Agregar producto</button>
+              <button type="button" onclick="nuevoProducto()" aria-haspopup="dialog" class="min-h-11 rounded-lg border border-slate-700 bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white hover:border-red-400"><span aria-hidden="true" class="mr-1 text-red-400">＋</span>Agregar producto</button>
             </div>
             <label for="buscar-producto" class="sr-only">Buscar producto</label>
             <div class="flex overflow-hidden rounded-lg border border-slate-700 bg-slate-900 focus-within:border-red-400">
@@ -289,7 +305,7 @@
         </div>
 
         <div id="ajustes-categoria" class="hidden">
-          <button type="button" onclick="volverAjustesInicio()" class="mb-3 rounded-md px-2 py-1 text-sm font-semibold text-slate-200 hover:bg-slate-700">‹ Ajustes</button>
+          <button type="button" onclick="volverAjustesInicio()" class="velox-volver mb-2">‹ Ajustes</button>
           <h2 id="ajustes-categoria-titulo" class="text-lg font-bold text-white"></h2>
           <p id="ajustes-categoria-descripcion" class="mb-3 mt-1 text-xs text-slate-400"></p>
           <p id="ajustes-status" class="mb-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
@@ -297,7 +313,7 @@
         </div>
 
         <div id="ajustes-editor" class="hidden">
-          <button type="button" onclick="volverAjustesCategoria()" class="mb-3 rounded-md px-2 py-1 text-sm font-semibold text-slate-200 hover:bg-slate-700">‹ Volver</button>
+          <button type="button" onclick="volverAjustesCategoria()" class="velox-volver mb-2">‹ Volver</button>
           <h2 id="ajustes-editor-titulo" class="mb-3 text-lg font-bold text-white"></h2>
           <form id="form-ajuste-nombre" onsubmit="guardarConfiguracion(event, 'negocio')" class="hidden space-y-3">
             <label class="block text-xs text-slate-300" for="conf-nombre">Nombre del negocio<input type="text" id="conf-nombre" required maxlength="100" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2.5 text-sm text-white focus:border-red-500 focus:outline-none"></label>
@@ -338,7 +354,7 @@
   </main>
   <dialog id="editor-producto" aria-labelledby="producto-form-summary-text">
     <div class="px-4 pt-3 sm:px-5">
-      <button type="button" onclick="cerrarEditorProducto()" class="mb-2 min-h-11 rounded-lg border border-red-800 bg-red-950 px-3 text-sm font-semibold text-red-100 hover:bg-red-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400" autofocus>‹ Volver</button>
+      <button type="button" onclick="cerrarEditorProducto()" class="velox-volver mb-2" autofocus>‹ Volver</button>
       <h2 id="producto-form-summary-text" class="text-lg font-bold text-white">Agregar producto</h2>
     </div>
     <form id="form-producto" onsubmit="guardarProducto(event)" class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5">
