@@ -22,13 +22,20 @@
     summary { list-style: none; }
     summary::-webkit-details-marker { display: none; }
     #revision-menu[hidden] { display: none; }
-    #editor-producto[hidden], #reintentar-productos[hidden] { display: none; }
-    #form-producto {
-      border: 1px solid #34363d;
-      border-radius: .75rem;
+    #reintentar-productos[hidden] { display: none; }
+    #editor-producto {
+      width: min(36rem, calc(100% - 1.5rem));
+      max-height: calc(100dvh - 1.5rem);
+      margin: auto;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      border: 1px solid var(--velox-border);
+      border-radius: .875rem;
       background: var(--velox-surface);
-      padding: .875rem;
+      color: #f9fafb;
     }
+    #editor-producto::backdrop { background: rgb(0 0 0 / 75%); }
+    html:has(#editor-producto[open]) { overflow: hidden; }
     #form-producto label {
       display: block;
       margin-bottom: .375rem;
@@ -227,7 +234,7 @@
           <summary class="cursor-pointer flex items-center justify-between gap-3 text-white"><span><strong class="block text-base">✏️ Editar menú</strong></span><span aria-hidden="true">⌄</span></summary>
           <div class="mt-4 space-y-4">
             <div class="flex flex-wrap gap-2">
-              <button type="button" onclick="nuevoProducto()" class="rounded-lg bg-red-600 px-4 py-3 font-semibold text-white">＋ Agregar producto</button>
+              <button type="button" onclick="nuevoProducto()" aria-haspopup="dialog" class="rounded-lg bg-red-600 px-4 py-3 font-semibold text-white">＋ Agregar producto</button>
             </div>
             <label for="buscar-producto" class="sr-only">Buscar producto</label>
             <div class="flex overflow-hidden rounded-lg border border-slate-700 bg-slate-900 focus-within:border-red-400">
@@ -240,6 +247,7 @@
             <p id="buscar-producto-ayuda" class="sr-only">Escribe un producto o toca la flecha para elegir una categoría.</p>
             <p id="productos-editor-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
             <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
+            <p id="producto-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
             <button id="reintentar-productos" type="button" onclick="cargarProductos()" hidden class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-white">Reintentar</button>
             <div id="productos-body" class="grid grid-cols-1 gap-2 lg:grid-cols-2"><p class="text-sm text-slate-400">Tus productos aparecerán aquí.</p></div>
             <nav id="productos-editor-paginacion" class="flex flex-wrap items-center justify-between gap-2" aria-label="Páginas de productos" hidden>
@@ -247,47 +255,6 @@
               <span id="productos-editor-pagina" class="text-xs text-slate-300"></span>
               <button type="button" id="productos-editor-siguiente" onclick="cambiarPaginaProductos(1)" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm text-white disabled:opacity-40">Siguiente ›</button>
             </nav>
-
-        <div class="py-3">
-          <section id="editor-producto" hidden aria-labelledby="producto-form-summary-text">
-            <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-white"><span id="producto-form-icon" aria-hidden="true">＋</span><span id="producto-form-summary-text">Datos del producto</span></h3>
-            <form id="form-producto" onsubmit="guardarProducto(event)" class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <input type="hidden" id="prod-id">
-              <p class="text-xs text-slate-400 md:col-span-3">Los campos con <span class="font-bold text-red-400">*</span> son obligatorios.</p>
-              <div>
-                <label for="prod-nombre">Nombre del producto <span class="text-red-400">*</span></label>
-                <input type="text" id="prod-nombre" required placeholder="Ej: Hamburguesa doble" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
-              </div>
-              <div>
-                <label for="prod-precio">Precio ($ COP) <span class="text-red-400">*</span></label>
-                <div class="relative">
-                  <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-semibold text-slate-200">$</span>
-                  <input type="text" id="prod-precio" inputmode="numeric" autocomplete="off" required placeholder="Ej: 25.000" class="w-full rounded-lg border border-slate-700 bg-slate-900 py-2 pl-8 pr-3 text-sm text-white focus:border-red-400 focus:outline-none">
-                </div>
-              </div>
-              <div>
-                <label for="prod-categoria">Categoría del menú <span class="text-red-400">*</span></label>
-                <input type="text" id="prod-categoria" required placeholder="Ej: Hamburguesas, Bebidas" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
-              </div>
-              <div class="md:col-span-3">
-                <label for="prod-descripcion">Descripción (opcional)</label>
-                <input type="text" id="prod-descripcion" placeholder="Ej: Carne, queso y salsa especial" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
-              </div>
-              <div class="md:col-span-3">
-                <label for="prod-imagen-file">Imagen del producto (opcional)</label>
-                <input type="file" id="prod-imagen-file" accept="image/*" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
-              </div>
-              <div id="producto-edicion-acciones" class="hidden md:col-span-3 flex flex-wrap gap-2">
-                <button type="button" id="btn-foto-ia-editor" onclick="generarImagenDesdeEditor()" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-white">✨ Crear foto con IA</button>
-                <button type="button" onclick="eliminarProductoDesdeEditor()" class="rounded-lg px-3 py-2 text-sm text-red-300">Eliminar producto</button>
-              </div>
-              <div class="flex justify-end gap-2 md:col-span-3">
-                <button type="button" onclick="limpiarFormProducto()" class="rounded-lg bg-slate-700 px-4 py-2 text-xs text-white hover:bg-slate-600">Cancelar</button>
-                <button type="submit" class="rounded-lg bg-red-600 px-5 py-2 text-xs font-bold text-white hover:bg-red-700">Guardar producto</button>
-              </div>
-            </form>
-          </section>
-        </div>
 
           </div>
         </details>
@@ -300,7 +267,6 @@
           </button>
         </div>
       </div>
-      <p id="producto-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
     </div>
 
 </section>
@@ -369,6 +335,47 @@
     </section>
 
   </main>
+  <dialog id="editor-producto" aria-labelledby="producto-form-summary-text">
+    <div class="px-4 pt-3 sm:px-5">
+      <button type="button" onclick="cerrarEditorProducto()" class="mb-2 min-h-11 rounded-md px-2 text-sm font-semibold text-slate-200 hover:bg-slate-700" autofocus>‹ Volver</button>
+      <h2 id="producto-form-summary-text" class="text-lg font-bold text-white">Agregar producto</h2>
+    </div>
+    <form id="form-producto" onsubmit="guardarProducto(event)" class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5">
+      <input type="hidden" id="prod-id">
+      <p class="text-xs text-slate-400 sm:col-span-2">Los campos con <span class="font-bold text-red-400">*</span> son obligatorios.</p>
+      <div class="sm:col-span-2">
+        <label for="prod-nombre">Nombre del producto <span class="text-red-400">*</span></label>
+        <input type="text" id="prod-nombre" required placeholder="Ej: Hamburguesa doble" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
+      </div>
+      <div>
+        <label for="prod-precio">Precio ($ COP) <span class="text-red-400">*</span></label>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-semibold text-slate-200">$</span>
+          <input type="text" id="prod-precio" inputmode="numeric" autocomplete="off" required placeholder="Ej: 25.000" class="w-full rounded-lg border border-slate-700 bg-slate-900 py-2 pl-8 pr-3 text-sm text-white focus:border-red-400 focus:outline-none">
+        </div>
+      </div>
+      <div>
+        <label for="prod-categoria">Categoría del menú <span class="text-red-400">*</span></label>
+        <input type="text" id="prod-categoria" required placeholder="Ej: Hamburguesas, Bebidas" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
+      </div>
+      <div class="sm:col-span-2">
+        <label for="prod-descripcion">Descripción (opcional)</label>
+        <input type="text" id="prod-descripcion" placeholder="Ej: Carne, queso y salsa especial" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
+      </div>
+      <div class="sm:col-span-2">
+        <label for="prod-imagen-file">Imagen del producto (opcional)</label>
+        <input type="file" id="prod-imagen-file" accept="image/*" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
+      </div>
+      <div id="producto-edicion-acciones" class="hidden sm:col-span-2 flex flex-wrap gap-2">
+        <button type="button" id="btn-foto-ia-editor" onclick="generarImagenDesdeEditor()" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-white">✨ Crear foto con IA</button>
+        <button type="button" onclick="eliminarProductoDesdeEditor()" class="rounded-lg px-3 py-2 text-sm text-red-300">Eliminar producto</button>
+      </div>
+      <p id="producto-form-status" class="hidden rounded-lg border px-3 py-2 text-sm sm:col-span-2" role="status" aria-live="polite"></p>
+      <div class="flex justify-end sm:col-span-2">
+        <button type="submit" class="min-h-11 w-full rounded-lg bg-red-600 px-5 py-2 text-sm font-bold sm:w-auto text-white hover:bg-red-700">Guardar producto</button>
+      </div>
+    </form>
+  </dialog>
   <dialog id="carta-ampliada" aria-labelledby="carta-ampliada-titulo">
     <div class="flex items-center justify-between gap-3 border-b border-slate-700 p-3">
       <h2 id="carta-ampliada-titulo" class="font-semibold">Así ven tu carta los clientes</h2>
@@ -926,7 +933,7 @@
             ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="${escaparHtmlUI(p.nombre)}" loading="lazy" width="56" height="56" class="h-14 w-14 shrink-0 rounded-lg object-cover">` : '<div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-center text-xs text-slate-400">Sin foto</div>'}
             <div class="min-w-0 flex-1"><h3 class="break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre)}</h3><p class="text-sm font-bold text-slate-200">$${Number(p.precio).toLocaleString('es-CO')}</p><p class="truncate text-xs text-slate-400">${escaparHtmlUI(p.categoria || 'General')}</p></div>
           </div>
-          <div class="mt-2 flex flex-wrap gap-2"><button type="button" onclick="prepararEdicionProducto(${id})" class="min-h-11 flex-1 rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white">✏️ Editar</button>
+          <div class="mt-2 flex flex-wrap gap-2"><button type="button" onclick="prepararEdicionProducto(${id})" aria-haspopup="dialog" class="min-h-11 flex-1 rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white">✏️ Editar</button>
           <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${p.disponible === false}, this)" aria-label="${p.disponible === false ? 'Volver a ofrecer' : 'Marcar agotado'}: ${escaparHtmlUI(p.nombre)}" aria-pressed="${p.disponible !== false}" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold ${p.disponible === false ? 'text-amber-300' : 'text-emerald-300'}">${p.disponible === false ? 'Agotado · Activar' : 'Disponible ✓'}</button></div>
         </article>`;
       }).join('');
@@ -951,12 +958,23 @@
       finally { boton.disabled = false; }
     }
 
+    let guardandoProducto = false;
+
     function nuevoProducto() {
+      if (guardandoProducto) return;
       limpiarFormProducto();
-      document.getElementById('editor-producto').hidden = false;
-      document.getElementById('editor-producto').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      document.getElementById('prod-nombre').focus({ preventScroll: true });
+      document.getElementById('producto-form-summary-text').textContent = 'Agregar producto';
+      document.getElementById('editor-producto').showModal();
     }
+
+    function cerrarEditorProducto() {
+      if (!guardandoProducto && !generandoImagenIA) document.getElementById('editor-producto').close();
+    }
+
+    document.getElementById('editor-producto').addEventListener('cancel', event => {
+      if (guardandoProducto || generandoImagenIA) event.preventDefault();
+    });
+
     function abrirImportacionMenu() {
       const seccion = document.getElementById('importar-menu-fotos');
       seccion.open = true;
@@ -974,12 +992,14 @@
 
     async function guardarProducto(event) {
       event.preventDefault();
+      if (guardandoProducto || generandoImagenIA) return;
+      guardandoProducto = true;
+      const formulario = document.getElementById('form-producto');
+      formulario.inert = true;
       const id = document.getElementById('prod-id').value;
       const fileInput = document.getElementById('prod-imagen-file');
       const submitButton = event.submitter || document.querySelector('#form-producto button[type="submit"]');
-      const status = document.getElementById('producto-save-status');
-      const summaryText = document.getElementById('producto-form-summary-text');
-      const summaryIcon = document.getElementById('producto-form-icon');
+      const status = document.getElementById('producto-form-status');
       const accion = id ? 'actualizado' : 'creado';
       const textoOriginal = submitButton?.textContent || 'Guardar Producto';
       let urlImagenFinal = '';
@@ -1023,19 +1043,15 @@
           : await supabaseClient.from('productos').insert([payload]);
         if (error) throw new Error(error.message || 'No se pudo guardar el producto.');
 
+        document.getElementById('editor-producto').close();
         await cargarProductos();
-        document.getElementById('form-producto').reset();
-        document.getElementById('prod-id').value = '';
-        if (fileInput) fileInput.value = '';
-        document.getElementById('editor-producto').hidden = true;
-        summaryText.textContent = 'Datos del producto';
-        summaryIcon.textContent = '＋';
-        document.getElementById('producto-edicion-acciones').classList.add('hidden');
-        mostrarAviso(status, `Producto ${accion} correctamente.`, 'exito', 4500);
+        mostrarAviso(document.getElementById('producto-save-status'), `Producto ${accion} correctamente.`, 'exito', 4500);
       } catch (error) {
         console.error('Error al guardar producto:', error);
         mostrarAviso(status, error.message || 'No se pudo guardar el producto. Revisa los datos e inténtalo de nuevo.', 'error');
       } finally {
+        guardandoProducto = false;
+        formulario.inert = false;
         if (submitButton) {
           submitButton.disabled = false;
           submitButton.textContent = textoOriginal;
@@ -1051,12 +1067,6 @@
       const continuar = confirm(`La IA ${accion} a partir del nombre y la descripción del producto. La imagen será ilustrativa, se guardará en tu menú y cada generación tiene un costo en tu cuenta de OpenAI. Si es un tamaño de pizza, la imagen se aplicará a todos los tamaños. ¿Deseas continuar?`);
       if (!continuar) return;
 
-      const { data: { session }, error: errorSesion } = await supabaseClient.auth.getSession();
-      if (errorSesion || !session?.access_token) {
-        alert('Tu sesión venció. Inicia sesión de nuevo para crear imágenes.');
-        return;
-      }
-
       generandoImagenIA = true;
       const botones = Array.from(document.querySelectorAll('#productos-body button, #form-producto button'));
       const textoOriginal = botones.map(boton => boton.textContent);
@@ -1065,6 +1075,12 @@
       if (botonActivo) botonActivo.textContent = 'Generando imagen…';
 
       try {
+        const { data: { session }, error: errorSesion } = await supabaseClient.auth.getSession();
+        if (errorSesion || !session?.access_token) {
+          alert('Tu sesión venció. Inicia sesión de nuevo para crear imágenes.');
+          return;
+        }
+
         const respuesta = await fetch(`/api/productos/${encodeURIComponent(productoId)}/generar-imagen`, {
           method: 'POST',
           headers: {
@@ -1094,48 +1110,51 @@
     }
 
     async function eliminarProducto(id) {
-      if (!confirm('¿Estás seguro de eliminar este producto?')) return;
-      const status = document.getElementById('producto-save-status');
+      if (guardandoProducto || !confirm('¿Estás seguro de eliminar este producto?')) return;
+      guardandoProducto = true;
+      const formulario = document.getElementById('form-producto');
+      formulario.inert = true;
+      const status = document.getElementById('producto-form-status');
+      status.classList.add('hidden');
       try {
         const { error } = await supabaseClient.from('productos').delete().eq('id', id).eq('restaurante_id', RESTAURANTE_ID);
         if (error) throw error;
+        document.getElementById('editor-producto').close();
         await cargarProductos();
-        limpiarFormProducto();
-        mostrarAviso(status, 'Producto eliminado.', 'exito', 4500);
+        mostrarAviso(document.getElementById('producto-save-status'), 'Producto eliminado.', 'exito', 4500);
       } catch (error) {
         console.error('Error al eliminar producto:', error);
         mostrarAviso(status, error.message || 'No se pudo eliminar el producto.', 'error');
+      } finally {
+        guardandoProducto = false;
+        formulario.inert = false;
       }
     }
 
     async function prepararEdicionProducto(id) {
+      const dialogo = document.getElementById('editor-producto');
       const { data, error } = await supabaseClient.from('productos').select('*').eq('id', id).eq('restaurante_id', RESTAURANTE_ID).maybeSingle();
+      if (dialogo.open || guardandoProducto) return;
       if (error || !data) {
         alert('No se pudo cargar el producto.');
         return;
       }
-      document.getElementById('form-producto').reset();
+      limpiarFormProducto();
       document.getElementById('producto-edicion-acciones').classList.remove('hidden');
       document.getElementById('prod-id').value = data.id;
       document.getElementById('prod-nombre').value = data.nombre || '';
       document.getElementById('prod-precio').value = formatearPrecioCOP(data.precio || '');
       document.getElementById('prod-descripcion').value = data.descripcion || '';
       document.getElementById('prod-categoria').value = data.categoria || '';
-      document.getElementById('editor-producto').hidden = false;
       document.getElementById('producto-form-summary-text').textContent = 'Editar producto';
-      document.getElementById('producto-form-icon').textContent = '✏️';
-      const status = document.getElementById('producto-save-status');
-      status.classList.add('hidden');
-      document.getElementById('editor-producto').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      dialogo.showModal();
     }
 
     function limpiarFormProducto() {
-      document.getElementById('producto-edicion-acciones').classList.add('hidden');
       document.getElementById('form-producto').reset();
       document.getElementById('prod-id').value = '';
-      document.getElementById('editor-producto').hidden = true;
-      document.getElementById('producto-form-summary-text').textContent = 'Datos del producto';
-      document.getElementById('producto-form-icon').textContent = '＋';
+      document.getElementById('producto-edicion-acciones').classList.add('hidden');
+      document.getElementById('producto-form-status').classList.add('hidden');
     }
     let urlVistaPreviaCarta = '';
 
