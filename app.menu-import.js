@@ -5,7 +5,7 @@ let publicandoMenu = false;
 const REVISION_POR_PAGINA = 6;
 function estadoImportacion(mensaje, tipo='info') { mostrarAviso(document.getElementById('importacion-menu-status'), mensaje, tipo); }
 function archivosSeleccionadosMenu() {
-  return [...Array.from(document.getElementById('menuFile').files || []), ...Array.from(document.getElementById('menuPdf').files || [])];
+  return Array.from(document.getElementById('menuFile').files || []);
 }
 function actualizarResumenFotosMenu() {
   const files=archivosSeleccionadosMenu();
@@ -131,6 +131,5 @@ async function publicarMenuRevisado(event) {
   finally {publicandoMenu=false;document.getElementById('revision-menu').removeAttribute('inert');boton.disabled=false;boton.textContent='Publicar carta';}
 }
 document.getElementById('menuFile').addEventListener('change',actualizarResumenFotosMenu);
-document.getElementById('menuPdf').addEventListener('change',actualizarResumenFotosMenu);
 document.getElementById('editar-menu').addEventListener('toggle',event=>{if(event.currentTarget.open)cargarProductos();});
 window.addEventListener('beforeunload',event=>{if(borradorMenu){event.preventDefault();event.returnValue='';}});
