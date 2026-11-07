@@ -203,12 +203,8 @@
         <div class="pt-3">
           <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-2">
             <input type="hidden" id="ai-restaurante-id">
-            <div class="grid grid-cols-2 gap-2">
-              <button type="button" onclick="document.getElementById('menuFile').click()" aria-controls="menuFile" class="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 py-3 text-sm font-semibold text-white hover:border-red-400">🖼️ Elegir fotos</button>
-              <button type="button" onclick="document.getElementById('menuPdf').click()" aria-controls="menuPdf" class="min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 py-3 text-sm font-semibold text-white hover:border-red-400">📄 Elegir PDF</button>
-            </div>
-            <input type="file" id="menuFile" name="menuFotos" accept="image/*" multiple hidden aria-label="Seleccionar fotos de la carta">
-            <input type="file" id="menuPdf" name="menuPdf" accept="application/pdf,.pdf" multiple hidden aria-label="Seleccionar PDF de la carta">
+            <button type="button" onclick="document.getElementById('menuFile').click()" aria-controls="menuFile" class="min-h-12 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-3 text-sm font-semibold text-white hover:border-red-400">Seleccionar archivos</button>
+            <input type="file" id="menuFile" name="menuFile" multiple hidden aria-label="Seleccionar fotos o PDF de la carta" aria-describedby="menu-limites">
             <details class="text-xs text-slate-400"><summary class="cursor-pointer py-2">Formatos y límites</summary><p id="menu-limites" class="pb-2 leading-relaxed">JPG, PNG, WEBP, GIF o PDF. Hasta 10 archivos, 8 MB cada uno, 25 MB en total y 20 páginas.</p></details>
             <p id="menu-file-summary" class="hidden break-words text-xs text-slate-400" aria-live="polite"></p>
             <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700">Leer con IA</button>
