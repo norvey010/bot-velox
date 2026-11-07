@@ -366,8 +366,11 @@
         <label for="prod-imagen-file">Imagen del producto (opcional)</label>
         <input type="file" id="prod-imagen-file" accept="image/*" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
         <figure id="producto-imagen-preview" class="mt-3" hidden>
-          <img id="producto-imagen-miniatura" alt="Vista previa de la foto seleccionada" width="96" height="96" class="h-24 w-24 rounded-lg bg-slate-900 object-contain">
-          <figcaption id="producto-imagen-estado" class="mt-1 text-xs text-slate-300" aria-live="polite">Foto seleccionada</figcaption>
+          <button type="button" onclick="document.getElementById('prod-imagen-file').click()" aria-controls="prod-imagen-file" class="inline-flex items-center gap-3 rounded-lg border border-slate-700 px-2 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+            <img id="producto-imagen-miniatura" alt="" width="96" height="96" class="h-24 w-24 rounded-lg bg-slate-900 object-contain">
+            <span>Cambiar foto</span>
+          </button>
+          <figcaption id="producto-imagen-estado" class="mt-1 text-xs text-slate-300" aria-live="polite"></figcaption>
         </figure>
       </div>
       <div id="producto-edicion-acciones" class="hidden sm:col-span-2 flex flex-wrap gap-2">
@@ -1095,6 +1098,10 @@
         });
         const resultado = await respuesta.json();
         if (!respuesta.ok || !resultado.success) throw new Error(resultado.error || 'No se pudo crear la imagen.');
+        if (resultado.imagen_url) {
+          imagenGuardadaProducto = resultado.imagen_url;
+          if (!urlMiniaturaProducto) mostrarMiniaturaProducto();
+        }
         const uso = resultado.uso_tokens;
         const detalleTokens = uso?.total_tokens != null
           ? `\nTokens reportados por OpenAI: ${Number(uso.total_tokens).toLocaleString()} total (entrada: ${Number(uso.input_tokens || 0).toLocaleString()}, salida: ${Number(uso.output_tokens || 0).toLocaleString()}).`
@@ -1150,10 +1157,13 @@
       document.getElementById('prod-precio').value = formatearPrecioCOP(data.precio || '');
       document.getElementById('prod-descripcion').value = data.descripcion || '';
       document.getElementById('prod-categoria').value = data.categoria || '';
+      imagenGuardadaProducto = data.imagen_url || '';
+      mostrarMiniaturaProducto();
       document.getElementById('producto-form-summary-text').textContent = 'Editar producto';
       dialogo.showModal();
     }
 
+    let imagenGuardadaProducto = '';
     let urlMiniaturaProducto = '';
 
     function mostrarMiniaturaProducto(archivo) {
@@ -1163,30 +1173,37 @@
       imagen.removeAttribute('src');
       if (urlMiniaturaProducto) URL.revokeObjectURL(urlMiniaturaProducto);
       urlMiniaturaProducto = '';
-      vista.hidden = !archivo;
-      if (!archivo) return;
+      if (archivo) urlMiniaturaProducto = URL.createObjectURL(archivo);
+
+      const url = urlMiniaturaProducto || imagenGuardadaProducto;
+      vista.hidden = !url;
+      if (!url) return;
 
       imagen.hidden = false;
-      estado.textContent = 'Foto seleccionada';
-      urlMiniaturaProducto = URL.createObjectURL(archivo);
-      imagen.src = urlMiniaturaProducto;
+      estado.textContent = archivo ? 'Foto seleccionada' : 'Foto actual';
+      imagen.src = url;
     }
 
     document.getElementById('prod-imagen-file').addEventListener('change', event => {
       mostrarMiniaturaProducto(event.target.files[0]);
     });
     document.getElementById('producto-imagen-miniatura').addEventListener('error', event => {
-      if (!urlMiniaturaProducto) return;
+      if (!event.currentTarget.hasAttribute('src')) return;
       event.currentTarget.hidden = true;
       document.getElementById('producto-imagen-estado').textContent = 'No se pudo mostrar la vista previa. Puedes elegir otra foto.';
     });
     document.getElementById('editor-producto').addEventListener('close', event => {
-      if (!event.currentTarget.open) mostrarMiniaturaProducto();
+      if (!event.currentTarget.open) limpiarMiniaturaProducto();
     });
+
+    function limpiarMiniaturaProducto() {
+      imagenGuardadaProducto = '';
+      mostrarMiniaturaProducto();
+    }
 
     function limpiarFormProducto() {
       document.getElementById('form-producto').reset();
-      mostrarMiniaturaProducto();
+      limpiarMiniaturaProducto();
       document.getElementById('prod-id').value = '';
       document.getElementById('producto-edicion-acciones').classList.add('hidden');
       document.getElementById('producto-form-status').classList.add('hidden');
