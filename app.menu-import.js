@@ -4,10 +4,15 @@ let leyendoMenu = false;
 let publicandoMenu = false;
 const REVISION_POR_PAGINA = 6;
 function estadoImportacion(mensaje, tipo='info') { mostrarAviso(document.getElementById('importacion-menu-status'), mensaje, tipo); }
+function archivosSeleccionadosMenu() {
+  return [...Array.from(document.getElementById('menuFile').files || []), ...Array.from(document.getElementById('menuPdf').files || [])];
+}
 function actualizarResumenFotosMenu() {
-  const files=Array.from(document.getElementById('menuFile').files || []);
+  const files=archivosSeleccionadosMenu();
   const resumen=document.getElementById('menu-file-summary');
-  resumen.textContent=files.length ? `${files.length} archivo${files.length===1?'':'s'} seleccionado${files.length===1?'':'s'}.` : '';
+  const pdf=files.filter(f=>f.type==='application/pdf').length;
+  const fotos=files.length-pdf;
+  resumen.textContent=files.length===1 ? (files[0].name || '1 archivo seleccionado') : [fotos ? `${fotos} ${fotos===1?'foto':'fotos'}` : '',pdf ? `${pdf} PDF` : ''].filter(Boolean).join(' · ');
   resumen.classList.toggle('hidden',files.length===0);
 }
 function mensajeErrorImportacion(error, accion='lectura') {
@@ -49,7 +54,7 @@ async function leerArchivosLocalesMenu(files) {
 async function enviarMenuConIA(event) {
   event.preventDefault();
   if(leyendoMenu || publicandoMenu) return;
-  const files=Array.from(document.getElementById('menuFile').files || []);
+  const files=archivosSeleccionadosMenu();
   const tipos=['image/jpeg','image/png','image/webp','image/gif','application/pdf'];
   if(!files.length || files.length>10) { estadoImportacion('Selecciona entre 1 y 10 fotos o PDF.','error');return; }
   if(files.some(f=>f.size>8*1024*1024 || !tipos.includes(f.type))) { estadoImportacion('Usa JPG, PNG, WEBP, GIF o PDF, de máximo 8 MB cada uno.','error');return; }
@@ -126,5 +131,6 @@ async function publicarMenuRevisado(event) {
   finally {publicandoMenu=false;document.getElementById('revision-menu').removeAttribute('inert');boton.disabled=false;boton.textContent='Publicar carta';}
 }
 document.getElementById('menuFile').addEventListener('change',actualizarResumenFotosMenu);
+document.getElementById('menuPdf').addEventListener('change',actualizarResumenFotosMenu);
 document.getElementById('editar-menu').addEventListener('toggle',event=>{if(event.currentTarget.open)cargarProductos();});
 window.addEventListener('beforeunload',event=>{if(borradorMenu){event.preventDefault();event.returnValue='';}});
