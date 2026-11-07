@@ -108,20 +108,20 @@
     <section id="sec-pedidos" class="space-y-4">
       <section id="resumen-pedidos" aria-labelledby="resumen-pedidos-titulo" class="space-y-3 rounded-xl border border-slate-700 bg-slate-800 p-3 sm:p-4">
         <div><h2 id="resumen-pedidos-titulo" class="text-lg font-bold text-white">Resumen de pedidos</h2><p class="mt-1 text-xs text-slate-400">Elige un período o una fecha para ver sus cifras y pedidos.</p></div>
-      <div class="space-y-2">
-        <p id="pedidos-periodo-resumen" class="text-xs font-semibold text-slate-300">Resumen de hoy</p>
-        <div id="pedidos-periodo-controles" role="group" aria-label="Período del resumen y pedidos" class="grid grid-cols-4 gap-1 rounded-xl border border-slate-700 bg-slate-900 p-1">
-          <button type="button" data-periodo-pedidos="hoy" aria-pressed="true" class="rounded-lg bg-red-600 px-1.5 py-2 text-[11px] font-semibold leading-tight text-white">Hoy</button>
-          <button type="button" data-periodo-pedidos="7dias" aria-pressed="false" class="rounded-lg px-1.5 py-2 text-[11px] font-medium leading-tight text-slate-300">Últimos 7 días</button>
-          <button type="button" data-periodo-pedidos="mes" aria-pressed="false" class="rounded-lg px-1.5 py-2 text-[11px] font-medium leading-tight text-slate-300">Este mes</button>
-          <button type="button" data-periodo-pedidos="todo" aria-label="Todo el historial" aria-pressed="false" class="rounded-lg px-1.5 py-2 text-[11px] font-medium leading-tight text-slate-300">Todo el historial</button>
-        </div>
-      </div>
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <label class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs text-slate-300" for="input-fecha-pedido">O elige una fecha
-          <input type="date" id="input-fecha-pedido" aria-label="Filtrar resumen y pedidos por fecha" class="min-w-0 w-[130px] bg-transparent py-2 text-xs text-white focus:outline-none">
+      <div class="flex flex-wrap items-end gap-2">
+        <label for="pedidos-periodo" class="w-full text-xs font-semibold text-slate-300 sm:w-auto">Período
+          <select id="pedidos-periodo" class="mt-1 block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-red-400">
+            <option value="hoy">Hoy</option>
+            <option value="7dias">Últimos 7 días</option>
+            <option value="30dias">Últimos 30 días</option>
+            <option value="fecha">Fecha específica</option>
+          </select>
+        </label>
+        <label id="pedidos-fecha-control" for="input-fecha-pedido" class="hidden w-full text-xs font-semibold text-slate-300 sm:w-auto">Fecha
+          <input type="date" id="input-fecha-pedido" class="mt-1 block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-red-400">
         </label>
       </div>
+      <p id="pedidos-periodo-resumen" class="text-xs font-semibold text-slate-300">Resumen de hoy</p>
       <div class="grid grid-cols-3 gap-2 sm:gap-3">
         <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
           <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Pedidos recibidos</p>
@@ -387,15 +387,12 @@
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let paginaActual = 0;
-    let periodoPedidosActual = 'hoy';
     const porPagina = 15;
     const pedidosRenderizados = new Map();
     const DIAS_HORARIO_MENU = [
       { id: 'monday', corto: 'Lun' }, { id: 'tuesday', corto: 'Mar' }, { id: 'wednesday', corto: 'Mié' },
       { id: 'thursday', corto: 'Jue' }, { id: 'friday', corto: 'Vie' }, { id: 'saturday', corto: 'Sáb' }, { id: 'sunday', corto: 'Dom' }
     ];
-    let metricasTodoCache = null;
-    const pedidosNuevosProcesados = new Set();
     const temporizadoresAvisos = new WeakMap();
 
     function mostrarAviso(elemento, mensaje, tipo = 'exito', duracion = 0) {
@@ -576,7 +573,6 @@
 
     // --- MÓDULO PEDIDOS ---
     function obtenerRangoPeriodoPedidos(periodo) {
-      if (periodo === 'todo') return null;
       const partes = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit'
       }).formatToParts(new Date()).reduce((resultado, parte) => {
@@ -584,17 +580,9 @@
         return resultado;
       }, {});
       const { year, month, day } = partes;
-      let inicio;
-      let fin;
-
-      if (periodo === 'mes') {
-        inicio = Date.UTC(year, month - 1, 1, 5);
-        fin = Date.UTC(year, month, 1, 5);
-      } else {
-        const diasAtras = periodo === '7dias' ? 6 : 0;
-        inicio = Date.UTC(year, month - 1, day - diasAtras, 5);
-        fin = Date.UTC(year, month - 1, day + 1, 5);
-      }
+      const dias = { hoy: 1, '7dias': 7, '30dias': 30 }[periodo] || 1;
+      const inicio = Date.UTC(year, month - 1, day - dias + 1, 5);
+      const fin = Date.UTC(year, month - 1, day + 1, 5);
 
       return { desde: new Date(inicio).toISOString(), hasta: new Date(fin).toISOString() };
     }
@@ -613,9 +601,9 @@
     async function cargarPedidos(opciones = {}) {
       if (!RESTAURANTE_ID) return false;
       const revision = ++revisionCargaPedidos;
-      const periodo = periodoPedidosActual;
-      const fecha = document.getElementById('input-fecha-pedido').value;
-      const rango = fecha ? obtenerRangoFechaPedido(fecha) : obtenerRangoPeriodoPedidos(periodo);
+      const periodo = document.getElementById('pedidos-periodo').value;
+      const fecha = periodo === 'fecha' ? document.getElementById('input-fecha-pedido').value : '';
+      const rango = obtenerRangoFechaPedido(fecha) || obtenerRangoPeriodoPedidos(periodo);
       // Evita que caracteres de sintaxis del filtro PostgREST alteren la consulta.
       const busqueda = document.getElementById('input-search').value
         .slice(0, 80)
@@ -627,22 +615,23 @@
           .from('pedidos')
           .select('*', { count: 'exact' })
           .eq('restaurante_id', RESTAURANTE_ID)
+          .gte('created_at', rango.desde)
+          .lt('created_at', rango.hasta)
           .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
           .range(paginaActual * porPagina, (paginaActual + 1) * porPagina - 1);
-
-        if (rango) queryPedidos = queryPedidos.gte('created_at', rango.desde).lt('created_at', rango.hasta);
 
         if (busqueda) queryPedidos = queryPedidos.or(`cliente_nombre.ilike.%${busqueda}%,cliente_telefono.ilike.%${busqueda}%`);
 
-        const promesas = [queryPedidos];
-        if (!opciones.omitirMetricas) promesas.push(obtenerMetricasPedidosPeriodo(rango));
-        const [resultadoPedidos, resultadoMetricas] = await Promise.all(promesas);
+        const [resultadoPedidos, resultadoMetricas] = await Promise.all([
+          queryPedidos, obtenerMetricasPedidosPeriodo(rango)
+        ]);
         if (revision !== revisionCargaPedidos) return true;
         if (resultadoPedidos.error) throw resultadoPedidos.error;
 
         renderTablaPedidos(resultadoPedidos.data);
         actualizarPaginacion(resultadoPedidos.count || 0);
-        if (resultadoMetricas) calcularMetricas(resultadoMetricas, fecha ? 'fecha' : periodo, fecha);
+        calcularMetricas(resultadoMetricas, periodo, fecha);
         if (opciones.mostrarExito) {
           mostrarAviso(document.getElementById('pedidos-refresh-status'), 'Pedidos y resumen actualizados.', 'exito', 4000);
         }
@@ -667,20 +656,19 @@
       }
     }
 
-    document.getElementById('pedidos-periodo-controles').addEventListener('click', event => {
-      const botonPeriodo = event.target.closest('[data-periodo-pedidos]');
-      if (!botonPeriodo) return;
-      if (botonPeriodo.dataset.periodoPedidos === periodoPedidosActual && !document.getElementById('input-fecha-pedido').value) return;
-      periodoPedidosActual = botonPeriodo.dataset.periodoPedidos;
-      document.getElementById('input-fecha-pedido').value = '';
-      actualizarBotonesPeriodoPedidos();
+    document.getElementById('pedidos-periodo').addEventListener('change', event => {
+      const usarFecha = event.target.value === 'fecha';
+      const inputFecha = document.getElementById('input-fecha-pedido');
+      document.getElementById('pedidos-fecha-control').classList.toggle('hidden', !usarFecha);
+      if (usarFecha && !inputFecha.value) {
+        inputFecha.value = obtenerRangoPeriodoPedidos('hoy').desde.slice(0, 10);
+      }
       paginaActual = 0;
       cargarPedidos();
     });
 
     document.getElementById('input-fecha-pedido').addEventListener('change', event => {
-      periodoPedidosActual = event.target.value ? 'fecha' : 'hoy';
-      actualizarBotonesPeriodoPedidos();
+      if (!event.target.value) event.target.value = obtenerRangoPeriodoPedidos('hoy').desde.slice(0, 10);
       paginaActual = 0;
       cargarPedidos();
     });
@@ -774,16 +762,15 @@
       let total = 0;
 
       while (true) {
-        let consulta = supabaseClient
+        const { data, error } = await supabaseClient
           .from('pedidos')
           .select('total')
           .eq('restaurante_id', RESTAURANTE_ID)
+          .gte('created_at', rango.desde)
+          .lt('created_at', rango.hasta)
           .order('created_at', { ascending: true })
           .order('id', { ascending: true })
           .range(desde, desde + tamanoPagina - 1);
-        if (rango) consulta = consulta.gte('created_at', rango.desde).lt('created_at', rango.hasta);
-
-        const { data, error } = await consulta;
         if (error) throw error;
         const pedidos = data || [];
         cantidad += pedidos.length;
@@ -792,30 +779,7 @@
         desde += tamanoPagina;
       }
 
-      const metricas = { cantidad, total };
-      if (!rango) metricasTodoCache = metricas;
-      return metricas;
-    }
-
-    function sumarPedidoAlHistorialEnVivo(pedido) {
-      if (!metricasTodoCache || !pedido?.id || pedidosNuevosProcesados.has(String(pedido.id))) return false;
-      const id = String(pedido.id);
-      pedidosNuevosProcesados.add(id);
-      if (pedidosNuevosProcesados.size > 1000) pedidosNuevosProcesados.delete(pedidosNuevosProcesados.values().next().value);
-      metricasTodoCache.cantidad += 1;
-      metricasTodoCache.total += Number(pedido.total) || 0;
-      calcularMetricas(metricasTodoCache, 'todo');
-      return true;
-    }
-
-    function actualizarBotonesPeriodoPedidos() {
-      document.querySelectorAll('[data-periodo-pedidos]').forEach(boton => {
-        const activo = boton.dataset.periodoPedidos === periodoPedidosActual;
-        boton.setAttribute('aria-pressed', String(activo));
-        boton.className = activo
-          ? 'rounded-lg bg-red-600 px-1.5 py-2 text-[11px] font-semibold leading-tight text-white'
-          : 'rounded-lg px-1.5 py-2 text-[11px] font-medium leading-tight text-slate-300 hover:bg-slate-800';
-      });
+      return { cantidad, total };
     }
 
     function calcularMetricas(metricas, periodo, fecha = '') {
@@ -826,7 +790,7 @@
         const [anio, mes, dia] = fecha.split('-').map(Number);
         return new Date(anio, mes - 1, dia, 12).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
       })() : '';
-      const periodoTexto = fechaLegible ? `del ${fechaLegible}` : ({ hoy: 'de hoy', '7dias': 'de los últimos 7 días', mes: 'de este mes', todo: 'de todo el historial' }[periodo] || 'del período');
+      const periodoTexto = fechaLegible ? `del ${fechaLegible}` : ({ hoy: 'de hoy', '7dias': 'de los últimos 7 días', '30dias': 'de los últimos 30 días' }[periodo] || 'del período');
       document.getElementById('total-pedidos-count').innerText = cantidad.toLocaleString('es-CO');
       document.getElementById('total-ventas-sum').innerText = `$${totalPeriodo.toLocaleString('es-CO')}`;
       document.getElementById('total-pedidos-hoy').innerText = `$${promedio.toLocaleString('es-CO')}`;
@@ -1489,8 +1453,7 @@
         canal
           .on('postgres_changes', { ...filtro, event: 'INSERT' }, payload => {
             if (String(payload.new.restaurante_id) !== String(RESTAURANTE_ID)) return;
-            const actualizadoDesdeCache = periodoPedidosActual === 'todo' && sumarPedidoAlHistorialEnVivo(payload.new);
-            cargarPedidos({ omitirMetricas: actualizadoDesdeCache });
+            cargarPedidos();
             imprimirTicketAutomatico(payload.new);
           })
           .on('postgres_changes', { ...filtro, event: 'UPDATE' }, payload => {
