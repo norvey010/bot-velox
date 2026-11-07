@@ -365,6 +365,10 @@
       <div class="sm:col-span-2">
         <label for="prod-imagen-file">Imagen del producto (opcional)</label>
         <input type="file" id="prod-imagen-file" accept="image/*" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
+        <figure id="producto-imagen-preview" class="mt-3" hidden>
+          <img id="producto-imagen-miniatura" alt="Vista previa de la foto seleccionada" width="96" height="96" class="h-24 w-24 rounded-lg bg-slate-900 object-contain">
+          <figcaption id="producto-imagen-estado" class="mt-1 text-xs text-slate-300" aria-live="polite">Foto seleccionada</figcaption>
+        </figure>
       </div>
       <div id="producto-edicion-acciones" class="hidden sm:col-span-2 flex flex-wrap gap-2">
         <button type="button" id="btn-foto-ia-editor" onclick="generarImagenDesdeEditor()" class="rounded-lg border border-slate-600 px-3 py-2 text-sm text-white">✨ Crear foto con IA</button>
@@ -1150,8 +1154,39 @@
       dialogo.showModal();
     }
 
+    let urlMiniaturaProducto = '';
+
+    function mostrarMiniaturaProducto(archivo) {
+      const vista = document.getElementById('producto-imagen-preview');
+      const imagen = document.getElementById('producto-imagen-miniatura');
+      const estado = document.getElementById('producto-imagen-estado');
+      imagen.removeAttribute('src');
+      if (urlMiniaturaProducto) URL.revokeObjectURL(urlMiniaturaProducto);
+      urlMiniaturaProducto = '';
+      vista.hidden = !archivo;
+      if (!archivo) return;
+
+      imagen.hidden = false;
+      estado.textContent = 'Foto seleccionada';
+      urlMiniaturaProducto = URL.createObjectURL(archivo);
+      imagen.src = urlMiniaturaProducto;
+    }
+
+    document.getElementById('prod-imagen-file').addEventListener('change', event => {
+      mostrarMiniaturaProducto(event.target.files[0]);
+    });
+    document.getElementById('producto-imagen-miniatura').addEventListener('error', event => {
+      if (!urlMiniaturaProducto) return;
+      event.currentTarget.hidden = true;
+      document.getElementById('producto-imagen-estado').textContent = 'No se pudo mostrar la vista previa. Puedes elegir otra foto.';
+    });
+    document.getElementById('editor-producto').addEventListener('close', event => {
+      if (!event.currentTarget.open) mostrarMiniaturaProducto();
+    });
+
     function limpiarFormProducto() {
       document.getElementById('form-producto').reset();
+      mostrarMiniaturaProducto();
       document.getElementById('prod-id').value = '';
       document.getElementById('producto-edicion-acciones').classList.add('hidden');
       document.getElementById('producto-form-status').classList.add('hidden');
