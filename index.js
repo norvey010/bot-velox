@@ -35,7 +35,7 @@ app.use(express.json({
 // migraciones, node_modules ni otros archivos del servidor.
 const archivosPublicos = new Set([
     '/index.html', '/login.html', '/dashboard.html', '/menu.html', '/ticket.html',
-    '/app.login.js', '/app.registro.js', '/velox-theme.css', '/app.menu-import.js'
+    '/app.login.js', '/app.registro.js', '/velox-theme.css', '/app.menu-import.js', '/app.menu-categorias.js'
 ]);
 app.get([...archivosPublicos], (req, res) => {
     res.sendFile(path.join(__dirname, req.path.slice(1)));

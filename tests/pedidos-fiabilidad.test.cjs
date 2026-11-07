@@ -57,10 +57,10 @@ function dashboard() {
   const html=read('dashboard.html');
   const script=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n').replace(/    inicializarDashboard\(\);/,'');
   const els=new Map(),timers=new Map(),channels=[]; let timerId=0; const events={}; const queries=[];
-  function el(id){ if(!els.has(id))els.set(id,{value:'',style:{},classList:{contains:()=>false,add(){},remove(){},toggle(){}},addEventListener(){},textContent:'',setAttribute(name,value){this[name]=value;},scrollIntoView(){},focus(){},reset(){}});return els.get(id); }
+  function el(id){ if(!els.has(id))els.set(id,{value:'',style:{},classList:{contains:()=>false,add(){},remove(){},toggle(){}},addEventListener(){},querySelector(){return null},querySelectorAll(){return []},textContent:'',setAttribute(name,value){this[name]=value;},scrollIntoView(){},focus(){},reset(){}});return els.get(id); }
   const client={auth:{getSession:async()=>({data:{session:{access_token:'test-session'}}})},realtime:{setAuth:async token=>events.token=token},removeChannel:async c=>events.removed=c,channel(name){const c={name,handlers:[],on(type,filter,fn){this.handlers.push({filter,fn});return this},subscribe(fn){this.notify=fn;return this}};channels.push(c);return c}};
   const context={console,URL,URLSearchParams,Map,Set,WeakMap,Date,navigator:{onLine:true},supabase:{createClient:()=>client},setTimeout:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout:id=>timers.delete(id),window:{location:{origin:'https://velox.test'},addEventListener:(n,fn)=>events[n]=fn},document:{hidden:false,addEventListener:(n,fn)=>events[n]=fn,getElementById:el}};
-  vm.createContext(context);vm.runInContext(script,context);vm.runInContext('cargarPedidos = async () => { consultasPrueba.push(1); return true; }; imprimirTicketAutomatico = p => impresionesPrueba.push(p.id);',Object.assign(context,{consultasPrueba:queries,impresionesPrueba:[]}));
+  vm.createContext(context);vm.runInContext(read('app.menu-categorias.js'),context);vm.runInContext(script,context);vm.runInContext('cargarPedidos = async () => { consultasPrueba.push(1); return true; }; imprimirTicketAutomatico = p => impresionesPrueba.push(p.id);',Object.assign(context,{consultasPrueba:queries,impresionesPrueba:[]}));
   return {context,els,el,timers,channels,events,queries,run:s=>vm.runInContext(s,context)};
 }
 
@@ -98,30 +98,58 @@ test('recorrido integrado: carta → servidor → pedido → panel y enlace What
   const whatsapp=new URL(context.window.location.href);assert.equal(whatsapp.hostname,'wa.me');assert(whatsapp.searchParams.get('text').includes('Referencia Velox:* pedido-1'));assert(whatsapp.searchParams.get('text').includes('30.000'));
 });
 
-test('un menú de 200 productos solo muestra seis tarjetas y navega sin perder productos',()=>{
-  const d=dashboard();d.el('productos-editor-resumen').scrollIntoView=()=>{};
-  d.run('productosEditor=Array.from({length:200},(_,i)=>({id:String(i+1),nombre:`Producto ${i+1}`,precio:10000,categoria:i%2?"Bebidas":"Comidas",disponible:true}));actualizarCategoriasProductos();renderizarProductos();');
-  assert.equal((d.el('productos-body').innerHTML.match(/<article /g)||[]).length,6);assert.equal(d.el('productos-editor-resumen').textContent,'Mostrando 1–6 de 200 productos');assert(d.el('productos-editor-anterior').disabled);assert(!d.el('productos-editor-paginacion').hidden);
-  const vistos=new Set();for(let pagina=0;pagina<34;pagina++){for(const m of d.el('productos-body').innerHTML.matchAll(/<h3[^>]*>Producto (\d+)<\/h3>/g))vistos.add(m[1]);if(pagina<33)d.context.cambiarPaginaProductos(1);}
-  assert.equal(vistos.size,200);assert.equal((d.el('productos-body').innerHTML.match(/<article /g)||[]).length,2);assert(d.el('productos-editor-siguiente').disabled);
-});
-test('buscar y filtrar consulta todos los productos y vuelve a la primera página',()=>{
-  const d=dashboard();d.run('productosEditor=Array.from({length:200},(_,i)=>({id:String(i+1),nombre:i===199?"Pizza Jamón":"Producto "+(i+1),precio:10000,categoria:i%2?"Bebidas":"Comidas"}));paginaProductos=20');
-  d.el('buscar-producto').value='jamon';d.context.renderizarProductos(true);assert(d.el('productos-body').innerHTML.includes('Pizza Jamón'));assert.equal(d.el('productos-editor-resumen').textContent,'Mostrando 1–1 de 1 productos encontrados');assert(d.el('productos-editor-paginacion').hidden);
-  d.el('buscar-producto').value='';d.el('categoria-producto').value='Comidas';d.context.renderizarProductos(true);assert(d.el('productos-editor-resumen').textContent.includes('de 100 productos'));assert(!d.el('productos-body').innerHTML.includes('Pizza Jamón'));
-});
-test('eliminar el último producto de una página ajusta la página y muestra el vacío correctamente',()=>{
-  const d=dashboard();d.run('productosEditor=Array.from({length:7},(_,i)=>({id:String(i),nombre:"Producto "+i,precio:1000}));paginaProductos=1;renderizarProductos();productosEditor.pop();renderizarProductos();');
-  assert(d.el('productos-editor-resumen').textContent.includes('1–6 de 6'));assert(d.el('productos-editor-paginacion').hidden);
-  d.run('productosEditor=[];renderizarProductos();');assert(d.el('productos-body').innerHTML.includes('Tu menú está vacío'));assert(d.el('productos-editor-paginacion').hidden);
+test('el editor conserva el orden de la carta y permite recorrer una categoría larga',()=>{
+  const d=dashboard();
+  d.run(`productosEditor=[
+    {id:'1',nombre:'Pizza grande',categoria:'Pizza',precio:25000},
+    {id:'2',nombre:'Limonada',categoria:'Bebidas',precio:5000},
+    {id:'3',nombre:'Combo pizza',categoria:'Combos',precio:18000,disponible:false},
+    ...Array.from({length:100},(_,i)=>({id:String(i+4),nombre:'Producto '+i,categoria:'Pizza',precio:30000+i}))
+  ];actualizarCategoriasProductos();renderizarProductos();`);
+  const barra=d.el('productos-editor-categorias').innerHTML;
+  assert(barra.indexOf('Pizzas') < barra.indexOf('Bebidas'));
+  const lista=d.el('productos-body');
+  assert(lista.innerHTML.indexOf('Combo pizza') < lista.innerHTML.indexOf('Pizza grande'));
+  assert(lista.innerHTML.includes('Agotado · Activar'));
+  assert(!lista.innerHTML.includes('Limonada'));
+  assert.equal((lista.innerHTML.match(/<article /g)||[]).length,6);
+  d.context.mostrarMasProductos();
+  assert.equal((lista.innerHTML.match(/<article /g)||[]).length,12);
+  d.context.seleccionarCategoriaProducto('Bebidas');
+  assert(lista.innerHTML.includes('Limonada'));
+  assert(d.el('productos-editor-mas').hidden);
 });
 
-test('el buscador único alterna categorías y texto sin dejar filtros invisibles',()=>{
-  const d=dashboard();d.run('productosEditor=[{id:"1",nombre:"Clásica",categoria:"Hamburguesas",precio:10000},{id:"2",nombre:"Doble",categoria:"Hamburguesas",precio:15000},{id:"3",nombre:"Limonada",categoria:"Bebidas",precio:5000}];actualizarCategoriasProductos();');
-  assert(d.el('categoria-producto').innerHTML.includes('Hamburguesas'));assert(d.el('categoria-producto').innerHTML.includes('Bebidas'));
-  d.context.seleccionarCategoriaProducto('Bebidas');assert.equal(d.el('buscar-producto').value,'Bebidas');assert(!d.el('productos-body').innerHTML.includes('Clásica'));assert(d.el('productos-body').innerHTML.includes('Limonada'));
-  d.el('buscar-producto').value='hamburquega';d.context.buscarProductoMenu();assert.equal(d.el('categoria-producto').value,'');assert(d.el('productos-body').innerHTML.includes('Clásica'));assert(d.el('productos-body').innerHTML.includes('Doble'));assert(!d.el('productos-body').innerHTML.includes('Limonada'));
-  d.context.seleccionarCategoriaProducto('');assert.equal(d.el('buscar-producto').value,'');assert.equal((d.el('productos-body').innerHTML.match(/<article /g)||[]).length,3);
+test('la búsqueda sigue cubriendo todas las categorías y vuelve a la selección al limpiarla',()=>{
+  const d=dashboard();
+  d.run(`productosEditor=[
+    {id:'1',nombre:'Limonada',categoria:'Bebidas',precio:5000},
+    {id:'2',nombre:'Clásica',categoria:'Hamburguesas',precio:10000},
+    {id:'3',nombre:'Doble',categoria:'Hamburguesas',precio:15000}
+  ];actualizarCategoriasProductos();renderizarProductos();`);
+  const lista=d.el('productos-body');
+  assert(lista.innerHTML.includes('Limonada'));
+  d.el('buscar-producto').value='hamburquega';
+  d.context.buscarProductoMenu();
+  assert(lista.innerHTML.includes('Clásica'));
+  assert(lista.innerHTML.includes('Doble'));
+  assert(!lista.innerHTML.includes('Limonada'));
+  d.el('buscar-producto').value='';
+  d.context.buscarProductoMenu();
+  assert(lista.innerHTML.includes('Limonada'));
+});
+
+test('si desaparece la categoría seleccionada, muestra la primera que queda',()=>{
+  const d=dashboard();
+  d.run(`productosEditor=[
+    {id:'1',nombre:'Limonada',categoria:'Bebidas',precio:5000},
+    {id:'2',nombre:'Clásica',categoria:'Hamburguesas',precio:10000}
+  ];actualizarCategoriasProductos();seleccionarCategoriaProducto('Hamburguesas');
+  productosEditor.pop();actualizarCategoriasProductos();renderizarProductos();`);
+  assert(d.el('productos-body').innerHTML.includes('Limonada'));
+  d.run('productosEditor=[];actualizarCategoriasProductos();renderizarProductos();');
+  assert(d.el('productos-body').innerHTML.includes('Tu menú está vacío'));
+  assert(d.el('productos-editor-categorias').hidden);
 });
 
 function consultaProductos(d, resolver) {
