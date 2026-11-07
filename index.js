@@ -1275,15 +1275,20 @@ function esNombreTamanoPizzaImagen(nombre) {
         || /^pizza\s+(?:de\s+)?\d+(?:[.,]\d+)?\s*(?:cm|pulgadas?)$/.test(normalizado);
 }
 
-app.post('/api/productos/:id/generar-imagen', async (req, res) => {
+app.post(['/api/productos/generar-imagen-borrador', '/api/productos/:id/generar-imagen'], async (req, res) => {
     let clienteUsuario;
     let rutaImagenSubida;
     try {
         const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
         const restauranteId = String(req.body?.restaurante_id || '').trim();
         const productoId = String(req.params.id || '').trim();
-        if (!token || !restauranteId || !productoId) {
+        const esBorrador = req.params.id === undefined;
+        if (!token || !restauranteId || (!esBorrador && !productoId)) {
             return res.status(400).json({ error: 'Falta la sesión o la información del producto.' });
+        }
+        const borrador = esBorrador ? req.body?.producto : null;
+        if (esBorrador && (typeof borrador?.nombre !== 'string' || !borrador.nombre.trim())) {
+            return res.status(400).json({ error: 'Escribe el nombre del producto para crear su foto.' });
         }
         if (!process.env.OPENAI_API_KEY) {
             return res.status(503).json({ error: 'La generación de imágenes no está configurada en el servidor.' });
@@ -1314,16 +1319,20 @@ app.post('/api/productos/:id/generar-imagen', async (req, res) => {
         if (errorRestaurante) throw errorRestaurante;
         if (!restaurante) return res.status(403).json({ error: 'No tienes permiso para modificar este restaurante.' });
 
-        const { data: producto, error: errorProducto } = await clienteUsuario
-            .from('productos')
-            .select('id, restaurante_id, nombre, descripcion, categoria, imagen_url')
-            .eq('id', productoId)
-            .eq('restaurante_id', restaurante.id)
-            .maybeSingle();
-        if (errorProducto) throw errorProducto;
-        if (!producto) return res.status(404).json({ error: 'No encontramos ese producto en tu menú.' });
+        let producto = borrador;
+        if (!esBorrador) {
+            const { data, error } = await clienteUsuario
+                .from('productos')
+                .select('id, restaurante_id, nombre, descripcion, categoria, imagen_url')
+                .eq('id', productoId)
+                .eq('restaurante_id', restaurante.id)
+                .maybeSingle();
+            if (error) throw error;
+            if (!data) return res.status(404).json({ error: 'No encontramos ese producto en tu menú.' });
+            producto = data;
+        }
 
-        const esPizzaPorTamano = ['pizza', 'pizzas'].includes(normalizarTextoImagen(producto.categoria))
+        const esPizzaPorTamano = !esBorrador && ['pizza', 'pizzas'].includes(normalizarTextoImagen(producto.categoria))
             && esNombreTamanoPizzaImagen(producto.nombre);
         let productosRelacionados = [producto];
         if (esPizzaPorTamano) {
@@ -1367,7 +1376,7 @@ app.post('/api/productos/:id/generar-imagen', async (req, res) => {
         } : null;
         console.info('Uso OpenAI generar-imagen-producto:', JSON.stringify({
             restaurante_id: restaurante.id,
-            producto_id: producto.id,
+            producto_id: esBorrador ? null : producto.id,
             modelo: respuestaImagen.model || process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-flare',
             calidad: respuestaImagen.quality || 'low',
             tamano: respuestaImagen.size || '1024x1024',
@@ -1377,6 +1386,10 @@ app.post('/api/productos/:id/generar-imagen', async (req, res) => {
         if (!imagenBase64) throw new Error('OpenAI no devolvió una imagen.');
 
         const archivoImagen = Buffer.from(imagenBase64, 'base64');
+        if (esBorrador) {
+            return res.set('Cache-Control', 'no-store').type('image/webp').send(archivoImagen);
+        }
+
         rutaImagenSubida = `restaurante_${restaurante.id}/ia_${String(producto.id).replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}.webp`;
         const { error: errorSubida } = await clienteUsuario.storage
             .from('productos')
