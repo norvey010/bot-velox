@@ -992,11 +992,24 @@
     }
     function generarImagenDesdeEditor() {
       const id = document.getElementById('prod-id').value;
-      if (!id) {
-        mostrarAviso(document.getElementById('producto-form-status'), 'Guarda el producto y vuelve a abrirlo en Editar para crear su foto con IA.', 'info');
+      if (id) {
+        generarImagenIA(id, Boolean(imagenGuardadaProducto));
         return;
       }
-      generarImagenIA(id, Boolean(imagenGuardadaProducto));
+
+      const campoNombre = document.getElementById('prod-nombre');
+      const nombre = campoNombre.value.trim();
+      if (!nombre) {
+        mostrarAviso(document.getElementById('producto-form-status'), 'Escribe el nombre del producto para crear su foto.', 'info');
+        campoNombre.focus();
+        return;
+      }
+
+      generarImagenIA('', false, {
+        nombre,
+        categoria: document.getElementById('prod-categoria').value.trim(),
+        descripcion: document.getElementById('prod-descripcion').value.trim()
+      });
     }
     function eliminarProductoDesdeEditor() {
       const id = document.getElementById('prod-id').value;
@@ -1027,8 +1040,8 @@
         const precioNumerico = Number(document.getElementById('prod-precio').value.replace(/\D/g, ''));
         if (!Number.isSafeInteger(precioNumerico) || precioNumerico <= 0) throw new Error('Ingresa un precio válido mayor que $0.');
 
-        if (fileInput && fileInput.files.length > 0) {
-          const file = fileInput.files[0];
+        const file = fileInput.files[0] || fotoBorradorIA;
+        if (file) {
           const fileExt = file.name.split('.').pop();
           const fileName = `${Date.now()}.${fileExt}`;
           const filePath = `restaurante_${RESTAURANTE_ID}/${fileName}`;
@@ -1074,35 +1087,52 @@
 
     let generandoImagenIA = false;
 
-    async function generarImagenIA(productoId, tieneImagen) {
-      if (!RESTAURANTE_ID || generandoImagenIA) return;
+    async function generarImagenIA(productoId, tieneImagen, borrador = null) {
+      if (!RESTAURANTE_ID || guardandoProducto || generandoImagenIA) return;
       const accion = tieneImagen ? 'reemplazará la imagen actual' : 'creará una imagen nueva';
-      const continuar = confirm(`La IA ${accion} a partir del nombre y la descripción del producto. La imagen será ilustrativa, se guardará en tu menú y cada generación tiene un costo en tu cuenta de OpenAI. Si es un tamaño de pizza, la imagen se aplicará a todos los tamaños. ¿Deseas continuar?`);
+      const continuar = borrador
+        ? confirm('La IA creará una foto ilustrativa con el nombre, la categoría y la descripción. La generación tiene un costo aunque decidas no guardarla. ¿Deseas continuar?')
+        : confirm(`La IA ${accion} a partir del nombre y la descripción del producto. La imagen será ilustrativa, se guardará en tu menú y cada generación tiene un costo en tu cuenta de OpenAI. Si es un tamaño de pizza, la imagen se aplicará a todos los tamaños. ¿Deseas continuar?`);
       if (!continuar) return;
 
       generandoImagenIA = true;
+      const fileInput = document.getElementById('prod-imagen-file');
+      const estado = document.getElementById('producto-form-status');
+      fileInput.disabled = true;
+      estado.classList.add('hidden');
       const botones = Array.from(document.querySelectorAll('#productos-body button, #form-producto button'));
-      const textoOriginal = botones.map(boton => boton.textContent);
+      const estadosBotones = botones.map(boton => boton.disabled);
       botones.forEach(boton => { boton.disabled = true; });
       const botonActivo = document.getElementById('btn-foto-ia-editor');
-      if (botonActivo) botonActivo.textContent = 'Generando imagen…';
+      const textoOriginal = botonActivo.textContent;
+      botonActivo.textContent = 'Generando imagen…';
 
       try {
         const { data: { session }, error: errorSesion } = await supabaseClient.auth.getSession();
         if (errorSesion || !session?.access_token) {
-          alert('Tu sesión venció. Inicia sesión de nuevo para crear imágenes.');
-          return;
+          throw new Error('Tu sesión venció. Inicia sesión de nuevo para crear imágenes.');
         }
 
-        const respuesta = await fetch(`/api/productos/${encodeURIComponent(productoId)}/generar-imagen`, {
+        const ruta = borrador ? '/api/productos/generar-imagen-borrador' : `/api/productos/${encodeURIComponent(productoId)}/generar-imagen`;
+        const datos = { restaurante_id: RESTAURANTE_ID };
+        if (borrador) datos.producto = borrador;
+        const respuesta = await fetch(ruta, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`
           },
-          body: JSON.stringify({ restaurante_id: RESTAURANTE_ID })
+          body: JSON.stringify(datos)
         });
-        const resultado = await respuesta.json();
+        if (borrador && respuesta.ok && respuesta.headers.get('content-type')?.startsWith('image/webp')) {
+          const imagen = await respuesta.blob();
+          if (!imagen.size) throw new Error('La IA no devolvió una foto. Inténtalo de nuevo.');
+          fotoBorradorIA = new File([imagen], 'foto-ia.webp', { type: 'image/webp' });
+          fileInput.value = '';
+          mostrarMiniaturaProducto(fotoBorradorIA);
+          return;
+        }
+        const resultado = await respuesta.json().catch(() => ({}));
         if (!respuesta.ok || !resultado.success) throw new Error(resultado.error || 'No se pudo crear la imagen.');
         if (resultado.imagen_url) {
           imagenGuardadaProducto = resultado.imagen_url;
@@ -1116,13 +1146,12 @@
         await cargarProductos();
       } catch (error) {
         console.error('Error al crear imagen de producto:', error);
-        alert(error.message || 'No se pudo crear la imagen.');
+        mostrarAviso(estado, error.message || 'No se pudo crear la imagen.', 'error');
       } finally {
         generandoImagenIA = false;
-        botones.forEach((boton, index) => {
-          boton.disabled = false;
-          if (textoOriginal[index] && boton.isConnected) boton.textContent = textoOriginal[index];
-        });
+        fileInput.disabled = false;
+        botones.forEach((boton, index) => { boton.disabled = estadosBotones[index]; });
+        botonActivo.textContent = textoOriginal;
       }
     }
 
@@ -1169,6 +1198,7 @@
       dialogo.showModal();
     }
 
+    let fotoBorradorIA = null;
     let imagenGuardadaProducto = '';
     let urlMiniaturaProducto = '';
 
@@ -1186,12 +1216,14 @@
       if (!url) return;
 
       imagen.hidden = false;
-      estado.textContent = archivo ? 'Foto seleccionada' : 'Foto actual';
+      estado.textContent = archivo ? (archivo === fotoBorradorIA ? 'Foto con IA · se añade al guardar' : 'Foto seleccionada') : 'Foto actual';
       imagen.src = url;
     }
 
     document.getElementById('prod-imagen-file').addEventListener('change', event => {
-      mostrarMiniaturaProducto(event.target.files[0]);
+      const archivo = event.target.files[0];
+      if (archivo) fotoBorradorIA = null;
+      mostrarMiniaturaProducto(archivo || fotoBorradorIA);
     });
     document.getElementById('producto-imagen-miniatura').addEventListener('error', event => {
       if (!event.currentTarget.hasAttribute('src')) return;
@@ -1203,6 +1235,7 @@
     });
 
     function limpiarMiniaturaProducto() {
+      fotoBorradorIA = null;
       imagenGuardadaProducto = '';
       mostrarMiniaturaProducto();
     }
