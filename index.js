@@ -767,15 +767,17 @@ app.get('/api/menu/:slug', async (req, res) => {
 
         const { data: productos, error: errorProductos } = await supabaseAdmin
             .from('productos')
-            .select('id, nombre, descripcion, precio, categoria, imagen_url, opciones')
+            .select('id, nombre, descripcion, precio, categoria, imagen_url, opciones, disponible')
             .eq('restaurante_id', restaurante.id)
-            .eq('disponible', true)
             .order('id', { ascending: true });
         if (errorProductos) throw errorProductos;
 
         const disponibilidad = evaluarDisponibilidadMenu(restaurante);
         res.set('Cache-Control', 'public, max-age=5, stale-while-revalidate=10');
-        return res.json({ restaurante: { ...restaurante, menu_disponible: disponibilidad.disponible, mensaje_cierre: disponibilidad.motivo }, productos: productos || [] });
+        return res.json({
+            restaurante: { ...restaurante, menu_disponible: disponibilidad.disponible, mensaje_cierre: disponibilidad.motivo },
+            productos: (productos || []).map(producto => ({ ...producto, disponible: producto.disponible === true }))
+        });
     } catch (error) {
         console.error('No se pudo cargar la carta pública:', error.message || 'Error desconocido');
         return res.status(500).json({ error: 'No se pudo cargar el menú. Inténtalo de nuevo.' });
