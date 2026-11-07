@@ -143,6 +143,6 @@ test('timeout de carga termina en Reintentar y una respuesta tardía no pisa el 
 test('dos aperturas durante la misma carga comparten una sola consulta',async()=>{
   const d=dashboard();let consultas=0,resolver;consultaProductos(d,()=>{consultas++;return new Promise(resolve=>resolver=resolve)});const primera=d.context.cargarProductos(),segunda=d.context.cargarProductos();assert.equal(consultas,1);resolver({data:[],error:null});await Promise.all([primera,segunda]);
 });
-test('formulario tiene encabezado de datos y una sola acción Agregar producto',()=>{
-  const html=read('dashboard.html');assert.equal((html.match(/onclick="nuevoProducto\(\)"/g)||[]).length,1);assert(!html.includes('id="details-producto-form"'));assert(html.includes('<section id="editor-producto" hidden'));assert(html.includes('id="producto-form-summary-text">Datos del producto</span>'));assert(html.includes("if (!document.getElementById('sec-menu-ia').classList.contains('hidden')) cargarProductos();"));
+test('formulario se abre en una ventana y conserva una sola acción Agregar producto',()=>{
+  const html=read('dashboard.html');assert.equal((html.match(/onclick="nuevoProducto\(\)"/g)||[]).length,1);assert(!html.includes('id="details-producto-form"'));assert(html.includes('<dialog id="editor-producto"'));assert(html.includes('id="producto-form-summary-text" class="text-lg font-bold text-white">Agregar producto</h2>'));assert(html.includes("if (!document.getElementById('sec-menu-ia').classList.contains('hidden')) cargarProductos();"));
 });
