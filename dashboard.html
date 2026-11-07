@@ -92,9 +92,17 @@
     .carta-miniatura iframe { width: 390px; height: 532px; border: 0; transform: scale(.5641); transform-origin: top left; pointer-events: none; }
     .carta-miniatura:focus-visible { outline: 3px solid #f87171; outline-offset: 4px; }
     .carta-miniatura span { position: absolute; inset: auto 0 0; padding: 10px; background: #101216ee; color: #fff; font-size: 12px; font-weight: 600; }
-    #categoria-producto option { color: #f1f5f9; background: #14171d; }
-    #categoria-producto:focus-visible { outline: 2px solid #f87171; outline-offset: -3px; }
-    #productos-editor-paginacion[hidden] { display: none; }
+    #productos-editor-categorias[hidden], #productos-editor-mas[hidden] { display: none; }
+    #productos-editor-categorias button {
+      background: var(--velox-inset);
+      border-color: var(--velox-border);
+    }
+    #productos-editor-categorias button:hover { border-color: var(--velox-focus); }
+    #productos-editor-categorias [aria-pressed="true"] {
+      background: var(--velox-primary);
+      border-color: var(--velox-primary);
+      color: white;
+    }
     #carta-ampliada { width: min(1200px, 96vw); max-width: 96vw; height: 94dvh; max-height: 94dvh; padding: 0; border: 1px solid var(--velox-border); border-radius: 14px; background: var(--velox-page); color: #fff; }
     #carta-ampliada::backdrop { background: rgb(0 0 0 / 75%); }
     #carta-ampliada[open] { display: flex; flex-direction: column; }
@@ -254,24 +262,14 @@
               <button type="button" onclick="nuevoProducto()" aria-haspopup="dialog" class="min-h-11 rounded-lg border border-slate-700 bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white hover:border-red-400"><span aria-hidden="true" class="mr-1 text-red-400">＋</span>Agregar producto</button>
             </div>
             <label for="buscar-producto" class="sr-only">Buscar producto</label>
-            <div class="flex overflow-hidden rounded-lg border border-slate-700 bg-slate-900 focus-within:border-red-400">
-              <input id="buscar-producto" type="search" oninput="buscarProductoMenu()" placeholder="Buscar producto" aria-describedby="buscar-producto-ayuda" class="min-w-0 flex-1 bg-transparent p-3 text-white outline-none">
-              <div class="relative w-12 shrink-0 border-l border-slate-700">
-                <select id="categoria-producto" onchange="seleccionarCategoriaProducto(this.value)" aria-label="Mostrar categorías del menú" title="Categorías del menú" class="h-full w-full cursor-pointer appearance-none bg-transparent text-transparent outline-none"><option value="">Todos los productos</option></select>
-                <span aria-hidden="true" class="pointer-events-none absolute inset-0 flex items-center justify-center text-lg text-slate-200">⌄</span>
-              </div>
-            </div>
-            <p id="buscar-producto-ayuda" class="sr-only">Escribe un producto o toca la flecha para elegir una categoría.</p>
+            <input id="buscar-producto" type="search" oninput="buscarProductoMenu()" placeholder="Buscar producto" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-white focus:border-red-400">
+            <nav id="productos-editor-categorias" aria-label="Categorías del menú" class="relative flex w-full gap-2 overflow-x-auto whitespace-nowrap p-1" hidden></nav>
             <p id="productos-editor-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
             <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
             <p id="producto-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
             <button id="reintentar-productos" type="button" onclick="cargarProductos()" hidden class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-white">Reintentar</button>
-            <div id="productos-body" class="grid grid-cols-1 gap-2 lg:grid-cols-2"><p class="text-sm text-slate-400">Tus productos aparecerán aquí.</p></div>
-            <nav id="productos-editor-paginacion" class="flex flex-wrap items-center justify-between gap-2" aria-label="Páginas de productos" hidden>
-              <button type="button" id="productos-editor-anterior" onclick="cambiarPaginaProductos(-1)" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm text-white disabled:opacity-40">‹ Anterior</button>
-              <span id="productos-editor-pagina" class="text-xs text-slate-300"></span>
-              <button type="button" id="productos-editor-siguiente" onclick="cambiarPaginaProductos(1)" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm text-white disabled:opacity-40">Siguiente ›</button>
-            </nav>
+            <div id="productos-body" class="grid touch-pan-y grid-cols-1 gap-2 lg:grid-cols-2"><p class="text-sm text-slate-400">Tus productos aparecerán aquí.</p></div>
+            <button type="button" id="productos-editor-mas" onclick="mostrarMasProductos()" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm text-white" hidden>Mostrar más</button>
 
           </div>
         </details>
@@ -410,6 +408,7 @@
     <iframe id="carta-ampliada-frame" title="Carta del restaurante en tamaño completo"></iframe>
   </dialog>
 
+  <script src="/app.menu-categorias.js"></script>
   <script>
     let RESTAURANTE_ID = null;
     let ANCHO_PAPEL_IMPRESORA = 80;
@@ -842,7 +841,7 @@
       document.getElementById('reintentar-productos').hidden = true;
       if (!productosEditor.length) {
         contenedor.innerHTML = '<p class="text-sm text-slate-400" role="status">Cargando productos…</p>';
-        document.getElementById('productos-editor-paginacion').hidden = true;
+        document.getElementById('productos-editor-mas').hidden = true;
       }
       promesaCargaProductos = (async () => {
         let temporizador;
@@ -883,29 +882,61 @@
     }
 
     let productosEditor = [];
-    let paginaProductos = 0;
-    const PRODUCTOS_POR_PAGINA = 6;
+    let productosPorCategoriaEditor = new Map();
+    let categoriaEditorActiva = '';
+    const LOTE_PRODUCTOS_EDITOR = 6;
+    let limiteProductosEditor = LOTE_PRODUCTOS_EDITOR;
 
     function actualizarCategoriasProductos() {
-      const selector = document.getElementById('categoria-producto');
-      const seleccion = selector.value;
-      const categorias = [...new Set(productosEditor.map(p => String(p.categoria || 'General')))].sort((a, b) => a.localeCompare(b, 'es'));
-      selector.innerHTML = '<option value="">Todos los productos</option>' + categorias.map(c => `<option value="${escaparHtmlUI(c)}">${escaparHtmlUI(c)}</option>`).join('');
-      selector.value = categorias.includes(seleccion) ? seleccion : '';
-      if (seleccion && !selector.value) document.getElementById('buscar-producto').value = '';
+      const grupos = new Map();
+      for (const producto of productosEditor) {
+        const categoria = resolverCategoriaCombo(producto);
+        if (!grupos.has(categoria)) grupos.set(categoria, []);
+        grupos.get(categoria).push(producto);
+      }
+      for (const productos of grupos.values()) productos.sort(compararPreciosMenu);
+      productosPorCategoriaEditor = grupos;
+
+      const categorias = [...grupos.keys()];
+      if (!grupos.has(categoriaEditorActiva)) {
+        categoriaEditorActiva = categorias[0] || '';
+        limiteProductosEditor = LOTE_PRODUCTOS_EDITOR;
+      }
+
+      const barra = document.getElementById('productos-editor-categorias');
+      const posicion = barra.scrollLeft;
+      barra.innerHTML = categorias.map(categoria => `<button type="button" data-categoria-editor="${escaparHtmlUI(categoria)}" aria-pressed="false" class="min-h-11 shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold text-slate-200">${escaparHtmlUI(categoria)}</button>`).join('');
+      barra.scrollLeft = posicion;
+      barra.hidden = !categorias.length;
     }
 
     function buscarProductoMenu() {
-      // Escribir reemplaza la categoría anterior: busca siempre en toda la carta.
-      document.getElementById('categoria-producto').value = '';
-      renderizarProductos(true);
+      limiteProductosEditor = LOTE_PRODUCTOS_EDITOR;
+      renderizarProductos();
     }
 
     function seleccionarCategoriaProducto(categoria) {
-      document.getElementById('categoria-producto').value = categoria;
-      document.getElementById('buscar-producto').value = categoria;
-      renderizarProductos(true);
+      if (!productosPorCategoriaEditor.has(categoria)) return;
+      categoriaEditorActiva = categoria;
+      document.getElementById('buscar-producto').value = '';
+      buscarProductoMenu();
+
+      const barra = document.getElementById('productos-editor-categorias');
+      const boton = barra.querySelector('[aria-pressed="true"]');
+      if (boton) barra.scrollTo({ left: boton.offsetLeft - (barra.clientWidth - boton.offsetWidth) / 2 });
     }
+
+    document.getElementById('productos-editor-categorias').addEventListener('click', event => {
+      const boton = event.target.closest('[data-categoria-editor]');
+      if (boton) seleccionarCategoriaProducto(boton.dataset.categoriaEditor);
+    });
+
+    habilitarDeslizamientoCategorias(document.getElementById('productos-body'), direccion => {
+      if (document.getElementById('buscar-producto').value.trim()) return;
+      const categorias = [...productosPorCategoriaEditor.keys()];
+      const siguiente = categorias[categorias.indexOf(categoriaEditorActiva) + direccion];
+      if (siguiente) seleccionarCategoriaProducto(siguiente);
+    });
 
     function coincideBusquedaProducto(texto, busqueda) {
       if (!busqueda || texto.includes(busqueda)) return true;
@@ -926,25 +957,21 @@
       }));
     }
 
-    function renderizarProductos(reiniciarPagina = false) {
-      if (reiniciarPagina) paginaProductos = 0;
+    function renderizarProductos() {
       const contenedor = document.getElementById('productos-body');
-      const normalizar = valor => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
-      const busqueda = normalizar(document.getElementById('buscar-producto').value.trim());
-      const categoria = document.getElementById('categoria-producto').value;
-      const productos = productosEditor.filter(p => (!categoria || String(p.categoria || 'General') === categoria)
-        && (categoria || coincideBusquedaProducto(normalizar(`${p.nombre} ${p.categoria || 'General'}`), busqueda)));
-      const totalPaginas = Math.ceil(productos.length / PRODUCTOS_POR_PAGINA);
-      paginaProductos = Math.max(0, Math.min(paginaProductos, totalPaginas - 1));
-      const inicio = paginaProductos * PRODUCTOS_POR_PAGINA;
-      const visibles = productos.slice(inicio, inicio + PRODUCTOS_POR_PAGINA);
-      const paginacion = document.getElementById('productos-editor-paginacion');
-      paginacion.hidden = totalPaginas <= 1;
-      document.getElementById('productos-editor-anterior').disabled = paginaProductos === 0;
-      document.getElementById('productos-editor-siguiente').disabled = paginaProductos >= totalPaginas - 1;
-      document.getElementById('productos-editor-pagina').textContent = `Página ${paginaProductos + 1} de ${totalPaginas || 1}`;
+      const busqueda = normalizarTexto(document.getElementById('buscar-producto').value.trim());
+      const barra = document.getElementById('productos-editor-categorias');
+      barra.querySelectorAll('[data-categoria-editor]').forEach(boton => {
+        boton.setAttribute('aria-pressed', String(!busqueda && boton.dataset.categoriaEditor === categoriaEditorActiva));
+      });
+      const productos = busqueda
+        ? [...productosPorCategoriaEditor].flatMap(([categoria, lista]) => lista.filter(p =>
+            coincideBusquedaProducto(normalizarTexto(`${p.nombre} ${p.categoria || ''} ${categoria}`), busqueda)))
+        : (productosPorCategoriaEditor.get(categoriaEditorActiva) || []);
+      const visibles = productos.slice(0, limiteProductosEditor);
+      document.getElementById('productos-editor-mas').hidden = visibles.length >= productos.length;
       document.getElementById('productos-editor-resumen').textContent = productos.length
-        ? `Mostrando ${inicio + 1}–${inicio + visibles.length} de ${productos.length} productos${busqueda || categoria ? ' encontrados' : ''}`
+        ? `Mostrando ${visibles.length} de ${productos.length} productos`
         : '0 productos encontrados';
       if (!productos.length) {
         contenedor.innerHTML = `<p class="rounded-lg bg-slate-900 p-4 text-sm text-slate-400 lg:col-span-2">${productosEditor.length ? 'No encontramos ese producto. Prueba otro nombre o categoría.' : 'Tu menú está vacío. Toca “Agregar producto” o carga fotos de tu carta.'}</p>`;
@@ -957,7 +984,7 @@
         return `<article class="rounded-lg border border-slate-700 bg-slate-900 p-3">
           <div class="flex items-center gap-3">
             ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="${escaparHtmlUI(p.nombre)}" loading="lazy" width="56" height="56" class="h-14 w-14 shrink-0 rounded-lg object-cover">` : '<div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-center text-xs text-slate-400">Sin foto</div>'}
-            <div class="min-w-0 flex-1"><h3 class="break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre)}</h3><p class="text-sm font-bold text-slate-200">$${Number(p.precio).toLocaleString('es-CO')}</p><p class="truncate text-xs text-slate-400">${escaparHtmlUI(p.categoria || 'General')}</p></div>
+            <div class="min-w-0 flex-1"><h3 class="break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre)}</h3><p class="text-sm font-bold text-slate-200">$${Number(p.precio).toLocaleString('es-CO')}</p><p class="truncate text-xs text-slate-400">${escaparHtmlUI(resolverCategoriaCombo(p))}</p></div>
           </div>
           <div class="mt-2 flex flex-wrap gap-2"><button type="button" onclick="prepararEdicionProducto(${id})" aria-haspopup="dialog" class="min-h-11 flex-1 rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white">✏️ Editar</button>
           <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${p.disponible === false}, this)" aria-label="${p.disponible === false ? 'Volver a ofrecer' : 'Marcar agotado'}: ${escaparHtmlUI(p.nombre)}" aria-pressed="${p.disponible !== false}" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold ${p.disponible === false ? 'text-amber-300' : 'text-emerald-300'}">${p.disponible === false ? 'Agotado · Activar' : 'Disponible ✓'}</button></div>
@@ -965,10 +992,9 @@
       }).join('');
     }
 
-    function cambiarPaginaProductos(delta) {
-      paginaProductos += delta;
+    function mostrarMasProductos() {
+      limiteProductosEditor += LOTE_PRODUCTOS_EDITOR;
       renderizarProductos();
-      document.getElementById('productos-editor-resumen').scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     async function cambiarDisponibilidadProducto(id, disponible, boton) {
