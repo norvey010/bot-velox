@@ -1129,20 +1129,17 @@
           if (!imagen.size) throw new Error('La IA no devolvió una foto. Inténtalo de nuevo.');
           fotoBorradorIA = new File([imagen], 'foto-ia.webp', { type: 'image/webp' });
           fileInput.value = '';
-          mostrarMiniaturaProducto(fotoBorradorIA);
+          mostrarMiniaturaProducto(fotoBorradorIA, 'Foto con IA · se añade al guardar');
           return;
         }
         const resultado = await respuesta.json().catch(() => ({}));
-        if (!respuesta.ok || !resultado.success) throw new Error(resultado.error || 'No se pudo crear la imagen.');
-        if (resultado.imagen_url) {
-          imagenGuardadaProducto = resultado.imagen_url;
-          if (!urlMiniaturaProducto) mostrarMiniaturaProducto();
+        if (!respuesta.ok || !resultado.success || !resultado.imagen_url) {
+          throw new Error(resultado.error || 'No se pudo crear la imagen.');
         }
-        const uso = resultado.uso_tokens;
-        const detalleTokens = uso?.total_tokens != null
-          ? `\nTokens reportados por OpenAI: ${Number(uso.total_tokens).toLocaleString()} total (entrada: ${Number(uso.input_tokens || 0).toLocaleString()}, salida: ${Number(uso.output_tokens || 0).toLocaleString()}).`
-          : '\nOpenAI no devolvió el detalle de tokens para esta generación; el registro quedó en Railway.';
-        alert((resultado.mensaje || 'Imagen creada y guardada en el producto.') + detalleTokens);
+        // La última acción sobre la foto gana, incluso si había un archivo pendiente.
+        fileInput.value = '';
+        imagenGuardadaProducto = resultado.imagen_url;
+        mostrarMiniaturaProducto(null, resultado.mensaje || 'Foto con IA guardada');
         await cargarProductos();
       } catch (error) {
         console.error('Error al crear imagen de producto:', error);
@@ -1202,7 +1199,7 @@
     let imagenGuardadaProducto = '';
     let urlMiniaturaProducto = '';
 
-    function mostrarMiniaturaProducto(archivo) {
+    function mostrarMiniaturaProducto(archivo, mensaje = '') {
       const vista = document.getElementById('producto-imagen-preview');
       const imagen = document.getElementById('producto-imagen-miniatura');
       const estado = document.getElementById('producto-imagen-estado');
@@ -1216,14 +1213,15 @@
       if (!url) return;
 
       imagen.hidden = false;
-      estado.textContent = archivo ? (archivo === fotoBorradorIA ? 'Foto con IA · se añade al guardar' : 'Foto seleccionada') : 'Foto actual';
+      estado.textContent = mensaje || (archivo ? 'Foto seleccionada' : 'Foto actual');
       imagen.src = url;
+      if (mensaje) vista.scrollIntoView({ block: 'nearest' });
     }
 
     document.getElementById('prod-imagen-file').addEventListener('change', event => {
       const archivo = event.target.files[0];
       if (archivo) fotoBorradorIA = null;
-      mostrarMiniaturaProducto(archivo || fotoBorradorIA);
+      mostrarMiniaturaProducto(archivo || fotoBorradorIA, fotoBorradorIA ? 'Foto con IA · se añade al guardar' : '');
     });
     document.getElementById('producto-imagen-miniatura').addEventListener('error', event => {
       if (!event.currentTarget.hasAttribute('src')) return;
