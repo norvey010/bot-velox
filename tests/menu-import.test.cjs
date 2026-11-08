@@ -45,6 +45,9 @@ function navegador(){
  const context={console,RESTAURANTE_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',supabaseClient:{auth:{getSession:async()=>({data:{session:{access_token:'sesion-prueba'}}})}},document:{getElementById:el},window:{addEventListener(){}},Blob,setTimeout,clearTimeout,FormData:class{set(){}append(nombre,blob,archivo){this.archivos??=[];this.archivos.push({nombre,blob,archivo})}},escaparHtmlUI:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),formatearPrecioCOP:n=>String(n),mostrarAviso:(el,msg)=>el.textContent=msg,cargarProductos:async()=>{},fetch:async(url,req)=>{requests.push({url,req});return{ok:true,json:async()=>url==='/api/importar-menu'?{success:true,borrador:true,productos:[producto()],version:'a'.repeat(32),paginas:1}:{success:true,count:1}}}};
  context.document.querySelector=()=>({replaceWith:elemento=>elements.set(elemento.id,elemento)});
  context.document.createElement=tag=>({tag,setAttribute(k,v){this[k]=v}});
+ el('revision-menu-lista').insertAdjacentHTML=()=>{};
+ el('revision-anterior').remove=()=>{};
+ context.coincideBusquedaProducto=(texto,busqueda)=>texto.includes(busqueda);
  const colocaciones = [];
  el('editar-menu').querySelector = selector => ({
    'label[for="buscar-producto"]': el('etiqueta-buscador'),
@@ -53,7 +56,7 @@ function navegador(){
  for (const id of ['productos-editor-categorias','productos-editor-mas']) {
    el(id).after = (...nodos) => colocaciones.push([id, ...nodos]);
  }
- vm.createContext(context);vm.runInContext(read('app.menu-import.js'),context);el('menuFile').files=[{name:'carta.pdf',type:'application/pdf',size:100,arrayBuffer:async()=>new ArrayBuffer(100)}];return{context,el,requests,colocaciones,run:s=>vm.runInContext(s,context)};
+ vm.createContext(context);vm.runInContext(read('app.menu-categorias.js'),context);vm.runInContext(read('app.menu-import.js'),context);el('menuFile').files=[{name:'carta.pdf',type:'application/pdf',size:100,arrayBuffer:async()=>new ArrayBuffer(100)}];return{context,el,requests,colocaciones,run:s=>vm.runInContext(s,context)};
 }
 test('revisión en navegador: leer no publica; corregir y publicar envía el precio revisado',async()=>{
  const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});assert.equal(n.requests.length,1);assert.equal(n.requests[0].url,'/api/importar-menu');assert.equal(n.el('revision-menu').hidden,false);
@@ -160,4 +163,23 @@ test('la actividad deduplica pedidos y conserva los tres eventos más recientes'
  assert(!lista.includes('2026-11-01'));
  assert(lista.indexOf('2026-11-04') < lista.indexOf('2026-11-03'));
  assert(lista.indexOf('2026-11-03') < lista.indexOf('2026-11-02'));
+});
+
+test('el borrador agrupa por categoría y abre un producto pendiente aunque esté fuera del filtro', async () => {
+ const n = navegador();
+ await n.context.enviarMenuConIA({ preventDefault() {} });
+ n.run(`categoriaRevisionMenu = ''; borradorMenu.productos = [
+   { nombre: 'Pizza', categoria: 'Pizzas', precio: 19000 },
+   { nombre: 'Hamburguesa', categoria: 'Hamburguesas', precio: 0 }
+ ]`);
+ n.context.renderizarRevisionMenu();
+ const lista = n.el('revision-menu-lista');
+ assert.match(lista.innerHTML, /revision-producto-0/);
+ assert.doesNotMatch(lista.innerHTML, /revision-producto-1/);
+ n.el('buscar-revision-menu').value = 'Pizza';
+ await n.context.publicarMenuRevisado({ preventDefault() {} });
+ assert.equal(n.requests.length, 1);
+ assert.match(lista.innerHTML, /id="revision-producto-1" name="producto-borrador" open/);
+ assert.match(lista.innerHTML, /Precio pendiente/);
+ assert.equal(n.el('buscar-revision-menu').value, '');
 });
