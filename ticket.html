@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b0d13">
     <title>Comanda de Cocina - Velox</title>
     <style>
         :root { --ticket-paper-width: 80mm; }
@@ -39,8 +40,9 @@
             body { width: var(--ticket-paper-width); margin: 0; padding: 3mm; }
         }
     </style>
+    <link rel="stylesheet" href="/velox-theme.css">
 </head>
-<body>
+<body class="velox-ticket">
 
     <button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR COMANDA</button>
 
