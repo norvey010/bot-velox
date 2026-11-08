@@ -62,15 +62,23 @@
     </button>
 </div>
 
-      <!-- Selección del Plan (Paso 3 del Manual) -->
-      <div>
-        <label for="plan" class="block text-sm font-semibold text-slate-200 mb-1.5">6. Elige cómo quieres empezar</label>
-        <select id="plan" class="w-full bg-slate-700 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-red-500">
-          <option value="prueba">Prueba Gratis (7 Días)</option>
-          <option value="mensual">Plan Mensual</option>
-          <option value="anual">Plan Anual</option>
-        </select>
-      </div>
+      <fieldset id="opciones-plan" class="velox-planes">
+        <legend class="mb-2 text-sm font-semibold text-slate-200">6. Elige cómo quieres empezar</legend>
+        <label class="velox-plan">
+          <input type="radio" name="opcion-plan" value="prueba" checked>
+          <span>Prueba gratis</span>
+          <small>7 días</small>
+        </label>
+        <label class="velox-plan">
+          <input type="radio" name="opcion-plan" value="mensual">
+          <span>Plan mensual</span>
+        </label>
+        <label class="velox-plan">
+          <input type="radio" name="opcion-plan" value="anual">
+          <span>Plan anual</span>
+        </label>
+        <input type="hidden" id="plan" value="prueba">
+      </fieldset>
       <div style="text-align: center; margin-top: 15px;">
         <p class="text-sm text-slate-400">¿Ya tienes una cuenta? 
             <a href="login.html" class="text-slate-200 underline font-medium">Inicia sesión aquí</a>
@@ -83,6 +91,14 @@
     </form>
   </main>
 
+  <script>
+    const opcionesPlan = document.getElementById('opciones-plan');
+    function sincronizarPlan() {
+      document.getElementById('plan').value = opcionesPlan.querySelector('input:checked').value;
+    }
+    opcionesPlan.addEventListener('change', sincronizarPlan);
+    opcionesPlan.form.addEventListener('submit', sincronizarPlan, { capture: true });
+  </script>
   <script src="app.registro.js"></script>
 </body>
 </html>
