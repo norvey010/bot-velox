@@ -1,4 +1,14 @@
-/* Velox: superficies, jerarquía y estados compartidos por todas las pantallas. */
+/* Velox Bot: superficies, jerarquía y estados compartidos. */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/spacegrotesk/v22/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   color-scheme: dark;
   --velox-page: #0b0d13;
@@ -21,6 +31,7 @@
   --velox-radius-card: .3rem .85rem;
   --velox-radius-control: .45rem;
   --velox-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --velox-font-display: "Space Grotesk", var(--velox-font);
   --velox-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
 
@@ -134,6 +145,10 @@ body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hi
   letter-spacing: -.058em;
   text-wrap: balance;
 }
+.velox-acceso :is(h1, h2, .velox-nombre-marca), .velox-registro h1 {
+  font-family: var(--velox-font-display);
+  font-weight: 700;
+}
 .velox-acceso h2, .velox-registro h1 {
   font-size: clamp(1.75rem, 5vw, 2.55rem);
   line-height: 1.05;
@@ -183,14 +198,14 @@ body:has(#tab-menu) > header > div:first-child { min-width: 0; gap: .7rem; }
 body:has(#tab-menu) > header > div:last-child { justify-content: end; gap: .55rem; }
 body:has(#tab-menu) > header h1 {
   min-width: 0;
-  font: 750 .68rem/1.1 var(--velox-mono);
-  letter-spacing: .17em;
+  font: 700 .75rem/1.1 var(--velox-font-display);
+  letter-spacing: .06em;
   color: var(--velox-focus);
 }
 #nombre-restaurante-header {
   display: block;
   margin-block-start: .2rem;
-  font: 750 clamp(.86rem, 1.5vw, 1.08rem)/1.15 var(--velox-font);
+  font: 700 clamp(.9rem, 1.5vw, 1.12rem)/1.15 var(--velox-font-display);
   letter-spacing: -.025em;
 }
 body:has(#tab-menu) > header nav {
@@ -221,6 +236,8 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
   box-shadow: var(--velox-shadow);
 }
 :is(#resumen-pedidos-titulo, #registro-pedidos-titulo, #sec-menu-ia h2, #sec-configuracion h2, #producto-form-summary-text) {
+  font-family: var(--velox-font-display);
+  font-weight: 700;
   font-size: clamp(1.18rem, 2.3vw, 1.7rem);
   line-height: 1.2;
   letter-spacing: -.033em;
@@ -246,6 +263,7 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
   background: #f4768b;
 }
 #resumen-pedidos > .grid h3 {
+  font-family: var(--velox-font-display);
   font-size: clamp(.82rem, 3.5vw, 1.7rem);
   letter-spacing: -.045em;
   font-variant-numeric: tabular-nums;
@@ -342,6 +360,7 @@ body:has(#contenedor-menu) > header {
   padding: clamp(.75rem, 2.4vw, 1.35rem) clamp(.8rem, 3vw, 2rem) .45rem;
 }
 #nombre-restaurante {
+  font-family: var(--velox-font-display);
   font-size: clamp(1.35rem, 4.5vw, 2.7rem);
   letter-spacing: -.042em;
   line-height: 1.12;
@@ -353,6 +372,8 @@ body:has(#contenedor-menu) > header {
   overflow-x: clip;
 }
 #contenedor-menu h2 {
+  font-family: var(--velox-font-display);
+  font-weight: 700;
   font-size: clamp(1.25rem, 4vw, 2.3rem);
   border-color: var(--velox-border);
   margin-bottom: .85rem;

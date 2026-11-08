@@ -250,6 +250,11 @@ function registrarPedidoVelox(pedido) {
 }
 
 function prepararCentroVelox() {
+  document.getElementById('nombre-restaurante-header').previousSibling.nodeValue = 'Velox Bot ';
+  document.querySelector('header nav').setAttribute('aria-label', 'Secciones de Velox Bot');
+  document.querySelector('#ajustes-inicio h2 + p').textContent = 'Administra tu negocio y la operación de Velox Bot.';
+  document.querySelector('#printer-width-preview > div:first-child').textContent = 'Velox Bot · Comanda';
+
   const actividad = document.createElement('details');
   actividad.className = 'velox-actividad';
   actividad.innerHTML = `
