@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0d13">
   <title>Velox | Registro de Comercios</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>body{background:radial-gradient(ellipse at 10% 8%,rgba(127,29,29,.16),transparent 35%),#101216}.bg-slate-700{background-color:#14171d!important}.border-slate-600{border-color:#353b45!important}input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(239,68,68,.14)}</style>
-    <link rel="stylesheet" href="/velox-theme.css">
+  <link rel="stylesheet" href="/velox-theme.css">
 </head>
 <body class="text-white min-h-screen flex items-center justify-center p-4 py-8">
 
-  <div class="max-w-xl w-full bg-[#1b1f26] rounded-3xl p-6 sm:p-9 shadow-2xl shadow-black/40 border border-[#353b45]">
+  <main class="velox-registro max-w-xl w-full p-6 sm:p-9">
     <div class="text-center mb-6">
-      <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-600 text-2xl font-black shadow-lg shadow-red-950/40">V</div>
-      <p class="text-xs font-bold uppercase tracking-[.25em] text-slate-200">Empieza en unos minutos</p>
+      <div aria-hidden="true" class="velox-marca mx-auto mb-4 flex h-14 w-14 items-center justify-center text-2xl font-black">V</div>
+      <p class="velox-ceja">Registro de comercios</p>
       <h1 class="mt-2 text-3xl font-extrabold text-white">Crea tu restaurante en Velox</h1>
       <p class="text-slate-400 text-sm mt-2">Completa estos datos. Después podrás cargar tu menú y recibir pedidos.</p>
     </div>
@@ -22,22 +22,22 @@
     <!-- Formulario de Registro (Paso 1 y 2 del Manual) -->
     <form id="form-registro" class="space-y-4">
       <div>
-        <label class="block text-sm font-semibold text-slate-200 mb-1.5">1. ¿Cómo se llama tu restaurante?</label>
+        <label for="nombreRestaurante" class="block text-sm font-semibold text-slate-200 mb-1.5">1. ¿Cómo se llama tu restaurante?</label>
         <input type="text" id="nombreRestaurante" required class="w-full bg-slate-700 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-red-500" placeholder="Ej: Hamburguesas Velox">
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-200 mb-1.5">2. ¿Quién administra el negocio?</label>
+        <label for="nombreEncargado" class="block text-sm font-semibold text-slate-200 mb-1.5">2. ¿Quién administra el negocio?</label>
         <input type="text" id="nombreEncargado" required class="w-full bg-slate-700 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-red-500" placeholder="Tu nombre">
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-200 mb-1.5">3. WhatsApp para recibir pedidos</label>
+        <label for="telefono" class="block text-sm font-semibold text-slate-200 mb-1.5">3. WhatsApp para recibir pedidos</label>
         <input type="tel" id="telefono" required class="w-full bg-slate-700 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-red-500" placeholder="3001234567">
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-200 mb-1.5">4. Tu correo electrónico</label>
+        <label for="email" class="block text-sm font-semibold text-slate-200 mb-1.5">4. Tu correo electrónico</label>
         <input type="email" id="email" required class="w-full bg-slate-700 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-red-500" placeholder="correo@restaurante.com">
       </div>
 
@@ -64,7 +64,7 @@
 
       <!-- Selección del Plan (Paso 3 del Manual) -->
       <div>
-        <label class="block text-sm font-semibold text-slate-200 mb-1.5">6. Elige cómo quieres empezar</label>
+        <label for="plan" class="block text-sm font-semibold text-slate-200 mb-1.5">6. Elige cómo quieres empezar</label>
         <select id="plan" class="w-full bg-slate-700 border border-slate-600 rounded-xl p-3 text-white focus:outline-none focus:border-red-500">
           <option value="prueba">Prueba Gratis (7 Días)</option>
           <option value="mensual">Plan Mensual</option>
@@ -81,7 +81,7 @@
         Crear mi cuenta y continuar →
       </button>
     </form>
-  </div> 
+  </main>
 
   <script src="app.registro.js"></script>
 </body>
