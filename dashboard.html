@@ -139,7 +139,7 @@
     <!-- SECCIÓN 1: PEDIDOS -->
     <section id="sec-pedidos" class="space-y-4">
       <section id="resumen-pedidos" aria-labelledby="resumen-pedidos-titulo" class="space-y-3 rounded-xl border border-slate-700 bg-slate-800 p-3 sm:p-4">
-        <div><h2 id="resumen-pedidos-titulo" class="text-lg font-bold text-white">Resumen de pedidos</h2><p class="mt-1 text-xs text-slate-400">Elige un período o una fecha para ver sus cifras y pedidos.</p></div>
+        <div><h2 id="resumen-pedidos-titulo" class="text-lg font-bold text-white">Resumen de pedidos</h2><p class="velox-ayuda mt-1">Elige un período o una fecha para ver sus cifras y pedidos.</p></div>
       <div class="flex flex-wrap items-end gap-2">
         <label for="pedidos-periodo" class="w-full text-xs font-semibold text-slate-300 sm:w-auto">Período
           <select id="pedidos-periodo" class="mt-1 block min-h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-red-400">
@@ -154,27 +154,27 @@
         </label>
       </div>
       <p id="pedidos-periodo-resumen" class="text-xs font-semibold text-slate-300">Resumen de hoy</p>
-      <div class="grid grid-cols-3 gap-2 sm:gap-3">
-        <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Pedidos recibidos</p>
-          <h3 id="total-pedidos-count" class="text-lg sm:text-2xl font-bold text-white mt-1">0</h3>
+      <dl class="velox-metricas" aria-label="Cifras del período">
+        <div>
+          <dt>Pedidos recibidos</dt>
+          <dd id="total-pedidos-count">0</dd>
         </div>
-        <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Valor de pedidos</p>
-          <h3 id="total-ventas-sum" class="text-base sm:text-2xl font-bold text-white mt-1 whitespace-nowrap">$0</h3>
+        <div>
+          <dt>Valor de pedidos</dt>
+          <dd id="total-ventas-sum">$0</dd>
         </div>
-        <div class="bg-slate-800 p-2.5 sm:p-3.5 rounded-xl border border-slate-700 shadow-lg">
-          <p class="text-[10px] sm:text-xs text-slate-400 font-medium leading-tight">Promedio por pedido</p>
-          <h3 id="total-pedidos-hoy" class="text-lg sm:text-2xl font-bold text-white mt-1">0</h3>
+        <div>
+          <dt>Promedio por pedido</dt>
+          <dd id="total-pedidos-hoy">$0</dd>
         </div>
-      </div>
+      </dl>
 
       </section>
 
       <section id="registro-pedidos" aria-labelledby="registro-pedidos-titulo" class="space-y-3">
-        <div><h2 id="registro-pedidos-titulo" class="text-lg font-bold text-white">Registro de pedidos</h2><p class="mt-1 text-xs text-slate-400">Pedidos del período seleccionado, del más reciente al más antiguo.</p></div>
+        <div><h2 id="registro-pedidos-titulo" class="text-lg font-bold text-white">Registro de pedidos</h2><p class="velox-ayuda mt-1">Pedidos del período seleccionado, del más reciente al más antiguo.</p></div>
       <!-- Búsqueda dentro del registro -->
-      <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col sm:flex-row gap-2 items-center justify-between">
+      <div class="flex flex-col flex-wrap gap-2 sm:flex-row sm:items-center">
         <div class="w-full sm:flex-1">
           <input type="search" id="input-search" placeholder="Buscar cliente o teléfono" aria-label="Buscar cliente o teléfono en el registro del período seleccionado"
                  class="min-w-0 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-red-400 focus:outline-none">
@@ -183,7 +183,7 @@
         <div class="flex w-full sm:w-auto">
           <button id="btn-actualizar-pedidos" onclick="actualizarPedidosManual()" class="w-full rounded-lg bg-slate-700 px-4 py-2.5 text-sm text-white transition hover:bg-slate-600 sm:w-auto">Actualizar pedidos</button>
         </div>
-        <p id="pedidos-refresh-status" class="hidden w-full text-xs sm:text-right" role="status" aria-live="polite"></p>
+        <p id="pedidos-refresh-status" class="hidden w-full" role="status" aria-live="polite"></p>
       </div>
 
       <!-- Tabla de Pedidos -->
@@ -241,10 +241,10 @@
             <p id="menu-file-summary" class="hidden break-words text-xs text-slate-400" aria-live="polite"></p>
             <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700">Leer con IA</button>
           </form>
-          <p id="importacion-menu-status" class="mt-3 hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
+          <p id="importacion-menu-status" class="mt-2 hidden" role="status" aria-live="polite"></p>
           <section id="revision-menu" hidden class="mt-4 space-y-3 rounded-xl border border-slate-600 p-3" aria-labelledby="revision-menu-titulo">
             <h3 id="revision-menu-titulo" class="text-base font-bold text-white">Revisar carta</h3>
-            <p class="text-sm text-slate-300">Al publicar, reemplazas tu carta actual.</p>
+            <p class="velox-aviso" data-tipo="pendiente">Al publicar, reemplazas tu carta actual.</p>
             <p id="revision-menu-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
             <form id="form-revision-menu" onsubmit="publicarMenuRevisado(event)" class="space-y-3">
               <div id="revision-menu-lista" class="space-y-3"></div>
@@ -257,7 +257,7 @@
         </details>
         <details id="editar-menu" class="rounded-xl border border-slate-700 p-3">
           <summary class="cursor-pointer flex items-center justify-between gap-3 text-white"><span><strong class="block text-base">✏️ Editar menú</strong></span><span aria-hidden="true">⌄</span></summary>
-          <div class="mt-4 space-y-4">
+          <div class="mt-3 space-y-3">
             <div class="flex flex-wrap gap-2">
               <button type="button" onclick="nuevoProducto()" aria-haspopup="dialog" class="min-h-11 rounded-lg border border-slate-700 bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white hover:border-red-400"><span aria-hidden="true" class="mr-1 text-red-400">＋</span>Agregar producto</button>
             </div>
@@ -265,10 +265,10 @@
             <input id="buscar-producto" type="search" oninput="buscarProductoMenu()" placeholder="Buscar producto" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-white focus:border-red-400">
             <nav id="productos-editor-categorias" aria-label="Categorías del menú" class="relative flex w-full gap-2 overflow-x-auto whitespace-nowrap p-1" hidden></nav>
             <p id="productos-editor-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
-            <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
-            <p id="producto-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+            <p id="editor-menu-status" class="hidden" role="status" aria-live="polite"></p>
+            <p id="producto-save-status" class="mt-2 hidden" role="status" aria-live="polite"></p>
             <button id="reintentar-productos" type="button" onclick="cargarProductos()" hidden class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-white">Reintentar</button>
-            <div id="productos-body" class="grid touch-pan-y grid-cols-1 gap-2 lg:grid-cols-2"><p class="text-sm text-slate-400">Tus productos aparecerán aquí.</p></div>
+            <div id="productos-body" class="touch-pan-y"><p class="text-sm text-slate-400">Tus productos aparecerán aquí.</p></div>
             <button type="button" id="productos-editor-mas" onclick="mostrarMasProductos()" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm text-white" hidden>Mostrar más</button>
 
           </div>
@@ -291,7 +291,7 @@
         <div id="ajustes-inicio">
           <h2 class="text-lg font-bold text-white">⚙️ Ajustes</h2>
           <p class="mt-1 mb-3 text-xs text-slate-400">Administra tu negocio y la operación de Velox.</p>
-          <p id="ajustes-inicio-status" class="mb-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+          <p id="ajustes-inicio-status" class="mb-3 hidden" role="status" aria-live="polite"></p>
           <div class="space-y-2">
             <button type="button" onclick="abrirCategoriaAjustes('negocio')" class="flex min-h-16 w-full items-center gap-3 rounded-lg border border-slate-700 bg-slate-900 p-3 text-left hover:border-red-500">
               <span class="text-xl" aria-hidden="true">🏪</span><span class="min-w-0 flex-1"><strong class="block text-sm text-white">Datos del negocio</strong><small class="text-xs text-slate-400">Nombre, WhatsApp y horario de atención</small></span><span class="text-lg text-slate-400" aria-hidden="true">›</span>
@@ -306,7 +306,7 @@
           <button type="button" onclick="volverAjustesInicio()" class="velox-volver mb-2">‹ Ajustes</button>
           <h2 id="ajustes-categoria-titulo" class="text-lg font-bold text-white"></h2>
           <p id="ajustes-categoria-descripcion" class="mb-3 mt-1 text-xs text-slate-400"></p>
-          <p id="ajustes-status" class="mb-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+          <p id="ajustes-status" class="mb-3 hidden" role="status" aria-live="polite"></p>
           <div id="ajustes-opciones" class="space-y-2"></div>
         </div>
 
@@ -342,9 +342,9 @@
             </div>
             <button type="submit" class="w-full rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-700">Guardar tamaño de impresión</button>
           </form>
-          <p id="config-negocio-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
-          <p id="config-contacto-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
-          <p id="menu-config-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+          <p id="config-negocio-save-status" class="mt-2 hidden" role="status" aria-live="polite"></p>
+          <p id="config-contacto-save-status" class="mt-2 hidden" role="status" aria-live="polite"></p>
+          <p id="menu-config-status" class="mt-2 hidden" role="status" aria-live="polite"></p>
         </div>
       </div>
     </section>
@@ -388,13 +388,13 @@
         </figure>
         <div class="mt-3 space-y-1">
           <button type="button" id="btn-foto-ia-editor" onclick="generarImagenDesdeEditor()" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700">✨ Crear foto con IA</button>
-          <p id="producto-foto-ayuda" class="text-xs text-slate-400">Los PDF de tu menú se suben en «Cargar carta con IA».</p>
+          <p id="producto-foto-ayuda" class="velox-ayuda">Los PDF de tu menú se suben en «Cargar carta con IA».</p>
         </div>
       </div>
       <div id="producto-edicion-acciones" class="hidden sm:col-span-2 flex flex-wrap gap-2">
         <button type="button" onclick="eliminarProductoDesdeEditor()" class="rounded-lg px-3 py-2 text-sm text-red-300">Eliminar producto</button>
       </div>
-      <p id="producto-form-status" class="hidden rounded-lg border px-3 py-2 text-sm sm:col-span-2" role="status" aria-live="polite"></p>
+      <p id="producto-form-status" class="hidden sm:col-span-2" role="status" aria-live="polite"></p>
       <div class="flex justify-end sm:col-span-2">
         <button type="submit" class="min-h-11 w-full rounded-lg bg-red-600 px-5 py-2 text-sm font-bold sm:w-auto text-white hover:bg-red-700">Guardar producto</button>
       </div>
@@ -431,14 +431,8 @@
       const temporizadorAnterior = temporizadoresAvisos.get(elemento);
       if (temporizadorAnterior) clearTimeout(temporizadorAnterior);
       elemento.textContent = mensaje;
-      const colores = {
-        exito: ['border-emerald-800', 'bg-emerald-950/40', 'text-emerald-200'],
-        error: ['border-red-800', 'bg-red-950/40', 'text-red-200'],
-        pendiente: ['border-amber-800', 'bg-amber-950/30', 'text-amber-200'],
-        info: ['border-slate-700', 'bg-slate-900', 'text-slate-300']
-      };
-      elemento.classList.remove('border-emerald-800', 'bg-emerald-950/40', 'text-emerald-200', 'border-red-800', 'bg-red-950/40', 'text-red-200', 'border-amber-800', 'bg-amber-950/30', 'text-amber-200', 'border-slate-700', 'bg-slate-900', 'text-slate-300');
-      elemento.classList.add(...colores[tipo]);
+      elemento.classList.add('velox-aviso');
+      elemento.setAttribute('data-tipo', tipo);
       elemento.classList.remove('hidden');
       if (duracion > 0) {
         const temporizador = setTimeout(() => {
@@ -974,20 +968,27 @@
         ? `Mostrando ${visibles.length} de ${productos.length} productos`
         : '0 productos encontrados';
       if (!productos.length) {
-        contenedor.innerHTML = `<p class="rounded-lg bg-slate-900 p-4 text-sm text-slate-400 lg:col-span-2">${productosEditor.length ? 'No encontramos ese producto. Prueba otro nombre o categoría.' : 'Tu menú está vacío. Toca “Agregar producto” o carga fotos de tu carta.'}</p>`;
+        contenedor.innerHTML = `<p class="velox-ayuda">${productosEditor.length ? 'No encontramos ese producto. Prueba otro nombre o categoría.' : 'Tu menú está vacío. Toca “Agregar producto” o carga fotos de tu carta.'}</p>`;
         return;
       }
       contenedor.innerHTML = visibles.map(p => {
         const id = escaparHtmlUI(JSON.stringify(String(p.id)));
+        const disponibilidad = p.disponible === false ? 'Agotado · Activar' : 'Disponible';
         let foto = '';
         try { const url = new URL(p.imagen_url); if (['https:', 'http:'].includes(url.protocol)) foto = url.href; } catch {}
-        return `<article class="rounded-lg border border-slate-700 bg-slate-900 p-3">
-          <div class="flex items-center gap-3">
-            ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="${escaparHtmlUI(p.nombre)}" loading="lazy" width="56" height="56" class="h-14 w-14 shrink-0 rounded-lg object-cover">` : '<div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-center text-xs text-slate-400">Sin foto</div>'}
-            <div class="min-w-0 flex-1"><h3 class="break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre)}</h3><p class="text-sm font-bold text-slate-200">$${Number(p.precio).toLocaleString('es-CO')}</p><p class="truncate text-xs text-slate-400">${escaparHtmlUI(resolverCategoriaCombo(p))}</p></div>
+        return `<article class="velox-producto-fila">
+          ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="" loading="lazy" width="48" height="48" class="velox-producto-miniatura">` : '<span class="velox-producto-miniatura">Sin foto</span>'}
+          <div class="min-w-0">
+            <h3 class="text-sm font-bold leading-snug text-white">${escaparHtmlUI(p.nombre)}</h3>
+            <p class="velox-producto-datos">
+              <strong>$${Number(p.precio).toLocaleString('es-CO')}</strong>
+              <span>${escaparHtmlUI(resolverCategoriaCombo(p))}</span>
+            </p>
           </div>
-          <div class="mt-2 flex flex-wrap gap-2"><button type="button" onclick="prepararEdicionProducto(${id})" aria-haspopup="dialog" class="min-h-11 flex-1 rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white">✏️ Editar</button>
-          <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${p.disponible === false}, this)" aria-label="${p.disponible === false ? 'Volver a ofrecer' : 'Marcar agotado'}: ${escaparHtmlUI(p.nombre)}" aria-pressed="${p.disponible !== false}" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold ${p.disponible === false ? 'text-amber-300' : 'text-emerald-300'}">${p.disponible === false ? 'Agotado · Activar' : 'Disponible ✓'}</button></div>
+          <div class="velox-producto-acciones">
+            <button type="button" onclick="prepararEdicionProducto(${id})" aria-haspopup="dialog" class="rounded-lg bg-slate-700 px-2.5 text-sm font-semibold text-white">✏️ Editar</button>
+            <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${p.disponible === false}, this)" aria-label="${disponibilidad}: ${escaparHtmlUI(p.nombre)}" aria-pressed="${p.disponible !== false}" class="velox-disponibilidad rounded-lg px-2.5 text-xs font-semibold">${disponibilidad}</button>
+          </div>
         </article>`;
       }).join('');
     }
