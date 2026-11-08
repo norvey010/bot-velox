@@ -6,6 +6,8 @@
   --velox-raised: #202632;
   --velox-inset: #0f131c;
   --velox-border: #303847;
+  --velox-frame: #465369;
+  --velox-edge: #58667d;
   --velox-text: #f6f8fc;
   --velox-muted: #aeb9cb;
   --velox-primary: #c91639;
@@ -13,9 +15,11 @@
   --velox-focus: #ff8c9f;
   --velox-success: #6ee7b7;
   --velox-warning: #fcd34d;
-  --velox-panel: linear-gradient(155deg, #1a202c, #11151e 76%);
-  --velox-shadow: 0 18px 50px rgb(0 0 0 / 28%), inset 0 1px rgb(255 255 255 / 6%);
-  --velox-radius: 1.125rem;
+  --velox-panel: linear-gradient(150deg, #1c2432, #151b27 48%, #11151f 84%);
+  --velox-shadow: 0 16px 44px rgb(0 0 0 / 28%), inset 0 1px rgb(213 227 255 / 9%);
+  --velox-radius-panel: .35rem 1.35rem;
+  --velox-radius-card: .3rem .85rem;
+  --velox-radius-control: .45rem;
   --velox-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --velox-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
@@ -47,6 +51,9 @@ body :where(button, a).bg-red-600 { box-shadow: inset 0 1px rgb(255 255 255 / 22
   outline-offset: 3px;
 }
 button:disabled { cursor: not-allowed; }
+body :is(button, a):is(.rounded, .rounded-lg, .rounded-xl, .rounded-2xl):not(.velox-volver) {
+  border-radius: var(--velox-radius-control);
+}
 body :where(.velox-volver) {
   background: transparent;
   border: 0;
@@ -57,7 +64,7 @@ body :is(.velox-acceso, .velox-registro) :is(input, select),
 body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hidden]), select, textarea),
 #form-confirmar-pedido :is(input, select, textarea) {
   border-color: var(--velox-border);
-  border-radius: .8rem;
+  border-radius: var(--velox-radius-control);
   background-color: var(--velox-inset);
   min-height: 2.75rem;
 }
@@ -73,8 +80,10 @@ body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hi
 .velox-acceso, .velox-registro {
   isolation: isolate;
   background: var(--velox-panel);
-  border: 1px solid var(--velox-border);
-  border-radius: 1.6rem;
+  border: 1px solid var(--velox-frame);
+  border-block-start-color: var(--velox-edge);
+  border-radius: var(--velox-radius-panel);
+  corner-shape: round bevel;
   box-shadow: var(--velox-shadow);
   position: relative;
 }
@@ -140,7 +149,8 @@ body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hi
 .velox-marca, body:has(#tab-menu) > header > div:first-child > div:first-child {
   background: linear-gradient(145deg, #ff4d68, #aa1239 76%);
   border: 1px solid rgb(255 165 184 / 45%);
-  border-radius: .85rem;
+  border-radius: var(--velox-radius-card);
+  corner-shape: round bevel;
   box-shadow: inset 0 1px rgb(255 255 255 / 24%), 0 5px 24px rgb(205 21 66 / 30%);
   flex: none;
 }
@@ -186,13 +196,14 @@ body:has(#tab-menu) > header h1 {
 body:has(#tab-menu) > header nav {
   background: var(--velox-inset);
   border: 1px solid var(--velox-border);
-  border-radius: .9rem;
+  border-radius: var(--velox-radius-card);
+  corner-shape: round bevel;
   scrollbar-width: none;
 }
 body:has(#tab-menu) > header nav button {
   min-height: 2.5rem;
   border: 1px solid transparent;
-  border-radius: .65rem;
+  border-radius: var(--velox-radius-control);
   font-weight: 650;
   white-space: nowrap;
 }
@@ -201,8 +212,11 @@ body:has(#tab-menu) > header nav button.bg-red-600 { border-color: rgb(255 164 1
 body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
 #sec-configuracion { width: 100%; }
 :is(#resumen-pedidos, #sec-menu-ia > div, #sec-configuracion > div, #editor-producto, #carta-ampliada) {
-  border-radius: var(--velox-radius);
-  border-color: var(--velox-border);
+  border-radius: var(--velox-radius-panel);
+  corner-shape: round bevel;
+  border: 1px solid var(--velox-frame);
+  border-color: var(--velox-frame) !important;
+  border-block-start-color: var(--velox-edge) !important;
   background: var(--velox-panel);
   box-shadow: var(--velox-shadow);
 }
@@ -217,7 +231,8 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
 #resumen-pedidos > .grid > div {
   position: relative;
   min-width: 0;
-  border-radius: .9rem;
+  border-radius: var(--velox-radius-card);
+  corner-shape: round bevel;
   background: linear-gradient(145deg, #222936, #141922);
   box-shadow: inset 0 1px rgb(255 255 255 / 7%);
 }
@@ -236,16 +251,21 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
   font-variant-numeric: tabular-nums;
   white-space: normal;
 }
-#registro-pedidos > div:not(:first-child) { border-radius: .9rem; }
+#registro-pedidos > div:not(:first-child) {
+  border-radius: var(--velox-radius-card);
+  corner-shape: round bevel;
+}
 #registro-pedidos thead { letter-spacing: .075em; }
 #pedidos-body tr:hover { background-color: rgb(255 255 255 / 4%); }
 #pedidos-cards > :is(article, div), #productos-body > article, #revision-menu-lista > div {
   background-image: linear-gradient(145deg, rgb(255 255 255 / 5%), transparent 65%);
-  border-radius: .95rem;
+  border-radius: var(--velox-radius-card);
+  corner-shape: round bevel;
 }
 :is(#importar-menu-fotos, #editar-menu) {
   border-color: var(--velox-border);
-  border-radius: .95rem;
+  border-radius: var(--velox-radius-card);
+  corner-shape: round bevel;
   background: var(--velox-inset);
 }
 :is(#importar-menu-fotos, #editar-menu) > summary { padding-block: .25rem; }
@@ -263,7 +283,7 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
 #productos-editor-categorias button, #contenedor-categorias button {
   min-height: 2.65rem;
   border: 1px solid var(--velox-border);
-  border-radius: .75rem;
+  border-radius: var(--velox-radius-control);
   box-shadow: none;
 }
 #productos-editor-categorias button[aria-pressed=true], #contenedor-categorias button.bg-red-600 {
@@ -271,11 +291,17 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
   border-color: #e9637b;
   color: var(--velox-text);
 }
-#carta-miniatura { border-radius: 1rem; box-shadow: var(--velox-shadow); }
+#carta-miniatura {
+  border-radius: var(--velox-radius-card);
+  corner-shape: round bevel;
+  box-shadow: var(--velox-shadow);
+}
 :is(#ajustes-inicio, #ajustes-opciones) button:not(.velox-volver) {
   background-image: linear-gradient(115deg, rgb(255 255 255 / 5%), transparent);
-  border-radius: .9rem;
+  border-radius: var(--velox-radius-control);
 }
+#editor-producto #form-producto input { border-radius: var(--velox-radius-control); }
+#revision-menu, #editor-producto :is(textarea, select), .velox-option { border-radius: var(--velox-radius-control); }
 #editor-producto::backdrop, #carta-ampliada::backdrop { background: rgb(4 6 10 / 82%); }
 
 @media (min-width: 1180px) {
@@ -334,8 +360,10 @@ body:has(#contenedor-menu) > header {
 #contenedor-menu h2 > span { color: var(--velox-focus); font-size: .75em; }
 #contenedor-menu .menu-product-reveal, #estado-carga > div:not(.sr-only) {
   background: var(--velox-panel);
-  border: 1px solid var(--velox-border);
-  border-radius: var(--velox-radius);
+  border: 1px solid var(--velox-frame);
+  border-block-start-color: var(--velox-edge);
+  border-radius: var(--velox-radius-card);
+  corner-shape: round bevel;
   box-shadow: var(--velox-shadow);
 }
 #contenedor-menu .menu-product-reveal:hover { border-color: #72505e; }
@@ -349,6 +377,8 @@ body:has(#contenedor-menu) > header {
 #barra-carrito {
   background: rgb(20 24 35 / 96%);
   border-color: #5a3846;
+  border-radius: var(--velox-radius-card);
+  corner-shape: round bevel;
   box-shadow: 0 14px 40px rgb(0 0 0 / 45%), 0 0 24px rgb(138 19 52 / 20%);
 }
 #barra-carrito button { min-height: 3.05rem; gap: .45rem; padding-inline: .8rem; }
@@ -356,8 +386,10 @@ body:has(#contenedor-menu) > header {
 #modal-pedido, #modal-personalizar { background: rgb(5 7 12 / 82%); }
 #modal-pedido > div, #form-personalizar {
   background: var(--velox-panel);
-  border-color: var(--velox-border);
-  border-radius: 1.25rem;
+  border-color: var(--velox-frame);
+  border-block-start-color: var(--velox-edge);
+  border-radius: var(--velox-radius-panel);
+  corner-shape: round bevel;
   max-height: calc(100dvh - 2rem);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -396,14 +428,15 @@ body:has(#contenedor-menu) > header {
     margin: 1.2rem auto;
     color: var(--velox-text);
     background: var(--velox-panel);
-    border: 1px solid var(--velox-border);
-    border-radius: .85rem;
+    border: 1px solid var(--velox-frame);
+    border-radius: var(--velox-radius-card);
+    corner-shape: round bevel;
     box-shadow: var(--velox-shadow);
   }
   .velox-ticket .btn-print {
     min-height: 2.75rem;
     border: 1px solid rgb(255 165 184 / 38%);
-    border-radius: .6rem;
+    border-radius: var(--velox-radius-control);
     background: linear-gradient(115deg, #c91639, #9e102d);
   }
   .velox-ticket .line { border-color: #5a6579; }
