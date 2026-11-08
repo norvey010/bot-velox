@@ -129,3 +129,36 @@ test('el editor coloca la búsqueda bajo las categorías y Agregar producto al f
    ['productos-editor-mas', n.el('accion-agregar')]
  ]);
 });
+
+test('la carga muestra la etapa real y solo registra una publicación confirmada', async () => {
+ const n = navegador();
+ const progreso = n.el('velox-progreso-importacion');
+ const peticion = n.context.fetch;
+ n.context.fetch = (...args) => {
+   if (args[0] === '/api/importar-menu') {
+     assert.match(progreso.innerHTML, /data-estado="actual"[^>]*>\s*<span[^>]*>2<\/span>\s*<span>Leyendo con IA/);
+   }
+   return peticion(...args);
+ };
+ await n.context.enviarMenuConIA({ preventDefault() {} });
+ assert.equal((progreso.innerHTML.match(/data-estado="listo"/g) || []).length, 3);
+ assert.doesNotMatch(n.el('velox-actividad-lista').innerHTML || '', /Carta publicada/);
+ await n.context.publicarMenuRevisado({ preventDefault() {} });
+ assert.match(n.el('velox-actividad-lista').innerHTML, /Carta publicada/);
+ assert.equal(progreso.hidden, true);
+});
+
+test('la actividad deduplica pedidos y conserva los tres eventos más recientes', () => {
+ const n = navegador();
+ const pedido = (id, dia) => ({ id, created_at: `2026-11-0${dia}T18:00:00Z` });
+ n.context.registrarPedidoVelox(pedido('tercero', 3));
+ n.context.registrarPedidoVelox(pedido('primero', 1));
+ n.context.registrarPedidoVelox(pedido('cuarto', 4));
+ n.context.registrarPedidoVelox(pedido('segundo', 2));
+ n.context.registrarPedidoVelox(pedido('cuarto', 4));
+ const lista = n.el('velox-actividad-lista').innerHTML;
+ assert.equal((lista.match(/Pedido recibido/g) || []).length, 3);
+ assert(!lista.includes('2026-11-01'));
+ assert(lista.indexOf('2026-11-04') < lista.indexOf('2026-11-03'));
+ assert(lista.indexOf('2026-11-03') < lista.indexOf('2026-11-02'));
+});
