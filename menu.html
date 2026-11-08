@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Menú Digital | Velox</title>
+    <title>Menú digital | Velox Bot</title>
     <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -811,7 +811,7 @@ function eliminarItemCarrito(index) {
                 `• *Total:* $ ${total.toLocaleString('es-CO')}\n` +
                 `• *Pago:* ${metodoPago}\n` +
                 (notas ? `• *Notas:* ${notas}\n` : '') +
-                `\n*Referencia Velox:* ${resultado.pedido_id}`;
+                `\n*Referencia Velox Bot:* ${resultado.pedido_id}`;
 
             intentoPedidoActual = null;
             try { sessionStorage.removeItem('velox-intento-pedido'); } catch {}
