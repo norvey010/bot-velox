@@ -240,7 +240,7 @@ function registrarActividadVelox(clave, texto, fecha) {
   const resumenNuevo = `${ultimo.texto} · ${formatoActividadVelox.format(ultimo.fecha)}`;
   if (resumen.textContent !== resumenNuevo) resumen.textContent = resumenNuevo;
   lista.innerHTML = historialActividadVelox.map(registro =>
-    `<li><span>${escaparHtmlUI(registro.texto)}</span><time datetime="${new Date(registro.fecha).toISOString()}">${formatoActividadVelox.format(registro.fecha)}</time></li>`
+    `<li data-tipo="${registro.clave.startsWith('pedido:') ? 'pedido' : 'carta'}"><span>${escaparHtmlUI(registro.texto)}</span><time datetime="${new Date(registro.fecha).toISOString()}">${formatoActividadVelox.format(registro.fecha)}</time></li>`
   ).join('');
 }
 
