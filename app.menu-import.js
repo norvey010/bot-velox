@@ -21,18 +21,14 @@ function mostrarProgresoImportacion(etapa, interrumpida = false) {
 function estadoImportacion(mensaje, tipo='info') { mostrarAviso(document.getElementById('importacion-menu-status'), mensaje, tipo); }
 function prepararSelectorArchivosMenu() {
   const boton = document.querySelector('#form-importar-ia button[aria-controls="menuFile"]');
-  const opciones = document.createElement('details');
+  const opciones = document.createElement('div');
   opciones.id = 'menu-file-options';
-  opciones.className = 'group';
+  opciones.className = 'grid grid-cols-2 gap-2';
+  opciones.setAttribute('role', 'group');
+  opciones.setAttribute('aria-label', 'Elegir fotos o PDF de la carta');
   opciones.innerHTML = `
-    <summary id="menu-file-trigger" class="flex min-h-12 cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-600 bg-slate-900 px-3 py-3 text-sm font-semibold text-white hover:border-red-400">
-      <span>Seleccionar archivos <span class="font-normal text-slate-300">(fotos o PDF)</span></span>
-      <span aria-hidden="true" class="group-open:rotate-180">⌄</span>
-    </summary>
-    <div class="mt-2 grid gap-2 sm:grid-cols-2">
-      <button type="button" onclick="abrirSelectorArchivosMenu(true)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-left text-sm font-semibold text-white hover:border-red-400">Elegir fotos</button>
-      <button type="button" onclick="abrirSelectorArchivosMenu(false)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-left text-sm font-semibold text-white hover:border-red-400">Buscar en Archivos <span class="font-normal text-slate-300">(PDF o fotos)</span></button>
-    </div>`;
+    <button type="button" onclick="abrirSelectorArchivosMenu(true)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-700 px-2 py-2 text-sm font-semibold text-white hover:border-red-400">Elegir fotos</button>
+    <button type="button" onclick="abrirSelectorArchivosMenu(false)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-900 px-2 py-2 text-sm font-semibold text-white hover:border-red-400">Buscar en archivos</button>`;
   boton.replaceWith(opciones);
 }
 function abrirSelectorArchivosMenu(soloFotos) {
@@ -40,8 +36,6 @@ function abrirSelectorArchivosMenu(soloFotos) {
   if (soloFotos) input.accept = 'image/*';
   else input.removeAttribute('accept');
 
-  document.getElementById('menu-file-options').open = false;
-  document.getElementById('menu-file-trigger').focus();
   input.click();
 }
 function archivosSeleccionadosMenu() {

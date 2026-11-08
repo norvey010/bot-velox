@@ -44,7 +44,7 @@ function navegador(){
  const elements=new Map(),requests=[];const el=id=>{if(!elements.has(id))elements.set(id,{files:[],value:'',hidden:true,classList:{toggle(){},add(){},remove(){}},addEventListener(){},scrollIntoView(){},setAttribute(k,v){this[k]=v},removeAttribute(k){delete this[k]},reset(){this.files=[]}});return elements.get(id)};
  const context={console,RESTAURANTE_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',supabaseClient:{auth:{getSession:async()=>({data:{session:{access_token:'sesion-prueba'}}})}},document:{getElementById:el},window:{addEventListener(){}},Blob,setTimeout,clearTimeout,FormData:class{set(){}append(nombre,blob,archivo){this.archivos??=[];this.archivos.push({nombre,blob,archivo})}},escaparHtmlUI:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),formatearPrecioCOP:n=>String(n),mostrarAviso:(el,msg)=>el.textContent=msg,cargarProductos:async()=>{},fetch:async(url,req)=>{requests.push({url,req});return{ok:true,json:async()=>url==='/api/importar-menu'?{success:true,borrador:true,productos:[producto()],version:'a'.repeat(32),paginas:1}:{success:true,count:1}}}};
  context.document.querySelector=()=>({replaceWith:elemento=>elements.set(elemento.id,elemento)});
- context.document.createElement=tag=>({tag});
+ context.document.createElement=tag=>({tag,setAttribute(k,v){this[k]=v}});
  const colocaciones = [];
  el('editar-menu').querySelector = selector => ({
    'label[for="buscar-producto"]': el('etiqueta-buscador'),
@@ -93,16 +93,17 @@ test('fotos y PDF se seleccionan juntos en el selector general',async()=>{
 test('el límite de 10 archivos se aplica a fotos y PDF combinados',async()=>{
  const n=navegador();n.el('menuFile').files=[...Array.from({length:6},()=>({type:'image/jpeg',size:50})),...Array.from({length:5},()=>({type:'application/pdf',size:50}))];await n.context.enviarMenuConIA({preventDefault(){}});assert.equal(n.requests.length,0);assert(n.el('importacion-menu-status').textContent.includes('10 fotos o PDF'));
 });
-test('Seleccionar archivos ofrece fotos y Archivos sin forzar la cámara',()=>{
+test('el panel muestra los dos accesos a archivos sin un selector intermedio',()=>{
  const html=read('dashboard.html');
  assert.match(html,/<button[^>]*aria-controls="menuFile"[^>]*>Seleccionar archivos/);
  const selector=navegador().el('menu-file-options');
- assert.equal(selector.tag,'details');
+ assert.equal(selector.tag,'div');
+ assert.equal(selector.role,'group');
  const opciones=selector.innerHTML;
  const input=html.match(/<input[^>]*id="menuFile"[^>]*>/)[0];
- assert.match(opciones,/<summary[^>]*>\s*<span>Seleccionar archivos/);
+ assert.doesNotMatch(opciones,/<summary|Seleccionar archivos/);
  assert.match(opciones,/abrirSelectorArchivosMenu\(true\)[^>]*>Elegir fotos/);
- assert.match(opciones,/abrirSelectorArchivosMenu\(false\)[^>]*>Buscar en Archivos/);
+ assert.match(opciones,/abrirSelectorArchivosMenu\(false\)[^>]*>Buscar en archivos/);
  assert.match(input,/\bmultiple\b/);
  assert.doesNotMatch(input,/\b(?:accept|capture)=/);
 });
@@ -113,8 +114,6 @@ test('el selector aplica el filtro de fotos y lo quita al volver a Archivos',()=
  const archivos=input.files;
  const filtros=[];
  input.click=()=>filtros.push(input.accept);
- n.el('menu-file-trigger').focus=()=>{};
-
  n.context.abrirSelectorArchivosMenu(true);
  n.context.abrirSelectorArchivosMenu(false);
 
