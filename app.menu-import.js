@@ -157,5 +157,13 @@ async function publicarMenuRevisado(event) {
 }
 prepararSelectorArchivosMenu();
 document.getElementById('menuFile').addEventListener('change',actualizarResumenFotosMenu);
-document.getElementById('editar-menu').addEventListener('toggle',event=>{if(event.currentTarget.open)cargarProductos();});
+
+const editorMenu = document.getElementById('editar-menu');
+const barraCategoriasEditor = document.getElementById('productos-editor-categorias');
+const etiquetaBuscadorEditor = editorMenu.querySelector('label[for="buscar-producto"]');
+const botonAgregarProducto = editorMenu.querySelector('button[onclick="nuevoProducto()"]');
+barraCategoriasEditor.after(etiquetaBuscadorEditor, document.getElementById('buscar-producto'));
+document.getElementById('productos-editor-mas').after(botonAgregarProducto.parentElement);
+editorMenu.addEventListener('toggle',event=>{if(event.currentTarget.open)cargarProductos();});
+
 window.addEventListener('beforeunload',event=>{if(borradorMenu){event.preventDefault();event.returnValue='';}});

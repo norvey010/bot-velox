@@ -45,7 +45,15 @@ function navegador(){
  const context={console,RESTAURANTE_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',supabaseClient:{auth:{getSession:async()=>({data:{session:{access_token:'sesion-prueba'}}})}},document:{getElementById:el},window:{addEventListener(){}},Blob,setTimeout,clearTimeout,FormData:class{set(){}append(nombre,blob,archivo){this.archivos??=[];this.archivos.push({nombre,blob,archivo})}},escaparHtmlUI:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),formatearPrecioCOP:n=>String(n),mostrarAviso:(el,msg)=>el.textContent=msg,cargarProductos:async()=>{},fetch:async(url,req)=>{requests.push({url,req});return{ok:true,json:async()=>url==='/api/importar-menu'?{success:true,borrador:true,productos:[producto()],version:'a'.repeat(32),paginas:1}:{success:true,count:1}}}};
  context.document.querySelector=()=>({replaceWith:elemento=>elements.set(elemento.id,elemento)});
  context.document.createElement=tag=>({tag});
- vm.createContext(context);vm.runInContext(read('app.menu-import.js'),context);el('menuFile').files=[{name:'carta.pdf',type:'application/pdf',size:100,arrayBuffer:async()=>new ArrayBuffer(100)}];return{context,el,requests,run:s=>vm.runInContext(s,context)};
+ const colocaciones = [];
+ el('editar-menu').querySelector = selector => ({
+   'label[for="buscar-producto"]': el('etiqueta-buscador'),
+   'button[onclick="nuevoProducto()"]': { parentElement: el('accion-agregar') }
+ })[selector];
+ for (const id of ['productos-editor-categorias','productos-editor-mas']) {
+   el(id).after = (...nodos) => colocaciones.push([id, ...nodos]);
+ }
+ vm.createContext(context);vm.runInContext(read('app.menu-import.js'),context);el('menuFile').files=[{name:'carta.pdf',type:'application/pdf',size:100,arrayBuffer:async()=>new ArrayBuffer(100)}];return{context,el,requests,colocaciones,run:s=>vm.runInContext(s,context)};
 }
 test('revisión en navegador: leer no publica; corregir y publicar envía el precio revisado',async()=>{
  const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});assert.equal(n.requests.length,1);assert.equal(n.requests[0].url,'/api/importar-menu');assert.equal(n.el('revision-menu').hidden,false);
@@ -112,4 +120,12 @@ test('el selector aplica el filtro de fotos y lo quita al volver a Archivos',()=
 
  assert.deepEqual(filtros,['image/*',undefined]);
  assert.equal(input.files,archivos);
+});
+
+test('el editor coloca la búsqueda bajo las categorías y Agregar producto al final',()=>{
+ const n = navegador();
+ assert.deepEqual(n.colocaciones, [
+   ['productos-editor-categorias', n.el('etiqueta-buscador'), n.el('buscar-producto')],
+   ['productos-editor-mas', n.el('accion-agregar')]
+ ]);
 });
