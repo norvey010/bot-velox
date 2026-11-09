@@ -170,8 +170,11 @@ test('la vista previa permite quitar una foto y enviar solo el PDF restante', as
    items = { add: archivo => this.files.push(archivo) };
  };
  n.context.document.querySelectorAll = () => [{ focus() {} }];
- n.el('menu-file-preview').open = true;
- n.context.actualizarResumenFotosMenu();
+ n.el('importacion-menu-status').textContent = 'Selecciona entre 1 y 10 fotos o PDF.';
+ n.context.actualizarResumenFotosMenu(true);
+ assert.equal(n.el('menu-file-preview').open, true);
+ assert.equal(n.el('importacion-menu-status').textContent, '');
+ n.context.renderizarVistaPreviaArchivosMenu(); // Simula el evento toggle del navegador.
  const lista = n.el('menu-file-preview-list');
  assert.match(lista.innerHTML, /<img src="blob:/);
  assert.match(lista.innerHTML, /Abrir PDF/);

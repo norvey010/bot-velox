@@ -58,6 +58,7 @@ function archivosSeleccionadosMenu() {
   return Array.from(document.getElementById('menuFile').files || []);
 }
 const urlsVistaPreviaMenu = [];
+const AVISO_CANTIDAD_ARCHIVOS_MENU = 'Selecciona entre 1 y 10 fotos o PDF.';
 function renderizarVistaPreviaArchivosMenu() {
   for (const url of urlsVistaPreviaMenu) URL.revokeObjectURL(url);
   urlsVistaPreviaMenu.length = 0;
@@ -105,7 +106,7 @@ function quitarArchivoMenu(indice) {
   siguiente?.focus({ preventScroll: true });
 }
 
-function actualizarResumenFotosMenu() {
+function actualizarResumenFotosMenu(abrirVistaPrevia = false) {
   const cantidad = archivosSeleccionadosMenu().length;
   const resumen = document.getElementById('menu-file-summary');
   const panel = document.getElementById('menu-file-preview');
@@ -114,7 +115,18 @@ function actualizarResumenFotosMenu() {
     : `${cantidad} archivos seleccionados`;
   panel.hidden = cantidad === 0;
   if (panel.hidden) panel.open = false;
-  renderizarVistaPreviaArchivosMenu();
+
+  const aviso = document.getElementById('importacion-menu-status');
+  if (cantidad >= 1 && cantidad <= 10 && aviso.textContent === AVISO_CANTIDAD_ARCHIVOS_MENU) {
+    aviso.classList.add('hidden');
+    aviso.textContent = '';
+  }
+
+  if (abrirVistaPrevia && cantidad > 0 && !panel.open) {
+    panel.open = true; // El evento toggle carga las miniaturas al abrir.
+  } else {
+    renderizarVistaPreviaArchivosMenu();
+  }
 }
 function mensajeErrorImportacion(error, accion='lectura') {
   const mensaje=String(error?.message || '');
@@ -262,7 +274,7 @@ async function enviarMenuConIA(event) {
   }
   const files=archivosSeleccionadosMenu();
   const tipos=['image/jpeg','image/png','image/webp','image/gif','application/pdf'];
-  if(!files.length || files.length>10) { estadoImportacion('Selecciona entre 1 y 10 fotos o PDF.','error');return; }
+  if(!files.length || files.length>10) { estadoImportacion(AVISO_CANTIDAD_ARCHIVOS_MENU,'error');return; }
   if(files.some(f=>f.size>8*1024*1024 || !tipos.includes(f.type))) { estadoImportacion('Usa JPG, PNG, WEBP, GIF o PDF, de máximo 8 MB cada uno.','error');return; }
   if(files.reduce((n,f)=>n+f.size,0)>25*1024*1024) { estadoImportacion('Los archivos juntos deben pesar máximo 25 MB.','error');return; }
   if(!RESTAURANTE_ID) { estadoImportacion('Espera a que termine de cargar tu restaurante.','error');return; }
@@ -508,7 +520,7 @@ async function publicarMenuRevisado(event) {
 }
 prepararSelectorArchivosMenu();
 prepararNavegacionRevisionMenu();
-document.getElementById('menuFile').addEventListener('change',actualizarResumenFotosMenu);
+document.getElementById('menuFile').addEventListener('change', () => actualizarResumenFotosMenu(true));
 document.getElementById('menu-file-preview').addEventListener('toggle',renderizarVistaPreviaArchivosMenu);
 
 const editorMenu = document.getElementById('editar-menu');

@@ -256,6 +256,7 @@
               <input type="hidden" id="ai-restaurante-id">
               <button type="button" onclick="document.getElementById('menuFile').click()" aria-controls="menuFile" class="min-h-12 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-3 text-sm font-semibold text-white hover:border-red-400">Seleccionar archivos <span class="font-normal text-slate-300">(PDF o fotos)</span></button>
               <input type="file" id="menuFile" name="menuFile" multiple hidden aria-label="Seleccionar fotos o PDF de la carta" aria-describedby="menu-limites">
+              <p class="text-xs text-slate-400">Si aparece Drive, abre ☰ y toca Descargas.</p>
               <details id="menu-file-preview" hidden>
                 <summary class="flex min-h-11 cursor-pointer flex-wrap items-center justify-between gap-2 text-xs font-semibold text-white">
                   <span id="menu-file-summary" aria-live="polite"></span>
@@ -1739,6 +1740,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=menu-pantallas"></script>
+  <script src="/app.menu-import.js?v=previa-automatica"></script>
 </body>
 </html>
