@@ -202,9 +202,12 @@
        let direccionAnimacionMenu = 'next';
        let observadorTarjetasMenu = null;
 
+window.VELOX_VISTA_BORRADOR = window.parent !== window
+    && new URLSearchParams(window.location.search).get('vista') === 'borrador';
+
 async function cargarMenu() {
+    if (window.VELOX_VISTA_BORRADOR) return;
     var contenedor = document.getElementById('contenedor-menu');
-    var contenedorCategorias = document.getElementById('contenedor-categorias');
     var urlParams = new URLSearchParams(window.location.search);
     var clienteSlug = urlParams.get('slug') || urlParams.get('r');
 
@@ -230,6 +233,11 @@ async function cargarMenu() {
         return;
     }
 
+    mostrarCartaMenu(restData, datosMenu.productos);
+}
+
+function mostrarCartaMenu(restData, productos) {
+    const contenedorCategorias = document.getElementById('contenedor-categorias');
     ID_RESTAURANTE_ACTUAL = restData.id;
     window.RESTAURANTE_ACTUAL = restData;
     window.MENU_DISPONIBLE = restData.menu_disponible !== false;
@@ -241,8 +249,6 @@ async function cargarMenu() {
     var elNombre = document.getElementById('nombre-restaurante');
     if (elNombre) elNombre.innerText = restData.nombre_restaurante;
 
-    // Forzamos la consulta de productos ordenada por ID para evitar datos cacheados
-    const productos = datosMenu.productos;
     todosLosProductos = productos.map(producto => ({
         ...producto,
         _categoriaOriginal: producto.categoria,
@@ -741,7 +747,7 @@ function eliminarItemCarrito(index) {
 
     async function confirmarYEnviarPedido(event) {
         event.preventDefault();
-        if (enviandoPedido) return;
+        if (enviandoPedido || window.VELOX_VISTA_BORRADOR) return;
         if (window.MENU_DISPONIBLE === false) {
             alert(window.RESTAURANTE_ACTUAL?.mensaje_cierre || 'En este momento no estamos recibiendo pedidos.');
             return;
@@ -820,6 +826,24 @@ function eliminarItemCarrito(index) {
             }
         }
     }
+        if (window.VELOX_VISTA_BORRADOR) {
+            const formulario = document.getElementById('form-confirmar-pedido');
+            const confirmar = formulario.querySelector('button[type="submit"]');
+            confirmar.disabled = true;
+            confirmar.textContent = 'Vista previa';
+            window.addEventListener('message', event => {
+                const datos = event.data;
+                if (event.source !== window.parent || event.origin !== window.location.origin
+                    || datos?.tipo !== 'velox-borrador-carta' || !Array.isArray(datos.productos)) return;
+
+                cerrarModalPersonalizar();
+                cerrarModalPedido();
+                cart = [];
+                actualizarBarraCarrito();
+                mostrarCartaMenu({ nombre_restaurante: datos.restaurante || 'Tu restaurante' },
+                    datos.productos.map((producto, indice) => ({ ...producto, id: `borrador-${indice}` })));
+            });
+        }
         window.cargarMenu = cargarMenu;
         window.onload = function() {
             cargarMenu();

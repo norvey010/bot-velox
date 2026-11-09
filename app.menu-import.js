@@ -179,6 +179,28 @@ function guardarEdicionBorradorMenu() {
   } catch { /* La lectura original sigue disponible en el servidor. */ }
 }
 
+function enviarVistaClientesBorrador() {
+  if (!borradorMenu || document.getElementById('revision-vista-clientes').hidden) return;
+  const marco = document.getElementById('revision-carta-frame');
+  marco.contentWindow?.postMessage({
+    tipo: 'velox-borrador-carta',
+    restaurante: document.getElementById('nombre-restaurante-header').innerText || 'Tu restaurante',
+    productos: borradorMenu.productos
+  }, window.location.origin);
+}
+
+function mostrarModoRevisionMenu(corregir) {
+  document.getElementById('revision-vista-clientes').hidden = corregir;
+  document.getElementById('revision-edicion').hidden = !corregir;
+  document.getElementById('revision-ver-clientes').setAttribute('aria-pressed', String(!corregir));
+  document.getElementById('revision-corregir').setAttribute('aria-pressed', String(corregir));
+  if (!corregir) {
+    const marco = document.getElementById('revision-carta-frame');
+    if (!marco.getAttribute('src')) marco.src = '/menu.html?vista=borrador';
+    else enviarVistaClientesBorrador();
+  }
+}
+
 function olvidarBorradorMenu() {
   clearTimeout(guardadoBorradorMenu);
   if (borradorMenu?.lectura_id) {
@@ -187,6 +209,7 @@ function olvidarBorradorMenu() {
   borradorMenu = null;
   document.getElementById('cargar-carta-ayuda').textContent = 'Fotos o PDF';
   document.getElementById('revision-menu').hidden = true;
+  document.getElementById('revision-carta-frame').removeAttribute('src');
 }
 
 function mostrarBorradorMenu(resultado, lecturaId, desplazar = false) {
@@ -206,6 +229,7 @@ function mostrarBorradorMenu(resultado, lecturaId, desplazar = false) {
   document.getElementById('cargar-carta-ayuda').textContent = 'Borrador listo para revisar';
   document.getElementById('revision-menu').hidden = false;
   renderizarRevisionMenu();
+  mostrarModoRevisionMenu(false);
   mostrarProgresoImportacion(2);
   estadoImportacion(`${borradorMenu.productos.length} productos en el borrador. Revisa y publica.`, 'exito');
   if (desplazar) document.getElementById('revision-menu').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -493,6 +517,7 @@ async function publicarMenuRevisado(event) {
     categoriaRevisionMenu = categoriaProductoBorrador(borradorMenu.productos[invalido]);
     document.getElementById('buscar-revision-menu').value = '';
     limiteRevisionMenu = LOTE_REVISION_MENU;
+    mostrarModoRevisionMenu(true);
     renderizarRevisionMenu(invalido);
     document.getElementById(`revision-producto-${invalido}`)?.scrollIntoView({block:'center'});
     if (producto.revision_opciones || opcionesBorradorIncompletas(producto)) {
@@ -520,6 +545,7 @@ async function publicarMenuRevisado(event) {
 }
 prepararSelectorArchivosMenu();
 prepararNavegacionRevisionMenu();
+document.getElementById('revision-carta-frame').addEventListener('load', enviarVistaClientesBorrador);
 document.getElementById('menuFile').addEventListener('change', () => actualizarResumenFotosMenu(true));
 document.getElementById('menu-file-preview').addEventListener('toggle',renderizarVistaPreviaArchivosMenu);
 
