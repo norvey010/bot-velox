@@ -259,7 +259,7 @@ body:has(#tab-menu) > header nav button.bg-red-600 { border-color: rgb(255 164 1
 #connection-status { font-variant-numeric: tabular-nums; }
 body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
 #sec-configuracion { width: 100%; }
-:is(#resumen-pedidos, #sec-menu-ia > div, #sec-configuracion > div, #editor-producto, #carta-ampliada) {
+:is(#resumen-pedidos, #sec-menu-ia > div, #sec-configuracion > div, #editor-producto, #carta-ampliada, #revision-carta-ampliada) {
   border-radius: var(--velox-radius-panel);
   corner-shape: round bevel;
   border: 1px solid var(--velox-frame);
@@ -313,24 +313,23 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
   border-radius: var(--velox-radius-card);
   corner-shape: round bevel;
 }
-#productos-editor-categorias, #revision-menu-categorias, #contenedor-categorias {
+#productos-editor-categorias, #contenedor-categorias {
   scrollbar-width: thin;
   scrollbar-color: var(--velox-border) transparent;
   padding-block: .3rem .5rem;
 }
-#productos-editor-categorias button, #revision-menu-categorias button, #contenedor-categorias button {
+#productos-editor-categorias button, #contenedor-categorias button {
   min-height: 2.65rem;
   border: 1px solid var(--velox-border);
   border-radius: var(--velox-radius-control);
   box-shadow: none;
 }
-#productos-editor-categorias button[aria-pressed=true], #revision-menu-categorias button[aria-pressed=true], #contenedor-categorias button.bg-red-600 {
+#productos-editor-categorias button[aria-pressed=true], #contenedor-categorias button.bg-red-600 {
   background: linear-gradient(115deg, #c91639, #9e102d);
   border-color: #e9637b;
   color: var(--velox-text);
 }
-#revision-menu-categorias[hidden], #revision-siguiente[hidden] { display: none; }
-#carta-miniatura {
+:is(#carta-miniatura, #revision-miniatura) {
   border-radius: var(--velox-radius-card);
   corner-shape: round bevel;
   box-shadow: var(--velox-shadow);
@@ -342,7 +341,7 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
 }
 #editor-producto #form-producto input { border-radius: var(--velox-radius-control); }
 #revision-menu, #editor-producto :is(textarea, select), .velox-option { border-radius: var(--velox-radius-control); }
-#editor-producto::backdrop, #carta-ampliada::backdrop { background: rgb(4 6 10 / 82%); }
+#editor-producto::backdrop, #carta-ampliada::backdrop, #revision-carta-ampliada::backdrop { background: rgb(4 6 10 / 82%); }
 
 @media (min-width: 1180px) {
   #sec-pedidos:not(.hidden) {

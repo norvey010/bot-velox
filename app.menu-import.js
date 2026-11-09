@@ -1,7 +1,4 @@
 let borradorMenu = null;
-const LOTE_REVISION_MENU = 6;
-let categoriaRevisionMenu = '';
-let limiteRevisionMenu = LOTE_REVISION_MENU;
 let leyendoMenu = false;
 let subiendoArchivosMenu = false;
 let consultandoLecturaMenu = false;
@@ -179,26 +176,49 @@ function guardarEdicionBorradorMenu() {
   } catch { /* La lectura original sigue disponible en el servidor. */ }
 }
 
-function enviarVistaClientesBorrador() {
-  if (!borradorMenu || document.getElementById('revision-vista-clientes').hidden) return;
-  const marco = document.getElementById('revision-carta-frame');
+const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=miniatura';
+
+function enviarVistaClientesBorrador(marco) {
+  if (!borradorMenu) return;
   marco.contentWindow?.postMessage({
     tipo: 'velox-borrador-carta',
     restaurante: document.getElementById('nombre-restaurante-header').innerText || 'Tu restaurante',
-    productos: borradorMenu.productos
+    productos: borradorMenu.productos,
+    editable: marco.id === 'revision-carta-frame'
   }, window.location.origin);
 }
 
-function mostrarModoRevisionMenu(corregir) {
-  document.getElementById('revision-vista-clientes').hidden = corregir;
-  document.getElementById('revision-edicion').hidden = !corregir;
-  document.getElementById('revision-ver-clientes').setAttribute('aria-pressed', String(!corregir));
-  document.getElementById('revision-corregir').setAttribute('aria-pressed', String(corregir));
-  if (!corregir) {
-    const marco = document.getElementById('revision-carta-frame');
-    if (!marco.getAttribute('src')) marco.src = '/menu.html?vista=borrador';
-    else enviarVistaClientesBorrador();
+function cargarVistaClientesBorrador(marco) {
+  if (!marco.getAttribute('src')) marco.src = RUTA_PREVIA_BORRADOR;
+  else enviarVistaClientesBorrador(marco);
+}
+
+function abrirCartaBorrador(indice = null) {
+  if (!borradorMenu || publicandoMenu || (indice !== null && !borradorMenu.productos[indice])) return;
+  const dialogo = document.getElementById('revision-carta-ampliada');
+  const marco = document.getElementById('revision-carta-frame');
+  const editar = indice !== null;
+  marco.hidden = editar;
+  document.getElementById('revision-edicion').hidden = !editar;
+  document.getElementById('revision-carta-ayuda').hidden = editar;
+  document.getElementById('revision-volver-carta').hidden = !editar;
+  document.getElementById('revision-carta-ampliada-titulo').textContent = editar ? 'Editar producto' : 'Carta del borrador';
+  if (!dialogo.open) {
+    dialogo.showModal();
+    document.body.style.overflow = 'hidden';
   }
+  if (editar) {
+    document.getElementById('revision-producto-status').classList.add('hidden');
+    renderizarRevisionMenu(indice);
+    document.getElementById(`revision-producto-${indice}`)?.focus({ preventScroll: true });
+    document.getElementById('revision-edicion').scrollTop = 0;
+  } else {
+    cargarVistaClientesBorrador(marco);
+  }
+}
+
+function estadoProductoBorrador(mensaje, tipo) {
+  mostrarAviso(document.getElementById('revision-producto-status'), mensaje, tipo);
 }
 
 function olvidarBorradorMenu() {
@@ -209,6 +229,7 @@ function olvidarBorradorMenu() {
   borradorMenu = null;
   document.getElementById('cargar-carta-ayuda').textContent = 'Fotos o PDF';
   document.getElementById('revision-menu').hidden = true;
+  document.getElementById('revision-miniatura-frame').removeAttribute('src');
   document.getElementById('revision-carta-frame').removeAttribute('src');
 }
 
@@ -223,13 +244,10 @@ function mostrarBorradorMenu(resultado, lecturaId, desplazar = false) {
       }
     } catch {}
   }
-  categoriaRevisionMenu = '';
-  limiteRevisionMenu = LOTE_REVISION_MENU;
-  document.getElementById('buscar-revision-menu').value = '';
   document.getElementById('cargar-carta-ayuda').textContent = 'Borrador listo para revisar';
   document.getElementById('revision-menu').hidden = false;
-  renderizarRevisionMenu();
-  mostrarModoRevisionMenu(false);
+  document.getElementById('btn-publicar-menu').disabled = !borradorMenu.productos.length;
+  cargarVistaClientesBorrador(document.getElementById('revision-miniatura-frame'));
   mostrarProgresoImportacion(2);
   estadoImportacion(`${borradorMenu.productos.length} productos en el borrador. Revisa y publica.`, 'exito');
   if (desplazar) document.getElementById('revision-menu').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -344,41 +362,19 @@ function precioProductoBorrador(producto) {
   return Number(producto.precio) > 0 ? '$' + formatearPrecioCOP(producto.precio) : 'Precio pendiente';
 }
 
-function renderizarRevisionMenu(indiceAbierto = -1) {
-  if(!borradorMenu) return;
-  const productos=borradorMenu.productos;
-  const filas = productos.map((producto, i) => ({producto, i, categoria: categoriaProductoBorrador(producto)}));
-  const categorias = [...new Set(filas.map(fila => fila.categoria))];
-  if (!categorias.includes(categoriaRevisionMenu)) categoriaRevisionMenu = categorias[0] || '';
-  const barra = document.getElementById('revision-menu-categorias');
-  const busqueda = normalizarTexto(document.getElementById('buscar-revision-menu').value.trim());
-  const visibles = filas.filter(({producto, categoria}) => busqueda
-    ? coincideBusquedaProducto(normalizarTexto(`${producto.nombre} ${producto.categoria} ${categoria}`), busqueda)
-    : categoria === categoriaRevisionMenu
-  ).sort((a, b) => compararPreciosMenu(a.producto, b.producto));
-  limiteRevisionMenu = Math.max(limiteRevisionMenu, visibles.findIndex(({i}) => i === indiceAbierto) + 1);
-  const posicion = barra.scrollLeft;
-  barra.innerHTML = categorias.map(categoria => `<button type="button" data-categoria-revision="${escaparHtmlUI(categoria)}" aria-pressed="${!busqueda && categoria === categoriaRevisionMenu}" class="min-h-11 shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold text-slate-200">${escaparHtmlUI(categoria)}</button>`).join('');
-  barra.scrollLeft = posicion;
-  barra.hidden = !categorias.length;
-  const pendientes = productos.filter(producto => producto.revision_opciones).length;
-  document.getElementById('revision-menu-resumen').textContent = `${productos.length} productos en el borrador · Mostrando ${Math.min(limiteRevisionMenu, visibles.length)} de ${visibles.length}${pendientes ? ` · ${pendientes} con opciones por revisar` : ''}`;
-  document.getElementById('revision-siguiente').hidden = limiteRevisionMenu >= visibles.length;
-  document.getElementById('btn-publicar-menu').disabled=!productos.length || publicandoMenu;
-  document.getElementById('revision-menu-lista').innerHTML=visibles.slice(0, limiteRevisionMenu).map(({producto: p, i, categoria})=>{
+function renderizarRevisionMenu(i) {
+  const p = borradorMenu?.productos[i];
+  if (!p) return;
+  const categoria = categoriaProductoBorrador(p);
     const campo=(key,label,valor,extra='')=>`<label class="block text-xs text-slate-300">${label}<input ${extra} value="${escaparHtmlUI(valor)}" oninput="editarDatoBorrador(${i}, '${key}', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`;
     const opciones=(p.opciones||[]).map((o,j)=>o.grupo==='__velox_combo_family__'?'':`<div class="grid gap-2 rounded-lg border border-slate-700 p-2">${['grupo','nombre','descripcion'].map(key=>`<label class="text-xs text-slate-300">${({grupo:'Grupo',nombre:'Opción',descripcion:'Descripción'})[key]}<input value="${escaparHtmlUI(o[key]||'')}" oninput="editarDatoBorrador(${i}, '${key}', this.value, ${j})" maxlength="${key==='descripcion'?5000:key==='grupo'?120:200}" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`).join('')}<button type="button" onclick="cambiarOpcionesBorrador(${i}, ${j})" class="min-h-11 justify-self-start text-xs text-red-300">Quitar opción</button></div>`).join('');
-    return `<article class="rounded-lg border border-slate-700 bg-slate-900 p-3">
-      <details id="revision-producto-${i}" name="producto-borrador"${i === indiceAbierto ? ' open' : ''}>
-        <summary class="flex min-h-11 cursor-pointer items-center justify-between gap-3">
-          <span class="min-w-0">
+    document.getElementById('revision-menu-lista').innerHTML = `<article id="revision-producto-${i}" tabindex="-1" class="rounded-lg border border-slate-700 bg-slate-900 p-3">
+          <div class="min-w-0">
             <strong id="revision-nombre-${i}" class="block break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre || 'Producto sin nombre')}</strong>
             <span id="revision-precio-${i}" class="block text-sm font-bold text-slate-200">${escaparHtmlUI(precioProductoBorrador(p))}</span>
             ${p.revision_opciones ? '<span class="block text-xs font-semibold text-amber-300">Revisar opciones</span>' : ''}
             <span id="revision-categoria-${i}" class="block break-words text-xs text-slate-400">${escaparHtmlUI(categoria)}</span>
-          </span>
-          <span class="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white">${iconoVelox('editar')} Editar</span>
-        </summary>
+          </div>
         <div class="mt-3 space-y-2 border-t border-slate-700 pt-3">
           <div class="grid gap-3 sm:grid-cols-2">${campo('nombre','Nombre',p.nombre,'maxlength="200"')}${campo('categoria','Categoría',p.categoria,'maxlength="120"')}${campo('precio','Precio en pesos (COP)',formatearPrecioCOP(p.precio),'inputmode="numeric"')}
             <label class="block text-xs text-slate-300">Descripción e ingredientes<textarea maxlength="5000" oninput="editarDatoBorrador(${i}, 'descripcion', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white" rows="3">${escaparHtmlUI(p.descripcion||'')}</textarea></label>
@@ -392,11 +388,7 @@ function renderizarRevisionMenu(indiceAbierto = -1) {
           </details>
           <button type="button" onclick="quitarProductoBorrador(${i})" class="min-h-11 px-2 text-xs text-red-300">Quitar de esta carga</button>
         </div>
-      </details>
     </article>`;
-  }).join('') || (productos.length
-    ? '<p class="text-sm text-slate-300">No encontramos ese producto.</p>'
-    : '<p class="text-sm text-slate-300">Quitaste todos los productos. Puedes descartar la lectura o subir otros archivos.</p>');
 }
 function cambiarOpcionesBorrador(indice, opcion) {
   const producto = borradorMenu?.productos[indice];
@@ -417,13 +409,13 @@ function confirmarOpcionesBorrador(indice) {
   const producto = borradorMenu?.productos[indice];
   if (publicandoMenu || !producto) return;
   if (opcionesBorradorIncompletas(producto)) {
-    estadoImportacion('Completa el grupo y el nombre de cada opción o quita la fila vacía.', 'error');
+    estadoProductoBorrador('Completa el grupo y el nombre de cada opción o quita la fila vacía.', 'error');
     return;
   }
   producto.revision_opciones = false;
   guardarEdicionBorradorMenu();
   renderizarRevisionMenu(indice);
-  estadoImportacion('Opciones revisadas.', 'exito');
+  estadoProductoBorrador('Opciones revisadas.', 'exito');
 }
 
 function editarDatoBorrador(i,key,value,opcion) {
@@ -443,43 +435,12 @@ function editarDatoBorrador(i,key,value,opcion) {
   }
 }
 
-function prepararNavegacionRevisionMenu() {
-  const lista = document.getElementById('revision-menu-lista');
-  lista.className = 'grid items-start grid-cols-1 gap-2 lg:grid-cols-2';
-  lista.insertAdjacentHTML('beforebegin', `
-    <nav id="revision-menu-categorias" aria-label="Categorías del borrador" class="flex w-full gap-2 overflow-x-auto whitespace-nowrap p-1"></nav>
-    <label for="buscar-revision-menu" class="sr-only">Buscar en el borrador</label>
-    <input id="buscar-revision-menu" type="search" placeholder="Buscar producto en el borrador" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white">`);
-  const buscar = document.getElementById('buscar-revision-menu');
-  const barra = document.getElementById('revision-menu-categorias');
-  buscar.addEventListener('input', () => {
-    limiteRevisionMenu = LOTE_REVISION_MENU;
-    renderizarRevisionMenu();
-  });
-  barra.addEventListener('click', event => {
-    const boton = event.target.closest('[data-categoria-revision]');
-    if (!boton) return;
-    categoriaRevisionMenu = boton.dataset.categoriaRevision;
-    buscar.value = '';
-    limiteRevisionMenu = LOTE_REVISION_MENU;
-    renderizarRevisionMenu();
-    barra.querySelector('[aria-pressed="true"]')?.focus({preventScroll:true});
-  });
-  document.getElementById('revision-anterior').remove();
-  const mas = document.getElementById('revision-siguiente');
-  mas.textContent = 'Mostrar más';
-  mas.removeAttribute('onclick');
-  mas.addEventListener('click', () => {
-    const abierto = lista.querySelector('details[name="producto-borrador"][open]');
-    limiteRevisionMenu += LOTE_REVISION_MENU;
-    renderizarRevisionMenu(abierto ? Number(abierto.id.replace('revision-producto-', '')) : -1);
-  });
-}
 function quitarProductoBorrador(i) {
   if (!borradorMenu || publicandoMenu) return;
   borradorMenu.productos.splice(i, 1);
   guardarEdicionBorradorMenu();
-  renderizarRevisionMenu();
+  document.getElementById('btn-publicar-menu').disabled = !borradorMenu.productos.length;
+  abrirCartaBorrador();
 }
 
 async function descartarRevisionMenu() {
@@ -514,17 +475,12 @@ async function publicarMenuRevisado(event) {
     || !p.nombre.trim() || !p.categoria.trim() || !Number.isSafeInteger(Number(p.precio)) || Number(p.precio) <= 0 || Number(p.precio) > 100000000);
   if (invalido >= 0) {
     const producto = borradorMenu.productos[invalido];
-    categoriaRevisionMenu = categoriaProductoBorrador(borradorMenu.productos[invalido]);
-    document.getElementById('buscar-revision-menu').value = '';
-    limiteRevisionMenu = LOTE_REVISION_MENU;
-    mostrarModoRevisionMenu(true);
-    renderizarRevisionMenu(invalido);
-    document.getElementById(`revision-producto-${invalido}`)?.scrollIntoView({block:'center'});
+    abrirCartaBorrador(invalido);
     if (producto.revision_opciones || opcionesBorradorIncompletas(producto)) {
       document.getElementById(`revision-opciones-${invalido}`).open = true;
-      estadoImportacion(`Revisa las opciones de «${producto.nombre}» antes de publicar.`, 'error');
+      estadoProductoBorrador(`Revisa las opciones de «${producto.nombre}» antes de publicar.`, 'error');
     } else {
-      estadoImportacion(`Revisa nombre, categoría y precio del producto ${invalido + 1}.`, 'error');
+      estadoProductoBorrador(`Revisa nombre, categoría y precio del producto ${invalido + 1}.`, 'error');
     }
     return;
   }
@@ -544,8 +500,24 @@ async function publicarMenuRevisado(event) {
   finally {publicandoMenu=false;document.getElementById('revision-menu').removeAttribute('inert');boton.disabled=false;boton.textContent='Publicar carta';}
 }
 prepararSelectorArchivosMenu();
-prepararNavegacionRevisionMenu();
-document.getElementById('revision-carta-frame').addEventListener('load', enviarVistaClientesBorrador);
+for (const id of ['revision-miniatura-frame', 'revision-carta-frame']) {
+  document.getElementById(id).addEventListener('load', event => enviarVistaClientesBorrador(event.currentTarget));
+}
+document.getElementById('revision-carta-ampliada').addEventListener('close', () => {
+  document.body.style.overflow = '';
+  document.getElementById('revision-carta-frame').removeAttribute('src');
+  if (!borradorMenu) return;
+  cargarVistaClientesBorrador(document.getElementById('revision-miniatura-frame'));
+  document.getElementById('revision-miniatura').focus({ preventScroll: true });
+});
+window.addEventListener('message', event => {
+  const marco = document.getElementById('revision-carta-frame');
+  if (event.origin !== window.location.origin || event.source !== marco.contentWindow
+      || !document.getElementById('revision-carta-ampliada').open || marco.hidden
+      || event.data?.tipo !== 'velox-editar-producto-borrador') return;
+  const { indice } = event.data;
+  if (Number.isSafeInteger(indice) && indice >= 0) abrirCartaBorrador(indice);
+});
 document.getElementById('menuFile').addEventListener('change', () => actualizarResumenFotosMenu(true));
 document.getElementById('menu-file-preview').addEventListener('toggle',renderizarVistaPreviaArchivosMenu);
 

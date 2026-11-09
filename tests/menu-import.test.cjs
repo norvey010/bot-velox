@@ -107,13 +107,10 @@ test('publicación usa RPC autenticado y detecta carta cambiada',async()=>{
  s.user.rpc=async()=>({error:{message:'CARTA_CAMBIO'}});const conflicto=s.response();await s.routes.get('/api/publicar-menu')({body:{restaurante_id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',version:'a'.repeat(32),productos:[producto()]},supabaseUsuario:s.user},conflicto);assert.equal(conflicto.statusCode,409);
 });
 function navegador(){
- const elements=new Map(),requests=[];const el=id=>{if(!elements.has(id))elements.set(id,{files:[],value:'',hidden:true,classList:{toggle(){},add(){},remove(){}},addEventListener(){},scrollIntoView(){},setAttribute(k,v){this[k]=v},getAttribute(k){return this[k]},removeAttribute(k){delete this[k]},reset(){this.files=[]}});return elements.get(id)};
- const context={console,RESTAURANTE_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',supabaseClient:{auth:{getSession:async()=>({data:{session:{access_token:'sesion-prueba'}}})}},document:{getElementById:el,addEventListener(){}},window:{addEventListener(){}},Blob,setTimeout,clearTimeout,FormData:class{set(){}append(nombre,blob,archivo){this.archivos??=[];this.archivos.push({nombre,blob,archivo})}},escaparHtmlUI:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),formatearPrecioCOP:n=>String(n),mostrarAviso:(el,msg)=>el.textContent=msg,cargarProductos:async()=>{},fetch:async(url,req)=>{requests.push({url,req});return{ok:true,json:async()=>url==='/api/importar-menu'?{success:true,borrador:true,productos:[producto()],version:'a'.repeat(32),paginas:1}:{success:true,count:1}}}};
+ const elements=new Map(),requests=[];const el=id=>{if(!elements.has(id))elements.set(id,{id,files:[],value:'',hidden:true,classList:{toggle(){},add(){},remove(){}},addEventListener(){},scrollIntoView(){},focus(){},showModal(){this.open=true},setAttribute(k,v){this[k]=v},getAttribute(k){return this[k]},removeAttribute(k){delete this[k]},reset(){this.files=[]}});return elements.get(id)};
+ const context={console,RESTAURANTE_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',supabaseClient:{auth:{getSession:async()=>({data:{session:{access_token:'sesion-prueba'}}})}},document:{getElementById:el,addEventListener(){},body:{style:{}}},window:{addEventListener(){},location:{origin:'https://velox.example'}},Blob,setTimeout,clearTimeout,FormData:class{set(){}append(nombre,blob,archivo){this.archivos??=[];this.archivos.push({nombre,blob,archivo})}},escaparHtmlUI:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),formatearPrecioCOP:n=>String(n),mostrarAviso:(el,msg)=>el.textContent=msg,cargarProductos:async()=>{},fetch:async(url,req)=>{requests.push({url,req});return{ok:true,json:async()=>url==='/api/importar-menu'?{success:true,borrador:true,productos:[producto()],version:'a'.repeat(32),paginas:1}:{success:true,count:1}}}};
  context.document.querySelector=()=>({replaceWith:elemento=>elements.set(elemento.id,elemento)});
  context.document.createElement=tag=>({tag,setAttribute(k,v){this[k]=v}});
- el('revision-menu-lista').insertAdjacentHTML=()=>{};
- el('revision-anterior').remove=()=>{};
- context.coincideBusquedaProducto=(texto,busqueda)=>texto.includes(busqueda);
  const colocaciones = [];
  el('editar-menu').querySelector = selector => ({
    'label[for="buscar-producto"]': el('etiqueta-buscador'),
@@ -133,7 +130,7 @@ test('descartar no publica y una publicación fallida conserva el borrador',asyn
  await n.context.enviarMenuConIA({preventDefault(){}});n.context.fetch=async()=>({ok:false,json:async()=>({error:'Fallo de prueba'})});await n.context.publicarMenuRevisado({preventDefault(){}});assert.equal(n.el('revision-menu').hidden,false);assert(n.run('borradorMenu.productos.length')===1);assert(n.el('importacion-menu-status').textContent.includes('Fallo de prueba'));
 });
 test('precio pendiente debe corregirse antes de publicar',async()=>{
- const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});n.context.editarDatoBorrador(0,'precio','0');await n.context.publicarMenuRevisado({preventDefault(){}});assert.equal(n.requests.length,1);assert(n.el('importacion-menu-status').textContent.includes('precio'));
+ const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});n.context.editarDatoBorrador(0,'precio','0');await n.context.publicarMenuRevisado({preventDefault(){}});assert.equal(n.requests.length,1);assert(n.el('revision-producto-status').textContent.includes('precio'));
 });
 
 test('un corte al leer se explica en español y no dispara lecturas automáticas',async()=>{
@@ -254,7 +251,8 @@ test('un panel recién abierto recupera un borrador listo sin reenviar archivos'
  };
  assert.equal(await n.context.recuperarLecturaMenu(), true);
  assert.equal(n.el('revision-menu').hidden, false);
- assert.match(n.el('revision-menu-lista').innerHTML, /Pizza recuperada/);
+ assert.match(n.el('revision-miniatura-frame').src, /vista=borrador/);
+ assert.equal(n.run('borradorMenu.productos[0].nombre'), 'Pizza recuperada');
  assert.match(n.requests[0].url, /^\/api\/lectura-menu\//);
  assert.equal(n.requests.length, 1);
 });
@@ -290,27 +288,37 @@ test('la vista del borrador usa la carta pública y bloquea el envío de pedidos
  assert.equal(el('contenedor-menu').innerHTML, undefined);
  eventos.message({ source: padre, origin: origen, data: datos });
  assert.match(el('contenedor-menu').innerHTML, /Pizza del borrador/);
+ assert.doesNotMatch(el('contenedor-menu').innerHTML, /data-editar-borrador/);
+ eventos.message({ source: padre, origin: origen, data: { ...datos, editable: true } });
+ assert.match(el('contenedor-menu').innerHTML, /data-editar-borrador="borrador-0"/);
  assert.equal(el('nombre-restaurante').innerText, 'Negocio de prueba');
  assert.equal(boton.disabled, true);
  await contexto.confirmarYEnviarPedido({ preventDefault() {} });
  assert.equal(solicitudes, 0);
 });
 
-test('el borrador agrupa por categoría y abre un producto pendiente aunque esté fuera del filtro', async () => {
+test('el borrador abre solo el producto elegido y muestra la corrección al volver a la carta', async () => {
  const n = navegador();
  await n.context.enviarMenuConIA({ preventDefault() {} });
- n.run(`categoriaRevisionMenu = ''; borradorMenu.productos = [
+ n.run(`borradorMenu.productos = [
    { nombre: 'Pizza', categoria: 'Pizzas', precio: 19000 },
    { nombre: 'Hamburguesa', categoria: 'Hamburguesas', precio: 0 }
  ]`);
- n.context.renderizarRevisionMenu();
- const lista = n.el('revision-menu-lista');
- assert.match(lista.innerHTML, /revision-producto-0/);
- assert.doesNotMatch(lista.innerHTML, /revision-producto-1/);
- n.el('buscar-revision-menu').value = 'Pizza';
+ n.context.abrirCartaBorrador();
+ assert.equal(n.el('revision-carta-ampliada').open, true);
+ const marco = n.el('revision-carta-frame');
+ assert.equal(marco.hidden, false);
  await n.context.publicarMenuRevisado({ preventDefault() {} });
  assert.equal(n.requests.length, 1);
- assert.match(lista.innerHTML, /id="revision-producto-1" name="producto-borrador" open/);
+ assert.equal(marco.hidden, true);
+ const lista = n.el('revision-menu-lista');
+ assert.doesNotMatch(lista.innerHTML, /revision-producto-0/);
+ assert.match(lista.innerHTML, /id="revision-producto-1"/);
  assert.match(lista.innerHTML, /Precio pendiente/);
- assert.equal(n.el('buscar-revision-menu').value, '');
+ n.context.editarDatoBorrador(1, 'precio', '18000');
+ let mensaje;
+ marco.contentWindow = { postMessage(datos) { mensaje = datos; } };
+ n.context.abrirCartaBorrador();
+ assert.equal(marco.hidden, false);
+ assert.equal(mensaje.productos[1].precio, 18000);
 });

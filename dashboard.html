@@ -37,7 +37,8 @@
     .velox-volver:focus-visible { outline: none; }
     summary { list-style: none; }
     summary::-webkit-details-marker { display: none; }
-    #revision-menu[hidden] { display: none; }
+    #revision-menu[hidden], #revision-carta-frame[hidden], #revision-edicion[hidden], #revision-volver-carta[hidden] { display: none; }
+    #revision-miniatura { background: var(--velox-page); }
     #reintentar-productos[hidden] { display: none; }
     #editor-producto {
       width: min(36rem, calc(100% - 1.5rem));
@@ -103,12 +104,12 @@
       border-color: var(--velox-primary);
       color: white;
     }
-    #carta-ampliada { width: min(1200px, 96vw); max-width: 96vw; height: 94dvh; max-height: 94dvh; padding: 0; border: 1px solid var(--velox-border); border-radius: 14px; background: var(--velox-page); color: #fff; }
-    #carta-ampliada::backdrop { background: rgb(0 0 0 / 75%); }
-    #carta-ampliada[open] { display: flex; flex-direction: column; }
-    #carta-ampliada iframe { flex: 1; min-height: 0; width: 100%; border: 0; background: white; }
+    :is(#carta-ampliada, #revision-carta-ampliada) { width: min(1200px, 96vw); max-width: 96vw; height: 94dvh; max-height: 94dvh; padding: 0; border: 1px solid var(--velox-border); border-radius: 14px; background: var(--velox-page); color: #fff; }
+    :is(#carta-ampliada, #revision-carta-ampliada)::backdrop { background: rgb(0 0 0 / 75%); }
+    :is(#carta-ampliada, #revision-carta-ampliada)[open] { display: flex; flex-direction: column; }
+    :is(#carta-ampliada, #revision-carta-ampliada) iframe { flex: 1; min-height: 0; width: 100%; border: 0; background: white; }
   </style>
-    <link rel="stylesheet" href="/velox-theme.css?v=menu-pantallas">
+    <link rel="stylesheet" href="/velox-theme.css?v=borrador-miniatura">
 </head>
 <body class="text-slate-100 min-h-screen font-sans">
 
@@ -271,19 +272,10 @@
             <section id="revision-menu" hidden class="mt-4 space-y-3 rounded-xl border border-slate-600 p-3" aria-labelledby="revision-menu-titulo">
               <h3 id="revision-menu-titulo" class="text-base font-bold text-white">Revisar carta</h3>
               <p class="text-sm text-slate-300">Al publicar, reemplazas tu carta actual.</p>
-              <div class="flex flex-wrap gap-2" role="group" aria-label="Vista del borrador">
-                <button id="revision-ver-clientes" type="button" onclick="mostrarModoRevisionMenu(false)" aria-controls="revision-vista-clientes" aria-pressed="true" class="min-h-11 rounded-lg border border-slate-600 px-3 text-sm font-semibold text-white aria-pressed:bg-red-600">Vista de clientes</button>
-                <button id="revision-corregir" type="button" onclick="mostrarModoRevisionMenu(true)" aria-controls="revision-edicion" aria-pressed="false" class="min-h-11 rounded-lg border border-slate-600 px-3 text-sm font-semibold text-white aria-pressed:bg-red-600">Corregir productos</button>
-              </div>
-              <div id="revision-vista-clientes" class="space-y-2">
-                <p class="text-xs text-slate-400">Vista previa del borrador. Los pedidos están desactivados.</p>
-                <iframe id="revision-carta-frame" title="Carta del borrador tal como la ven los clientes" class="block h-[64dvh] min-h-80 max-h-[680px] w-full rounded-lg border border-slate-700 bg-slate-900" sandbox="allow-scripts allow-same-origin"></iframe>
-              </div>
-              <div id="revision-edicion" class="space-y-3" hidden>
-                <p id="revision-menu-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
-                <div id="revision-menu-lista" class="space-y-3"></div>
-                <div class="flex justify-between gap-2"><button id="revision-anterior" type="button" onclick="cambiarPaginaRevision(-1)" class="min-h-11 rounded-lg border border-slate-600 px-3 text-sm text-white disabled:opacity-40">‹ Anterior</button><button id="revision-siguiente" type="button" onclick="cambiarPaginaRevision(1)" class="min-h-11 rounded-lg border border-slate-600 px-3 text-sm text-white disabled:opacity-40">Siguiente ›</button></div>
-              </div>
+              <button id="revision-miniatura" type="button" onclick="abrirCartaBorrador()" class="carta-miniatura" aria-label="Ampliar la carta del borrador" aria-haspopup="dialog">
+                <iframe id="revision-miniatura-frame" title="Miniatura de la carta del borrador" tabindex="-1" aria-hidden="true" sandbox="allow-scripts allow-same-origin"></iframe>
+                <span aria-hidden="true">⤢ Ampliar</span>
+              </button>
               <form id="form-revision-menu" onsubmit="publicarMenuRevisado(event)" class="space-y-3">
                 <div class="flex flex-wrap gap-2"><button id="btn-publicar-menu" type="submit" class="min-h-11 flex-1 rounded-lg bg-red-600 px-4 py-2 font-bold text-white hover:bg-red-700">Publicar carta</button><button type="button" onclick="descartarRevisionMenu()" class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm text-white">Descartar lectura</button></div>
               </form>
@@ -438,6 +430,22 @@
       <button type="button" onclick="document.getElementById('carta-ampliada').close()" class="rounded-lg bg-slate-700 px-4 py-2 text-sm" autofocus>Cerrar ✕</button>
     </div>
     <iframe id="carta-ampliada-frame" title="Carta del restaurante en tamaño completo"></iframe>
+  </dialog>
+
+  <dialog id="revision-carta-ampliada" aria-labelledby="revision-carta-ampliada-titulo">
+    <header class="flex items-start justify-between gap-2 border-b border-slate-700 p-3">
+      <div class="min-w-0">
+        <h2 id="revision-carta-ampliada-titulo" class="font-semibold">Carta del borrador</h2>
+        <p id="revision-carta-ayuda" class="mt-1 text-xs text-slate-400">Toca el nombre de un producto para corregirlo.</p>
+        <button id="revision-volver-carta" type="button" onclick="abrirCartaBorrador()" class="velox-volver" hidden>‹ Carta</button>
+      </div>
+      <button type="button" onclick="document.getElementById('revision-carta-ampliada').close()" class="min-h-11 shrink-0 rounded-lg bg-slate-700 px-3 text-sm" autofocus>Cerrar ✕</button>
+    </header>
+    <iframe id="revision-carta-frame" title="Carta del borrador tal como la ven los clientes" sandbox="allow-scripts allow-same-origin"></iframe>
+    <section id="revision-edicion" class="min-h-0 flex-1 space-y-3 overflow-auto p-3" aria-label="Edición del producto" hidden>
+      <p id="revision-producto-status" class="hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+      <div id="revision-menu-lista"></div>
+    </section>
   </dialog>
 
   <script src="/app.menu-categorias.js"></script>
@@ -1750,6 +1758,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=borrador-clientes"></script>
+  <script src="/app.menu-import.js?v=borrador-miniatura"></script>
 </body>
 </html>
