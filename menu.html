@@ -238,6 +238,7 @@ async function cargarMenu() {
 
 function mostrarCartaMenu(restData, productos) {
     const contenedorCategorias = document.getElementById('contenedor-categorias');
+    const categoriaAnterior = window.VELOX_VISTA_BORRADOR ? categoriasMenu[indiceCategoriaActiva] : null;
     ID_RESTAURANTE_ACTUAL = restData.id;
     window.RESTAURANTE_ACTUAL = restData;
     window.MENU_DISPONIBLE = restData.menu_disponible !== false;
@@ -267,7 +268,7 @@ function mostrarCartaMenu(restData, productos) {
     });
     if (contenedorCategorias) contenedorCategorias.innerHTML = botonesHtml;
 
-    if (categoriasMenu.length) filtrarCategoria(categoriasMenu[0]);
+    if (categoriasMenu.length) filtrarCategoria(categoriasMenu.includes(categoriaAnterior) ? categoriaAnterior : categoriasMenu[0]);
     else renderizarProductos(todosLosProductos);
 }
 
@@ -367,16 +368,23 @@ function renderizarProductos(listaProds) {
                 `;
             }
 
+            const nombre = escaparHtml(producto.nombre || (window.VELOX_VISTA_BORRADOR ? 'Producto sin nombre' : ''));
+            const titulo = window.VELOX_EDICION_BORRADOR
+                ? `<button type="button" data-editar-borrador="${escaparHtml(producto.id)}" class="text-left hover:underline">${nombre}</button>`
+                : nombre;
+            const precio = window.VELOX_VISTA_BORRADOR && !(Number(producto.precio) > 0)
+                ? 'Precio pendiente' : `$${Number(producto.precio).toLocaleString('es-CO')}`;
+
             html += `
                 <div data-animacion-scroll class="menu-product-reveal group bg-[#1b1f26] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-row sm:flex-col">
                     <div class="w-24 h-24 shrink-0 bg-[#11151b] overflow-hidden sm:w-full sm:h-44">${visualProducto}</div>
                     <div class="min-w-0 p-3 sm:p-4 flex flex-col flex-1">
                         <div class="flex-1">
-                            <h3 class="font-extrabold text-white text-sm sm:text-lg leading-snug">${escaparHtml(producto.nombre)}</h3>
+                            <h3 class="font-extrabold text-white text-sm sm:text-lg leading-snug">${titulo}</h3>
                             <p class="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed lowercase">${producto.descripcion ? escaparHtml(producto.descripcion).toLowerCase() : ''}</p>
                         </div>
                         <div class="mt-2 sm:mt-5 flex flex-col gap-2 sm:gap-3">
-                            <span class="font-extrabold text-white text-base sm:text-xl">$${Number(producto.precio).toLocaleString('es-CO')}</span>
+                            <span class="font-extrabold text-white text-base sm:text-xl">${precio}</span>
                             ${accionHtml}
                         </div>
                     </div>
@@ -604,6 +612,14 @@ function confirmarPersonalizacion(event) {
 // Delegación de eventos: los botones siguen funcionando aunque se redibujen las tarjetas.
 document.addEventListener('click', event => {
     const elemento = event.target instanceof Element ? event.target : null;
+    const editarBorrador = elemento?.closest('#contenedor-menu [data-editar-borrador]');
+    if (editarBorrador && window.VELOX_EDICION_BORRADOR) {
+        window.parent.postMessage({
+            tipo: 'velox-editar-producto-borrador',
+            indice: Number(editarBorrador.dataset.editarBorrador.replace('borrador-', ''))
+        }, window.location.origin);
+        return;
+    }
     const botonProducto = elemento?.closest('#contenedor-menu [data-action="personalizar"]');
     if (botonProducto) {
         event.preventDefault();
@@ -836,6 +852,7 @@ function eliminarItemCarrito(index) {
                 if (event.source !== window.parent || event.origin !== window.location.origin
                     || datos?.tipo !== 'velox-borrador-carta' || !Array.isArray(datos.productos)) return;
 
+                window.VELOX_EDICION_BORRADOR = datos.editable === true;
                 cerrarModalPersonalizar();
                 cerrarModalPedido();
                 cart = [];
