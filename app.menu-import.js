@@ -173,6 +173,7 @@ function olvidarBorradorMenu() {
     try { localStorage.removeItem(`velox-borrador-menu:${borradorMenu.restaurante_id}`); } catch {}
   }
   borradorMenu = null;
+  document.getElementById('cargar-carta-ayuda').textContent = 'Fotos o PDF';
   document.getElementById('revision-menu').hidden = true;
 }
 
@@ -190,7 +191,7 @@ function mostrarBorradorMenu(resultado, lecturaId, desplazar = false) {
   categoriaRevisionMenu = '';
   limiteRevisionMenu = LOTE_REVISION_MENU;
   document.getElementById('buscar-revision-menu').value = '';
-  document.getElementById('importar-menu-fotos').open = true;
+  document.getElementById('cargar-carta-ayuda').textContent = 'Borrador listo para revisar';
   document.getElementById('revision-menu').hidden = false;
   renderizarRevisionMenu();
   mostrarProgresoImportacion(2);
@@ -205,7 +206,7 @@ function programarConsultaLecturaMenu() {
 
 function aplicarEstadoLecturaMenu(lectura) {
   if (lectura.estado === 'procesando') {
-    document.getElementById('importar-menu-fotos').open = true;
+    document.getElementById('cargar-carta-ayuda').textContent = 'Lectura en curso';
     indicarLecturaMenu(true);
     mostrarProgresoImportacion(1);
     mostrarLecturaArchivosMenu();
@@ -216,7 +217,7 @@ function aplicarEstadoLecturaMenu(lectura) {
   if (lectura.estado === 'listo') {
     mostrarBorradorMenu(lectura.resultado, lectura.id);
   } else {
-    document.getElementById('importar-menu-fotos').open = true;
+    document.getElementById('cargar-carta-ayuda').textContent = 'Revisar lectura';
     mostrarProgresoImportacion(1, true);
     estadoImportacion(lectura.mensaje || 'La lectura se interrumpió. Tu carta publicada sigue igual.', 'error');
   }
@@ -236,6 +237,7 @@ async function recuperarLecturaMenu() {
     if (!lectura) {
       if (leyendoMenu) {
         indicarLecturaMenu(false);
+        document.getElementById('cargar-carta-ayuda').textContent = 'Fotos o PDF';
         mostrarProgresoImportacion(-1);
         estadoImportacion('Ya no hay una lectura activa. Puedes volver a subir los archivos.');
       }
@@ -515,7 +517,6 @@ const etiquetaBuscadorEditor = editorMenu.querySelector('label[for="buscar-produ
 const botonAgregarProducto = editorMenu.querySelector('button[onclick="nuevoProducto()"]');
 barraCategoriasEditor.after(etiquetaBuscadorEditor, document.getElementById('buscar-producto'));
 document.getElementById('productos-editor-mas').after(botonAgregarProducto.parentElement);
-editorMenu.addEventListener('toggle',event=>{if(event.currentTarget.open)cargarProductos();});
 
 const ICONOS_VELOX = {
   carta: 'M5 3h11l3 3v15H5z M8 9h8m-8 4h8m-8 4h5',
@@ -562,7 +563,7 @@ function prepararCentroVelox() {
   const controles = [
     ['#tab-menu', 'carta', '🍽️'], ['#tab-pedidos', 'pedido', '📦'],
     ['#tab-configuracion, #ajustes-inicio h2', 'ajustes', '⚙️'],
-    ['#editar-menu > summary strong, #productos-body button[onclick^="prepararEdicionProducto"]', 'editar', '✏️'],
+    ['#editar-menu-acceso-titulo, #productos-body button[onclick^="prepararEdicionProducto"]', 'editar', '✏️'],
     ['#cargar-carta-titulo, #btn-foto-ia-editor', 'escanear', '✨'],
     ['#ajustes-inicio button > span:first-child, #ajustes-opciones button > span:first-child', 'negocio', '🏪'],
     ['#ajustes-opciones button > span:first-child', 'telefono', '📲'],
