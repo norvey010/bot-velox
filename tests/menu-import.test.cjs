@@ -20,10 +20,10 @@ test('validación permite precio pendiente solo en borrador y nunca multiplica l
  assert.throws(()=>validarProductosMenu([producto('Falta precio',0)]),/precio/);
  assert.throws(()=>validarProductosMenu(Array.from({length:501},()=>producto())),/500/);
 });
-function servidor({incompleto=false}={}){
+function servidor({incompleto=false,transcripcion}={}){
  const routes=new Map(),calls=[],rpcCalls=[];let writes=0;
  const user={from(){return{select(){return this},eq(){return this},maybeSingle:async()=>({data:{id:'rest-1'}}),delete(){writes++;throw Error('No debe escribir')},insert(){writes++;throw Error('No debe escribir')}}},rpc:async(name,args)=>{rpcCalls.push({name,args});return{data:'a'.repeat(32)}}};
- const context={console:{info(){},error(){}},Buffer,process:{env:{}},prepararFuentesMenu,validarProductosMenu,errorMenu,upload:{array:()=>()=>{}},autenticarImportacionMenu(){},multer:{MulterError:class{}},app:{use(){},post:(route,...handlers)=>routes.set(route,handlers.at(-1))},openai:{chat:{completions:{create:async input=>{calls.push(input);return{choices:[{finish_reason:incompleto&&calls.length===2?'length':'stop',message:{content:JSON.stringify({productos:[{...producto('Producto '+calls.length,500),familia:'',es_combo:false,familia_combo:''}],variantes:[]})}}],usage:{},model:'modelo-prueba'}}}}}};
+ const context={console:{info(){},error(){}},Buffer,process:{env:{}},prepararFuentesMenu,validarProductosMenu,errorMenu,upload:{array:()=>()=>{}},autenticarImportacionMenu(){},multer:{MulterError:class{}},app:{use(){},post:(route,...handlers)=>routes.set(route,handlers.at(-1))},openai:{chat:{completions:{create:async input=>{calls.push(input);return{choices:[{finish_reason:incompleto&&calls.length===2?'length':'stop',message:{content:JSON.stringify(transcripcion || {productos:[{...producto('Producto '+calls.length,500),familia:'',es_combo:false,familia_combo:''}],variantes:[]})}}],usage:{},model:'modelo-prueba'}}}}}};
  vm.createContext(context);const source=read('index.js');vm.runInContext(source.slice(source.indexOf('const uploadMenuFiles ='),source.indexOf('function normalizarTextoImagen')),context);
  const response=()=>({statusCode:200,status(n){this.statusCode=n;return this},json(data){this.data=data;return this}});
  return{routes,calls,rpcCalls,user,response,get writes(){return writes}};
@@ -32,6 +32,26 @@ test('lectura reúne lotes en borrador sin borrar ni insertar productos',async()
  const s=servidor(),res=s.response();await s.routes.get('/api/importar-menu')({body:{restaurante_id:'rest-1'},files:Array.from({length:3},()=>({mimetype:'image/png',buffer:png,size:png.length})),supabaseUsuario:s.user,usuarioImportacion:{id:'user'}},res);
  assert.equal(res.statusCode,200);assert.equal(res.data.borrador,true);assert.equal(res.data.productos.length,2);assert.equal(res.data.productos[0].precio,500);assert.equal(s.calls.length,2);assert.equal(s.writes,0);assert.equal(s.rpcCalls[0].name,'velox_menu_version');
 });
+test('la importación conserva alternativas y señala solo las elecciones sin resolver', async () => {
+ const descripcion = '¼ de pollo ó costilla churrasco ó mojarra + 2 gaseosas 250ml';
+ const opciones = ['¼ de pollo', 'costilla churrasco', 'mojarra'].map(nombre => ({ grupo: 'Proteína', nombre, descripcion: '' }));
+ const s = servidor({ transcripcion: { productos: [
+   { ...producto('Arroz para 2', 35000), descripcion, opciones },
+   { ...producto('Arroz familiar', 49000), descripcion: '2 pierna perniles frito ó costilla + arroz' },
+   { ...producto('Arroz sencillo', 17000), descripcion: 'Arroz + gaseosa' }
+ ], variantes: [] } });
+ const res = s.response();
+ await s.routes.get('/api/importar-menu')({ body:{restaurante_id:'rest-1'}, files:[{mimetype:'image/png',buffer:png,size:png.length}],supabaseUsuario:s.user,usuarioImportacion:{id:'user'} },res);
+ assert.equal(res.statusCode, 200);
+ const [claro, pendiente, fijo] = res.data.productos;
+ assert.equal(claro.descripcion, descripcion);
+ assert.deepEqual(JSON.parse(JSON.stringify(claro.opciones)), opciones);
+ assert.equal(claro.revision_opciones, false);
+ assert.equal(pendiente.revision_opciones, true);
+ assert.equal(fijo.revision_opciones, false);
+ assert.throws(() => validarProductosMenu([pendiente]), /Revisa las opciones/);
+});
+
 test('lote incompleto no publica resultados parciales',async()=>{
  const s=servidor({incompleto:true}),res=s.response();await s.routes.get('/api/importar-menu')({body:{restaurante_id:'rest-1'},files:Array.from({length:3},()=>({mimetype:'image/png',buffer:png,size:png.length})),supabaseUsuario:s.user,usuarioImportacion:{id:'user'}},res);assert.equal(res.statusCode,500);assert.equal(s.writes,0);assert(!res.data.productos);
 });
