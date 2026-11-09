@@ -42,13 +42,64 @@ function abrirSelectorArchivosMenu(soloFotos) {
 function archivosSeleccionadosMenu() {
   return Array.from(document.getElementById('menuFile').files || []);
 }
+const urlsVistaPreviaMenu = [];
+function renderizarVistaPreviaArchivosMenu() {
+  for (const url of urlsVistaPreviaMenu) URL.revokeObjectURL(url);
+  urlsVistaPreviaMenu.length = 0;
+
+  const panel = document.getElementById('menu-file-preview');
+  const lista = document.getElementById('menu-file-preview-list');
+  lista.innerHTML = '';
+  if (!panel.open || panel.hidden) return;
+
+  lista.innerHTML = archivosSeleccionadosMenu().map((archivo, indice) => {
+    const nombre = escaparHtmlUI(archivo.name || `Archivo ${indice + 1}`);
+    const esFoto = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(archivo.type);
+    const esPDF = archivo.type === 'application/pdf';
+    let detalle = '';
+    if (indice < 10 && (esFoto || esPDF) && archivo.size <= 8 * 1024 * 1024) {
+      const url = URL.createObjectURL(archivo);
+      urlsVistaPreviaMenu.push(url);
+      detalle = esFoto
+        ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="shrink-0"><img src="${url}" width="56" height="56" loading="lazy" alt="Abrir foto ${indice + 1}" class="h-14 w-14 rounded-md object-cover"></a>`
+        : `<a href="${url}" target="_blank" rel="noopener noreferrer" class="shrink-0 text-red-300 underline">Abrir PDF</a>`;
+    }
+    return `<li class="flex items-center gap-3 rounded-lg border border-slate-700 p-2 text-xs text-white">${detalle}<span class="min-w-0 flex-1 break-all">${nombre}</span>
+      <button type="button" data-quitar-archivo-menu onclick="quitarArchivoMenu(${indice})" aria-label="Quitar archivo ${indice + 1}: ${nombre}" class="min-h-11 min-w-11 shrink-0 rounded-md text-lg font-semibold text-red-300 hover:bg-slate-700"><span aria-hidden="true">×</span></button></li>`;
+  }).join('');
+}
+
+function quitarArchivoMenu(indice) {
+  const archivos = archivosSeleccionadosMenu();
+  if (!archivos[indice]) return;
+  const input = document.getElementById('menuFile');
+  if (archivos.length === 1) {
+    input.value = '';
+  } else {
+    const seleccion = new DataTransfer();
+    archivos.forEach((archivo, posicion) => {
+      if (posicion !== indice) seleccion.items.add(archivo);
+    });
+    input.files = seleccion.files;
+  }
+  actualizarResumenFotosMenu();
+
+  const restantes = document.querySelectorAll('#menu-file-preview-list [data-quitar-archivo-menu]');
+  const siguiente = restantes[Math.min(indice, restantes.length - 1)]
+    || document.querySelector('#menu-file-options button');
+  siguiente?.focus({ preventScroll: true });
+}
+
 function actualizarResumenFotosMenu() {
   const cantidad = archivosSeleccionadosMenu().length;
   const resumen = document.getElementById('menu-file-summary');
+  const panel = document.getElementById('menu-file-preview');
   resumen.textContent = cantidad === 0 ? '' : cantidad === 1
     ? '1 archivo seleccionado'
     : `${cantidad} archivos seleccionados`;
-  resumen.classList.toggle('hidden', cantidad === 0);
+  panel.hidden = cantidad === 0;
+  if (panel.hidden) panel.open = false;
+  renderizarVistaPreviaArchivosMenu();
 }
 function mensajeErrorImportacion(error, accion='lectura') {
   const mensaje=String(error?.message || '');
@@ -264,6 +315,7 @@ async function publicarMenuRevisado(event) {
 prepararSelectorArchivosMenu();
 prepararNavegacionRevisionMenu();
 document.getElementById('menuFile').addEventListener('change',actualizarResumenFotosMenu);
+document.getElementById('menu-file-preview').addEventListener('toggle',renderizarVistaPreviaArchivosMenu);
 
 const editorMenu = document.getElementById('editar-menu');
 const barraCategoriasEditor = document.getElementById('productos-editor-categorias');

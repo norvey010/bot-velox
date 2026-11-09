@@ -93,6 +93,31 @@ test('un selector de archivos bloqueado termina sin quedarse leyendo ni enviar u
 test('fotos y PDF se seleccionan juntos en el selector general',async()=>{
  const n=navegador();n.el('menuFile').files=[{name:'foto.jpg',type:'image/jpeg',size:50,arrayBuffer:async()=>new ArrayBuffer(50)},{name:'carta.pdf',type:'application/pdf',size:100,arrayBuffer:async()=>new ArrayBuffer(100)}];n.context.actualizarResumenFotosMenu();assert.equal(n.el('menu-file-summary').textContent,'2 archivos seleccionados');await n.context.enviarMenuConIA({preventDefault(){}});const archivos=n.requests[0].req.body.archivos;assert.equal(archivos.length,2);assert.equal(archivos[0].archivo,'foto.jpg');assert.equal(archivos[1].archivo,'carta.pdf');assert(archivos.every(x=>x.nombre==='menuFile'));
 });
+test('la vista previa permite quitar una foto y enviar solo el PDF restante', async () => {
+ const n = navegador();
+ const foto = Object.assign(new Blob(['foto'], { type: 'image/jpeg' }), { name: 'foto.jpg' });
+ const pdf = Object.assign(new Blob(['PDF'], { type: 'application/pdf' }), { name: 'carta.pdf' });
+ n.el('menuFile').files = [foto, pdf];
+ n.context.URL = URL;
+ n.context.DataTransfer = class {
+   files = [];
+   items = { add: archivo => this.files.push(archivo) };
+ };
+ n.context.document.querySelectorAll = () => [{ focus() {} }];
+ n.el('menu-file-preview').open = true;
+ n.context.actualizarResumenFotosMenu();
+ const lista = n.el('menu-file-preview-list');
+ assert.match(lista.innerHTML, /<img src="blob:/);
+ assert.match(lista.innerHTML, /Abrir PDF/);
+ n.context.quitarArchivoMenu(0);
+ assert.equal(n.el('menu-file-summary').textContent, '1 archivo seleccionado');
+ assert.doesNotMatch(lista.innerHTML, /foto.jpg/);
+ await n.context.enviarMenuConIA({ preventDefault() {} });
+ assert.deepEqual(n.requests[0].req.body.archivos.map(a => a.archivo), ['carta.pdf']);
+ n.el('menu-file-preview').open = false;
+ n.context.renderizarVistaPreviaArchivosMenu();
+});
+
 test('el límite de 10 archivos se aplica a fotos y PDF combinados',async()=>{
  const n=navegador();n.el('menuFile').files=[...Array.from({length:6},()=>({type:'image/jpeg',size:50})),...Array.from({length:5},()=>({type:'application/pdf',size:50}))];await n.context.enviarMenuConIA({preventDefault(){}});assert.equal(n.requests.length,0);assert(n.el('importacion-menu-status').textContent.includes('10 fotos o PDF'));
 });
