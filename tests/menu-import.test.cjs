@@ -259,8 +259,16 @@ test('un panel recién abierto recupera un borrador listo sin reenviar archivos'
 
 test('la vista del borrador usa la carta pública y bloquea el envío de pedidos', async () => {
  const origen = 'https://velox.example';
- const padre = {};
+ const mensajes = [];
+ const padre = { postMessage: (mensaje, destino) => mensajes.push({ mensaje, destino }) };
  const eventos = {};
+ const eventosDocumento = {};
+ class Elemento {
+   closest(selector) {
+     if (selector === '#contenedor-menu [data-editar-borrador]') return { dataset: { editarBorrador: 'borrador-0' } };
+     return null;
+   }
+ }
  const elementos = new Map();
  const boton = {};
  const el = id => {
@@ -276,7 +284,7 @@ test('la vista del borrador usa la carta pública y bloquea el envío de pedidos
    addEventListener: (tipo, listener) => { eventos[tipo] = listener; }
  };
  const contexto = vm.createContext({
-   window: ventana, document: { getElementById: el, querySelectorAll: () => [], addEventListener() {} },
+   window: ventana, Element: Elemento, document: { getElementById: el, querySelectorAll: () => [], addEventListener: (tipo, listener) => { eventosDocumento[tipo] = listener; } },
    URLSearchParams, fetch: async () => { solicitudes++; throw Error('Una vista previa no debe consultar pedidos ni el menú publicado'); }
  });
  vm.runInContext(read('app.menu-categorias.js'), contexto);
@@ -290,7 +298,13 @@ test('la vista del borrador usa la carta pública y bloquea el envío de pedidos
  assert.match(el('contenedor-menu').innerHTML, /Pizza del borrador/);
  assert.doesNotMatch(el('contenedor-menu').innerHTML, /data-editar-borrador/);
  eventos.message({ source: padre, origin: origen, data: { ...datos, editable: true } });
- assert.match(el('contenedor-menu').innerHTML, /data-editar-borrador="borrador-0"/);
+ assert.match(el('contenedor-menu').innerHTML, /data-editar-borrador="borrador-0" class="tarjeta-borrador-editar" aria-label="Editar Pizza del borrador"/);
+ assert.doesNotMatch(el('contenedor-menu').innerHTML, /data-action="personalizar"/);
+ eventosDocumento.click({ target: new Elemento() });
+ assert.equal(mensajes.length, 1);
+ assert.equal(mensajes[0].mensaje.tipo, 'velox-editar-producto-borrador');
+ assert.equal(mensajes[0].mensaje.indice, 0);
+ assert.equal(mensajes[0].destino, origen);
  assert.equal(el('nombre-restaurante').innerText, 'Negocio de prueba');
  assert.equal(boton.disabled, true);
  await contexto.confirmarYEnviarPedido({ preventDefault() {} });
@@ -338,7 +352,7 @@ test('el borrador muestra la foto elegida y la sube una sola vez al publicar', a
  n.context.abrirCartaBorrador(0);
  n.context.seleccionarFotoBorradorMenu(0, foto);
  assert.match(n.el('revision-foto-previa').src, /^blob:/);
- assert.equal(n.el('revision-foto-cambiar').hidden, false);
+ assert.equal(n.el('revision-foto-controles').hidden, false);
  assert.equal(subidas.length, 0);
  const publicaciones = [];
  n.context.fetch = async (_url, req) => {
@@ -389,4 +403,21 @@ test('crear foto con IA usa el generador existente y la muestra en el borrador',
  frame.contentWindow = { postMessage: datos => assert.match(datos.productos[0].imagen_url, /^blob:/) };
  n.context.enviarVistaClientesBorrador(frame);
  n.context.descartarRevisionMenu();
+});
+
+
+test('quitar la foto antes de publicar limpia la vista previa y omite la subida', async () => {
+ const n = navegador();
+ n.context.URL = URL;
+ await n.context.enviarMenuConIA({preventDefault(){}});
+ n.context.abrirCartaBorrador(0);
+ n.context.seleccionarFotoBorradorMenu(0, new Blob([png], { type: 'image/png' }));
+ const urlTemporal = n.el('revision-foto-previa').src;
+ n.context.quitarFotoBorradorMenu(0);
+ assert.equal(n.el('revision-foto-controles').hidden, true);
+ assert.equal(n.el('revision-foto-previa').src, undefined);
+ await assert.rejects(fetch(urlTemporal));
+ await n.context.publicarMenuRevisado({preventDefault(){}});
+ assert.equal(n.requests[1].url, '/api/publicar-menu');
+ assert.equal(JSON.parse(n.requests[1].req.body).productos[0].imagen_url, undefined);
 });

@@ -176,7 +176,7 @@ function guardarEdicionBorradorMenu() {
   } catch { /* La lectura original sigue disponible en el servidor. */ }
 }
 
-const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=editor-borrador';
+const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=tarjeta-borrador';
 const fotosBorradorMenu = new Map();
 let generandoFotoBorradorMenu = false;
 
@@ -203,8 +203,21 @@ function seleccionarFotoBorradorMenu(i, archivo) {
   fotosBorradorMenu.set(producto, { archivo, previa });
   const miniatura = document.getElementById('revision-foto-previa');
   miniatura.src = previa;
-  document.getElementById('revision-foto-cambiar').hidden = false;
+  document.getElementById('revision-foto-controles').hidden = false;
   document.getElementById('revision-producto-status').classList.add('hidden');
+}
+
+function quitarFotoBorradorMenu(i) {
+  const producto = borradorMenu?.productos[i];
+  if (!producto || publicandoMenu || generandoFotoBorradorMenu) return;
+  liberarFotoBorradorMenu(producto);
+  delete producto.imagen_url;
+  guardarEdicionBorradorMenu();
+  document.getElementById('revision-foto-previa').removeAttribute('src');
+  document.getElementById('revision-foto-controles').hidden = true;
+  const selector = document.getElementById('revision-foto-archivo');
+  selector.value = '';
+  selector.focus({ preventScroll: true });
 }
 
 async function generarFotoBorradorMenu(i, boton) {
@@ -219,7 +232,8 @@ async function generarFotoBorradorMenu(i, boton) {
   generandoFotoBorradorMenu = true;
   const selector = document.getElementById('revision-foto-archivo');
   const cambiar = document.getElementById('revision-foto-cambiar');
-  selector.disabled = cambiar.disabled = boton.disabled = true;
+  const quitar = document.getElementById('revision-foto-quitar');
+  selector.disabled = cambiar.disabled = quitar.disabled = boton.disabled = true;
   boton.textContent = 'Generando imagen…';
   document.getElementById('revision-producto-status').classList.add('hidden');
   try {
@@ -242,7 +256,7 @@ async function generarFotoBorradorMenu(i, boton) {
     estadoProductoBorrador(error.message, 'error');
   } finally {
     generandoFotoBorradorMenu = false;
-    selector.disabled = cambiar.disabled = boton.disabled = false;
+    selector.disabled = cambiar.disabled = quitar.disabled = boton.disabled = false;
     boton.textContent = 'Crear foto con IA';
   }
 }
@@ -472,9 +486,12 @@ function renderizarRevisionMenu(i) {
           <div class="space-y-2">
             <label for="revision-foto-archivo" class="block text-xs text-slate-300">Foto del producto (opcional)</label>
             <input id="revision-foto-archivo" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-xs text-white" onchange="seleccionarFotoBorradorMenu(${i}, this.files[0]); this.value = ''">
-            <button id="revision-foto-cambiar" type="button" aria-label="Cambiar foto" onclick="document.getElementById('revision-foto-archivo').click()"${foto ? '' : ' hidden'} class="rounded-lg border border-slate-600 p-1">
-              <img id="revision-foto-previa"${foto ? ` src="${escaparHtmlUI(foto)}"` : ''} alt="Vista previa de la foto" width="76" height="76" class="h-[76px] w-[76px] rounded object-cover">
-            </button>
+            <div id="revision-foto-controles"${foto ? '' : ' hidden'}>
+              <button id="revision-foto-cambiar" type="button" aria-label="Cambiar foto" onclick="document.getElementById('revision-foto-archivo').click()" class="rounded-lg border border-slate-600 p-1">
+                <img id="revision-foto-previa"${foto ? ` src="${escaparHtmlUI(foto)}"` : ''} alt="Vista previa de la foto" width="76" height="76" class="h-[76px] w-[76px] rounded object-cover">
+              </button>
+              <button id="revision-foto-quitar" type="button" aria-label="Quitar foto" onclick="quitarFotoBorradorMenu(${i})" class="min-h-11 min-w-11 rounded-lg text-2xl">×</button>
+            </div>
             <button type="button" onclick="generarFotoBorradorMenu(${i}, this)" class="block min-h-11 rounded-lg bg-slate-700 px-3 text-sm text-white">Crear foto con IA</button>
           </div>
           <details id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
