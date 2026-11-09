@@ -557,3 +557,48 @@ body:has(#contenedor-menu) > header {
 }
 #velox-progreso-importacion [data-estado="listo"] .velox-numero-etapa { color: var(--velox-success); }
 #velox-progreso-importacion [data-estado="error"] { color: var(--velox-warning); border-color: rgb(252 211 77 / 55%); }
+
+/* Indica actividad durante la lectura, sin simular un porcentaje. */
+.velox-lectura-titulo {
+  display: inline-block;
+  color: var(--velox-text);
+  font-weight: 650;
+}
+.velox-lectura-linea {
+  display: block;
+  height: 2px;
+  margin-block: .5rem;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--velox-border);
+}
+.velox-lectura-linea::before {
+  content: "";
+  display: block;
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--velox-focus), transparent);
+}
+.velox-lectura-nota {
+  display: block;
+  color: var(--velox-muted);
+  font-size: .72rem;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .velox-lectura-linea::before { animation: velox-lectura-lineal 1.6s linear infinite; }
+  @supports (background-clip: text) {
+    .velox-lectura-titulo {
+      background: linear-gradient(100deg, var(--velox-text) 38%, var(--velox-focus) 50%, var(--velox-text) 62%) 100% 0 / 250% 100%;
+      background-clip: text;
+      color: transparent;
+      animation: velox-lectura-brillo 1.6s linear infinite;
+    }
+  }
+}
+@keyframes velox-lectura-brillo {
+  to { background-position: 0 0; }
+}
+@keyframes velox-lectura-lineal {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(290%); }
+}
