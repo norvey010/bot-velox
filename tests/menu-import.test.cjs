@@ -20,10 +20,10 @@ test('validación permite precio pendiente solo en borrador y nunca multiplica l
  assert.throws(()=>validarProductosMenu([producto('Falta precio',0)]),/precio/);
  assert.throws(()=>validarProductosMenu(Array.from({length:501},()=>producto())),/500/);
 });
-function servidor({incompleto=false,transcripcion}={}){
+function servidor({incompleto=false,transcripcion,esperarModelo,supabaseAdmin}={}){
  const routes=new Map(),calls=[],rpcCalls=[];let writes=0;
  const user={from(){return{select(){return this},eq(){return this},maybeSingle:async()=>({data:{id:'rest-1'}}),delete(){writes++;throw Error('No debe escribir')},insert(){writes++;throw Error('No debe escribir')}}},rpc:async(name,args)=>{rpcCalls.push({name,args});return{data:'a'.repeat(32)}}};
- const context={console:{info(){},error(){}},Buffer,process:{env:{}},prepararFuentesMenu,validarProductosMenu,errorMenu,upload:{array:()=>()=>{}},autenticarImportacionMenu(){},multer:{MulterError:class{}},app:{use(){},post:(route,...handlers)=>routes.set(route,handlers.at(-1))},openai:{chat:{completions:{create:async input=>{calls.push(input);return{choices:[{finish_reason:incompleto&&calls.length===2?'length':'stop',message:{content:JSON.stringify(transcripcion || {productos:[{...producto('Producto '+calls.length,500),familia:'',es_combo:false,familia_combo:''}],variantes:[]})}}],usage:{},model:'modelo-prueba'}}}}}};
+ const context={console:{info(){},error(){}},Buffer,crypto:require('node:crypto'),supabaseAdmin,process:{env:{}},prepararFuentesMenu,validarProductosMenu,errorMenu,upload:{array:()=>()=>{}},autenticarImportacionMenu(){},multer:{MulterError:class{}},app:{use(){},post:(route,...handlers)=>routes.set(route,handlers.at(-1)),get:(route,...handlers)=>routes.set('GET '+route,handlers.at(-1)),delete:(route,...handlers)=>routes.set('DELETE '+route,handlers.at(-1))},openai:{chat:{completions:{create:async input=>{calls.push(input);if(esperarModelo) await esperarModelo;return{choices:[{finish_reason:incompleto&&calls.length===2?'length':'stop',message:{content:JSON.stringify(transcripcion || {productos:[{...producto('Producto '+calls.length,500),familia:'',es_combo:false,familia_combo:''}],variantes:[]})}}],usage:{},model:'modelo-prueba'}}}}}};
  vm.createContext(context);const source=read('index.js');vm.runInContext(source.slice(source.indexOf('const uploadMenuFiles ='),source.indexOf('function normalizarTextoImagen')),context);
  const response=()=>({statusCode:200,status(n){this.statusCode=n;return this},json(data){this.data=data;return this}});
  return{routes,calls,rpcCalls,user,response,get writes(){return writes}};
@@ -52,6 +52,52 @@ test('la importación conserva alternativas y señala solo las elecciones sin re
  assert.throws(() => validarProductosMenu([pendiente]), /Revisa las opciones/);
 });
 
+test('una carga confirmada sigue sin conexión y otro intento recupera la misma lectura', async () => {
+ let lectura;
+ const admin = { from() { return {
+   delete() { return this; }, eq() { return this; },
+   or() { return {}; },
+   insert(fila) {
+     if (lectura) return { error: { code: '23505' } };
+     lectura = fila;
+     return {};
+   },
+   select() { return this; }, maybeSingle() { return { data: lectura }; },
+   update(valores) { Object.assign(lectura, valores); return this; }
+ }; } };
+ let terminar;
+ let liberar;
+ const modelo = new Promise(resolve => { terminar = resolve; });
+ const liberada = new Promise(resolve => { liberar = resolve; });
+ const s = servidor({ esperarModelo: modelo, supabaseAdmin: admin });
+ const procesar = s.routes.get('/api/importar-menu');
+ const consultar = s.routes.get('GET /api/lectura-menu/:restaurante');
+ const solicitud = () => ({
+   body: { restaurante_id: 'rest-1' }, params: { restaurante: 'rest-1' },
+   files: [{ mimetype: 'image/png', buffer: png }],
+   supabaseUsuario: s.user, usuarioImportacion: { id: 'user' },
+   liberarCupoLectura: liberar
+ });
+ const salida = () => Object.assign(s.response(), { set() { return this; } });
+ const recibida = salida();
+ await procesar(solicitud(), recibida);
+ assert.equal(recibida.statusCode, 202);
+ assert.equal(recibida.data.lectura.estado, 'procesando');
+ recibida.destroyed = true;
+ const otra = salida();
+ await procesar({ ...solicitud(), liberarCupoLectura() {} }, otra);
+ assert.equal(otra.statusCode, 409);
+ assert.equal(otra.data.lectura.id, recibida.data.lectura.id);
+ terminar();
+ await liberada;
+ const recuperada = salida();
+ await consultar(solicitud(), recuperada);
+ assert.equal(recuperada.data.lectura.estado, 'listo');
+ assert.equal(recuperada.data.lectura.resultado.productos[0].nombre, 'Producto 1');
+ assert.equal(s.calls.length, 1);
+ assert.equal(s.writes, 0);
+});
+
 test('lote incompleto no publica resultados parciales',async()=>{
  const s=servidor({incompleto:true}),res=s.response();await s.routes.get('/api/importar-menu')({body:{restaurante_id:'rest-1'},files:Array.from({length:3},()=>({mimetype:'image/png',buffer:png,size:png.length})),supabaseUsuario:s.user,usuarioImportacion:{id:'user'}},res);assert.equal(res.statusCode,500);assert.equal(s.writes,0);assert(!res.data.productos);
 });
@@ -62,7 +108,7 @@ test('publicación usa RPC autenticado y detecta carta cambiada',async()=>{
 });
 function navegador(){
  const elements=new Map(),requests=[];const el=id=>{if(!elements.has(id))elements.set(id,{files:[],value:'',hidden:true,classList:{toggle(){},add(){},remove(){}},addEventListener(){},scrollIntoView(){},setAttribute(k,v){this[k]=v},removeAttribute(k){delete this[k]},reset(){this.files=[]}});return elements.get(id)};
- const context={console,RESTAURANTE_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',supabaseClient:{auth:{getSession:async()=>({data:{session:{access_token:'sesion-prueba'}}})}},document:{getElementById:el},window:{addEventListener(){}},Blob,setTimeout,clearTimeout,FormData:class{set(){}append(nombre,blob,archivo){this.archivos??=[];this.archivos.push({nombre,blob,archivo})}},escaparHtmlUI:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),formatearPrecioCOP:n=>String(n),mostrarAviso:(el,msg)=>el.textContent=msg,cargarProductos:async()=>{},fetch:async(url,req)=>{requests.push({url,req});return{ok:true,json:async()=>url==='/api/importar-menu'?{success:true,borrador:true,productos:[producto()],version:'a'.repeat(32),paginas:1}:{success:true,count:1}}}};
+ const context={console,RESTAURANTE_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',supabaseClient:{auth:{getSession:async()=>({data:{session:{access_token:'sesion-prueba'}}})}},document:{getElementById:el,addEventListener(){}},window:{addEventListener(){}},Blob,setTimeout,clearTimeout,FormData:class{set(){}append(nombre,blob,archivo){this.archivos??=[];this.archivos.push({nombre,blob,archivo})}},escaparHtmlUI:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),formatearPrecioCOP:n=>String(n),mostrarAviso:(el,msg)=>el.textContent=msg,cargarProductos:async()=>{},fetch:async(url,req)=>{requests.push({url,req});return{ok:true,json:async()=>url==='/api/importar-menu'?{success:true,borrador:true,productos:[producto()],version:'a'.repeat(32),paginas:1}:{success:true,count:1}}}};
  context.document.querySelector=()=>({replaceWith:elemento=>elements.set(elemento.id,elemento)});
  context.document.createElement=tag=>({tag,setAttribute(k,v){this[k]=v}});
  el('revision-menu-lista').insertAdjacentHTML=()=>{};
@@ -183,7 +229,7 @@ test('la carga muestra la etapa real y confirma la publicación', async () => {
  const peticion = n.context.fetch;
  n.context.fetch = (...args) => {
    if (args[0] === '/api/importar-menu') {
-     assert.match(progreso.innerHTML, /data-estado="actual"[^>]*>\s*<span[^>]*>2<\/span>\s*<span>Leyendo con IA/);
+     assert.match(progreso.innerHTML, /data-estado="actual"[^>]*>\s*<span[^>]*>1<\/span>\s*<span>Preparando archivos/);
    }
    return peticion(...args);
  };
@@ -193,6 +239,21 @@ test('la carga muestra la etapa real y confirma la publicación', async () => {
  await n.context.publicarMenuRevisado({ preventDefault() {} });
  assert.match(n.el('importacion-menu-status').textContent, /Carta publicada/);
  assert.equal(progreso.hidden, true);
+});
+
+test('un panel recién abierto recupera un borrador listo sin reenviar archivos', async () => {
+ const n = navegador();
+ n.context.fetch = async (url, req) => {
+   n.requests.push({url, req});
+   return {ok:true,json:async()=>({lectura:{id:'lectura-1',estado:'listo',resultado:{
+     productos:[producto('Pizza recuperada')],version:'a'.repeat(32)
+   }}})};
+ };
+ assert.equal(await n.context.recuperarLecturaMenu(), true);
+ assert.equal(n.el('revision-menu').hidden, false);
+ assert.match(n.el('revision-menu-lista').innerHTML, /Pizza recuperada/);
+ assert.match(n.requests[0].url, /^\/api\/lectura-menu\//);
+ assert.equal(n.requests.length, 1);
 });
 
 test('el borrador agrupa por categoría y abre un producto pendiente aunque esté fuera del filtro', async () => {
