@@ -85,6 +85,21 @@
         .menu-category-enter-next, .menu-category-enter-previous { animation-duration: .01ms; }
         .menu-product-reveal { opacity: 1; transform: none; transition: none; }
     }
+    .tarjeta-borrador-editable { position: relative; }
+    .tarjeta-borrador-editar {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        width: 100%;
+        background: transparent;
+        border: 0;
+        border-radius: inherit;
+        cursor: pointer;
+    }
+    .tarjeta-borrador-editar:focus-visible {
+        outline: 2px solid #fda4af;
+        outline-offset: -3px;
+    }
 </style>
     <link rel="stylesheet" href="/velox-theme.css">
 </head>
@@ -363,26 +378,29 @@ function renderizarProductos(listaProds) {
                 const { selectores } = obtenerPersonalizacionProducto(producto);
                 const textoBoton = selectores.length ? textoBotonPersonalizacion(selectores) : '+ Agregar';
                 const cerrado = window.MENU_DISPONIBLE === false;
-                accionHtml = `
-                    <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" ${cerrado ? 'disabled' : ''} class="w-full bg-red-600 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm transition shadow-lg shadow-red-950/30">
+                const estiloAccion = 'w-full bg-red-600 text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm shadow-lg shadow-red-950/30';
+                accionHtml = window.VELOX_EDICION_BORRADOR
+                    ? `<span aria-hidden="true" class="${estiloAccion} text-center">${cerrado ? 'Pedidos cerrados por ahora' : textoBoton}</span>`
+                    : `
+                    <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" ${cerrado ? 'disabled' : ''} class="${estiloAccion} hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 transition">
                         ${cerrado ? 'Pedidos cerrados por ahora' : textoBoton}
                     </button>
                 `;
             }
 
             const nombre = escaparHtml(producto.nombre || (window.VELOX_VISTA_BORRADOR ? 'Producto sin nombre' : ''));
-            const titulo = window.VELOX_EDICION_BORRADOR
-                ? `<button type="button" data-editar-borrador="${escaparHtml(producto.id)}" class="text-left hover:underline">${nombre}</button>`
-                : nombre;
+            const editar = window.VELOX_EDICION_BORRADOR
+                ? `<button type="button" data-editar-borrador="${escaparHtml(producto.id)}" class="tarjeta-borrador-editar" aria-label="Editar ${nombre}"></button>`
+                : '';
             const precio = window.VELOX_VISTA_BORRADOR && !(Number(producto.precio) > 0)
                 ? 'Precio pendiente' : `$${Number(producto.precio).toLocaleString('es-CO')}`;
 
             html += `
-                <div data-animacion-scroll class="menu-product-reveal group bg-[#1b1f26] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-row sm:flex-col">
+                <div data-animacion-scroll class="${editar ? 'tarjeta-borrador-editable ' : ''}menu-product-reveal group bg-[#1b1f26] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-row sm:flex-col">
                     <div class="w-24 h-24 shrink-0 bg-[#11151b] overflow-hidden sm:w-full sm:h-44">${visualProducto}</div>
                     <div class="min-w-0 p-3 sm:p-4 flex flex-col flex-1">
                         <div class="flex-1">
-                            <h3 class="font-extrabold text-white text-sm sm:text-lg leading-snug">${titulo}</h3>
+                            <h3 class="font-extrabold text-white text-sm sm:text-lg leading-snug">${nombre}</h3>
                             <p class="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed lowercase">${producto.descripcion ? escaparHtml(producto.descripcion).toLowerCase() : ''}</p>
                         </div>
                         <div class="mt-2 sm:mt-5 flex flex-col gap-2 sm:gap-3">
@@ -390,6 +408,7 @@ function renderizarProductos(listaProds) {
                             ${accionHtml}
                         </div>
                     </div>
+                    ${editar}
                 </div>
             `;
         });

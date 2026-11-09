@@ -592,23 +592,33 @@ body:has(#contenedor-menu) > header {
 }
 
 .velox-aviso-editar {
-  margin: .4rem 0 0;
-  padding: .4rem .6rem;
-  border-left: 3px solid #fb7185;
-  border-radius: .35rem;
-  background: #391d2a;
-  color: #ffe4e9;
-  font-size: .8rem;
-  line-height: 1.4;
+  margin: .45rem 0 0;
+  color: #fff1f4;
+  font-size: .9rem;
+  line-height: 1.5;
 }
-.velox-aviso-editar span {
+.velox-aviso-editar strong {
+  display: inline-block;
   color: #fda4af;
+  text-shadow: 0 0 .65rem rgb(251 113 133 / 45%);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .velox-aviso-editar:not([hidden]) {
-    animation: velox-aviso-editar 1s ease-out 2;
+  .velox-aviso-editar:not([hidden]) strong {
+    animation: velox-aviso-editar 1.15s ease-in-out 3;
   }
 }
 @keyframes velox-aviso-editar {
-  45% { background-color: #682b40; }
+  45% {
+    color: #fff;
+    transform: translateY(-3px) scale(1.06);
+    text-shadow: 0 0 .85rem #fb7185;
+  }
 }
+
+#revision-foto-controles {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+#revision-foto-controles[hidden] { display: none; }
+#revision-foto-quitar { color: #fda4af; }
