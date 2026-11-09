@@ -19,7 +19,18 @@ function mostrarProgresoImportacion(etapa, interrumpida = false) {
   }).join('');
 }
 
-function estadoImportacion(mensaje, tipo='info') { mostrarAviso(document.getElementById('importacion-menu-status'), mensaje, tipo); }
+function estadoImportacion(mensaje, tipo='info') {
+  mostrarAviso(document.getElementById('importacion-menu-status'), mensaje, tipo);
+}
+
+function mostrarLecturaArchivosMenu() {
+  const estado = document.getElementById('importacion-menu-status');
+  estadoImportacion('Leyendo archivos…');
+  estado.innerHTML = `
+    <span class="velox-lectura-titulo">Leyendo archivos…</span>
+    <span class="velox-lectura-linea" aria-hidden="true"></span>
+    <small class="velox-lectura-nota">Los cambios se aplican al publicar.</small>`;
+}
 function prepararSelectorArchivosMenu() {
   const boton = document.querySelector('#form-importar-ia button[aria-controls="menuFile"]');
   const opciones = document.createElement('div');
@@ -159,7 +170,7 @@ async function enviarMenuConIA(event) {
     formData.set('restaurante_id',RESTAURANTE_ID);
     etapa = 1;
     mostrarProgresoImportacion(etapa);
-    estadoImportacion('Leyendo archivos… Tu carta actual no cambia.');
+    mostrarLecturaArchivosMenu();
     const referencia=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : '';
     const respuesta=await fetch('/api/importar-menu',{method:'POST',headers:{Authorization:`Bearer ${token}`, ...(referencia ? {'X-Velox-Request-Id':referencia} : {})},body:formData});
     if([502,503,504].includes(respuesta.status)) throw new Error('El servidor no pudo completar la lectura. Tu carta actual no cambió.');
