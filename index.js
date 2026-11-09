@@ -1388,6 +1388,16 @@ app.post('/api/publicar-menu', autenticarImportacionMenu, async (req, res) => {
         const version = String(req.body?.version || '');
         if (!/^[0-9a-f-]{36}$/i.test(restauranteId) || !/^[0-9a-f]{32}$/.test(version)) throw errorMenu('Falta la revisión de esta carta. Vuelve a leer los archivos.');
         const productos = validarProductosMenu(req.body?.productos);
+        const prefijoFoto = `${supabaseUrl}/storage/v1/object/public/productos/restaurante_${restauranteId}/`;
+        for (const [i, producto] of productos.entries()) {
+            const url = req.body.productos[i].imagen_url;
+            if (url == null) continue;
+            if (typeof url !== 'string' || !url.startsWith(prefijoFoto)
+                || !/^borrador-[0-9a-f-]{36}\.(jpeg|png|webp|gif|avif)$/.test(url.slice(prefijoFoto.length))) {
+                throw errorMenu(`Revisa la foto de «${producto.nombre}».`);
+            }
+            producto.imagen_url = url;
+        }
         const { data, error } = await req.supabaseUsuario.rpc('velox_publicar_menu', {
             p_restaurante: restauranteId, p_productos: productos, p_version: version
         });

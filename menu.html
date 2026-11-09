@@ -279,9 +279,11 @@ function esNombreTamanoPizza(nombre) {
 }
 
 function obtenerVisualProducto(producto, imagenCompartida = '') {
-    const url = (imagenCompartida || producto.imagen_url || '').trim();
-    const esImagenGenericaAnterior = url.includes('photo-1504674900247-0877df9cc836');
-    if (url.startsWith('http') && !esImagenGenericaAnterior) {
+    const propia = (producto.imagen_url || '').trim();
+    const valida = url => !url.includes('photo-1504674900247-0877df9cc836')
+        && (url.startsWith('http') || (window.VELOX_VISTA_BORRADOR && url.startsWith(`blob:${window.location.origin}/`)));
+    const url = valida(propia) ? propia : imagenCompartida;
+    if (valida(url)) {
         return `<img src="${escaparHtml(url)}" alt="${escaparHtml(producto.nombre)}" loading="lazy" decoding="async" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">`;
     }
 
