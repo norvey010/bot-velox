@@ -512,6 +512,7 @@
       RESTAURANTE_ID = restaurante.id;
       configurarVistaPreviaCarta(restaurante.slug);
       if (!document.getElementById('sec-menu-ia').classList.contains('hidden')) cargarProductos();
+      if (typeof recuperarLecturaMenu === 'function' && !document.getElementById('sec-menu-ia').classList.contains('hidden')) recuperarLecturaMenu();
       ANCHO_PAPEL_IMPRESORA = Number(restaurante.printer_paper_width) === 58 ? 58 : 80;
       const inputOculto = document.getElementById('ai-restaurante-id');
       if (inputOculto) inputOculto.value = restaurante.id;
@@ -542,6 +543,7 @@
 
       if (seccion === 'menu') {
         cargarProductos();
+        recuperarLecturaMenu();
       }
       if (seccion === 'configuracion') {
         mostrarInicioAjustes();

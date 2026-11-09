@@ -3,6 +3,10 @@ const LOTE_REVISION_MENU = 6;
 let categoriaRevisionMenu = '';
 let limiteRevisionMenu = LOTE_REVISION_MENU;
 let leyendoMenu = false;
+let subiendoArchivosMenu = false;
+let consultandoLecturaMenu = false;
+let consultaLecturaMenu;
+let guardadoBorradorMenu;
 let publicandoMenu = false;
 const ETAPAS_IMPORTACION = ['Preparando archivos', 'Leyendo con IA', 'Lista para revisar'];
 
@@ -29,7 +33,7 @@ function mostrarLecturaArchivosMenu() {
   estado.innerHTML = `
     <span class="velox-lectura-titulo">Leyendo archivos…</span>
     <span class="velox-lectura-linea" aria-hidden="true"></span>
-    <small class="velox-lectura-nota">Los cambios se aplican al publicar.</small>`;
+    <small class="velox-lectura-nota">Archivos recibidos. Puedes salir y volver.<br>Los cambios se aplican al publicar.</small>`;
 }
 function prepararSelectorArchivosMenu() {
   const boton = document.querySelector('#form-importar-ia button[aria-controls="menuFile"]');
@@ -148,19 +152,122 @@ async function leerArchivosLocalesMenu(files) {
   }
   return preparados;
 }
+function indicarLecturaMenu(activa) {
+  leyendoMenu = activa;
+  const boton = document.getElementById('btn-procesar-ia');
+  boton.disabled = activa;
+  boton.textContent = activa ? 'Leyendo archivos…' : 'Leer con IA';
+}
+
+function guardarEdicionBorradorMenu() {
+  clearTimeout(guardadoBorradorMenu);
+  if (!borradorMenu?.lectura_id) return;
+  try {
+    localStorage.setItem(`velox-borrador-menu:${borradorMenu.restaurante_id}`, JSON.stringify(borradorMenu));
+  } catch { /* La lectura original sigue disponible en el servidor. */ }
+}
+
+function olvidarBorradorMenu() {
+  clearTimeout(guardadoBorradorMenu);
+  if (borradorMenu?.lectura_id) {
+    try { localStorage.removeItem(`velox-borrador-menu:${borradorMenu.restaurante_id}`); } catch {}
+  }
+  borradorMenu = null;
+  document.getElementById('revision-menu').hidden = true;
+}
+
+function mostrarBorradorMenu(resultado, lecturaId, desplazar = false) {
+  borradorMenu = { restaurante_id: RESTAURANTE_ID, version: resultado.version, productos: resultado.productos };
+  if (lecturaId) {
+    borradorMenu.lectura_id = lecturaId;
+    try {
+      const guardado = JSON.parse(localStorage.getItem(`velox-borrador-menu:${RESTAURANTE_ID}`) || 'null');
+      if (guardado?.lectura_id === lecturaId && guardado.version === resultado.version && Array.isArray(guardado.productos)) {
+        borradorMenu.productos = guardado.productos;
+      }
+    } catch {}
+  }
+  categoriaRevisionMenu = '';
+  limiteRevisionMenu = LOTE_REVISION_MENU;
+  document.getElementById('buscar-revision-menu').value = '';
+  document.getElementById('importar-menu-fotos').open = true;
+  document.getElementById('revision-menu').hidden = false;
+  renderizarRevisionMenu();
+  mostrarProgresoImportacion(2);
+  estadoImportacion(`${borradorMenu.productos.length} productos en el borrador. Revisa y publica.`, 'exito');
+  if (desplazar) document.getElementById('revision-menu').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function programarConsultaLecturaMenu() {
+  clearTimeout(consultaLecturaMenu);
+  if (!document.hidden) consultaLecturaMenu = setTimeout(recuperarLecturaMenu, 4000);
+}
+
+function aplicarEstadoLecturaMenu(lectura) {
+  if (lectura.estado === 'procesando') {
+    document.getElementById('importar-menu-fotos').open = true;
+    indicarLecturaMenu(true);
+    mostrarProgresoImportacion(1);
+    mostrarLecturaArchivosMenu();
+    programarConsultaLecturaMenu();
+    return;
+  }
+  indicarLecturaMenu(false);
+  if (lectura.estado === 'listo') {
+    mostrarBorradorMenu(lectura.resultado, lectura.id);
+  } else {
+    document.getElementById('importar-menu-fotos').open = true;
+    mostrarProgresoImportacion(1, true);
+    estadoImportacion(lectura.mensaje || 'La lectura se interrumpió. Tu carta publicada sigue igual.', 'error');
+  }
+}
+
+async function recuperarLecturaMenu() {
+  if (!RESTAURANTE_ID || subiendoArchivosMenu || publicandoMenu || borradorMenu || consultandoLecturaMenu) return false;
+  consultandoLecturaMenu = true;
+  clearTimeout(consultaLecturaMenu);
+  try {
+    const token = await sesionImportacion();
+    const respuesta = await fetch(`/api/lectura-menu/${encodeURIComponent(RESTAURANTE_ID)}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!respuesta.ok) throw new Error('No se pudo consultar la lectura.');
+    const { lectura } = await respuesta.json();
+    if (!lectura) {
+      if (leyendoMenu) {
+        indicarLecturaMenu(false);
+        mostrarProgresoImportacion(-1);
+        estadoImportacion('Ya no hay una lectura activa. Puedes volver a subir los archivos.');
+      }
+      return false;
+    }
+    aplicarEstadoLecturaMenu(lectura);
+    return true;
+  } catch {
+    if (leyendoMenu) programarConsultaLecturaMenu();
+    return false;
+  } finally {
+    consultandoLecturaMenu = false;
+  }
+}
+
 async function enviarMenuConIA(event) {
   event.preventDefault();
-  if(leyendoMenu || publicandoMenu) return;
+  if (leyendoMenu || publicandoMenu || consultandoLecturaMenu) return;
+  if (borradorMenu?.lectura_id) {
+    estadoImportacion('Publica o descarta el borrador antes de leer otra carta.', 'info');
+    return;
+  }
   const files=archivosSeleccionadosMenu();
   const tipos=['image/jpeg','image/png','image/webp','image/gif','application/pdf'];
   if(!files.length || files.length>10) { estadoImportacion('Selecciona entre 1 y 10 fotos o PDF.','error');return; }
   if(files.some(f=>f.size>8*1024*1024 || !tipos.includes(f.type))) { estadoImportacion('Usa JPG, PNG, WEBP, GIF o PDF, de máximo 8 MB cada uno.','error');return; }
   if(files.reduce((n,f)=>n+f.size,0)>25*1024*1024) { estadoImportacion('Los archivos juntos deben pesar máximo 25 MB.','error');return; }
   if(!RESTAURANTE_ID) { estadoImportacion('Espera a que termine de cargar tu restaurante.','error');return; }
-  leyendoMenu=true;
-  const boton=document.getElementById('btn-procesar-ia');boton.disabled=true;boton.textContent='Leyendo archivos…';
-  let etapa = 0;
-  mostrarProgresoImportacion(etapa);
+  subiendoArchivosMenu = true;
+  indicarLecturaMenu(true);
+  document.getElementById('btn-procesar-ia').textContent = 'Subiendo archivos…';
+  mostrarProgresoImportacion(0);
   estadoImportacion('Preparando archivos…');
   try {
     const archivos=await leerArchivosLocalesMenu(files);
@@ -168,27 +275,28 @@ async function enviarMenuConIA(event) {
     const formData=new FormData();
     for(const archivo of archivos) formData.append('menuFile',archivo.blob,archivo.nombre);
     formData.set('restaurante_id',RESTAURANTE_ID);
-    etapa = 1;
-    mostrarProgresoImportacion(etapa);
-    mostrarLecturaArchivosMenu();
+    estadoImportacion('Subiendo archivos… Mantén el panel abierto hasta confirmar la recepción.');
     const referencia=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : '';
-    const respuesta=await fetch('/api/importar-menu',{method:'POST',headers:{Authorization:`Bearer ${token}`, ...(referencia ? {'X-Velox-Request-Id':referencia} : {})},body:formData});
-    if([502,503,504].includes(respuesta.status)) throw new Error('El servidor no pudo completar la lectura. Tu carta actual no cambió.');
-    const resultado=await respuesta.json().catch(()=>({}));
-    if(!respuesta.ok || !resultado.success || !resultado.borrador || !Array.isArray(resultado.productos)) throw new Error(resultado.error || 'No se pudo leer la carta. La carta publicada se conserva.');
-    borradorMenu={restaurante_id:RESTAURANTE_ID,version:resultado.version,productos:resultado.productos};
-    categoriaRevisionMenu = '';
-    limiteRevisionMenu = LOTE_REVISION_MENU;
-    document.getElementById('buscar-revision-menu').value = '';
-    document.getElementById('revision-menu').hidden=false;renderizarRevisionMenu();
-    mostrarProgresoImportacion(2);
-    estadoImportacion(`${resultado.productos.length} productos detectados. Revisa y publica.`,'exito');
-    document.getElementById('revision-menu').scrollIntoView({behavior:'smooth',block:'start'});
-  } catch(error) {
-    mostrarProgresoImportacion(etapa, true);
-    estadoImportacion(mensajeErrorImportacion(error),'error');
+    const respuesta=await fetch('/api/importar-menu',{method:'POST',headers:{Authorization:`Bearer ${token}`, 'X-Velox-Background': '1', ...(referencia ? {'X-Velox-Request-Id':referencia} : {})},body:formData});
+    if ([502, 503, 504].includes(respuesta.status)) throw new Error('No pudimos confirmar la recepción. Tu carta publicada sigue igual.');
+    const resultado = await respuesta.json().catch(() => ({}));
+    if (resultado.lectura && (respuesta.ok || respuesta.status === 409)) {
+      aplicarEstadoLecturaMenu(resultado.lectura);
+      return;
+    }
+    if (!respuesta.ok || !resultado.success || !resultado.borrador || !Array.isArray(resultado.productos)) {
+      throw new Error(resultado.error || 'No se pudo leer la carta. La carta publicada se conserva.');
+    }
+    // Permite que el panel anterior y el nuevo servidor convivan durante el despliegue.
+    indicarLecturaMenu(false);
+    mostrarBorradorMenu(resultado, null, true);
+  } catch (error) {
+    mostrarProgresoImportacion(0, true);
+    estadoImportacion(mensajeErrorImportacion(error), 'error');
+    indicarLecturaMenu(false);
+  } finally {
+    subiendoArchivosMenu = false;
   }
-  finally { leyendoMenu=false;boton.disabled=false;boton.textContent='Leer con IA'; }
 }
 function categoriaProductoBorrador(producto) {
   return producto.categoria.trim() ? resolverCategoriaCombo(producto) : 'Sin categoría';
@@ -258,6 +366,7 @@ function cambiarOpcionesBorrador(indice, opcion) {
   producto.opciones ??= [];
   if (opcion === undefined) producto.opciones.push({ grupo: '', nombre: '', descripcion: '' });
   else if (producto.opciones[opcion]?.grupo !== '__velox_combo_family__') producto.opciones.splice(opcion, 1);
+  guardarEdicionBorradorMenu();
   renderizarRevisionMenu(indice);
   document.getElementById(`revision-opciones-${indice}`).open = true;
 }
@@ -274,6 +383,7 @@ function confirmarOpcionesBorrador(indice) {
     return;
   }
   producto.revision_opciones = false;
+  guardarEdicionBorradorMenu();
   renderizarRevisionMenu(indice);
   estadoImportacion('Opciones revisadas.', 'exito');
 }
@@ -288,6 +398,10 @@ function editarDatoBorrador(i,key,value,opcion) {
     const resumen = document.getElementById(`revision-${key}-${i}`);
     if (resumen) resumen.textContent = key === 'precio' ? precioProductoBorrador(producto)
       : key === 'categoria' ? categoriaProductoBorrador(producto) : value || 'Producto sin nombre';
+  }
+  if (borradorMenu.lectura_id) {
+    clearTimeout(guardadoBorradorMenu);
+    guardadoBorradorMenu = setTimeout(guardarEdicionBorradorMenu, 350);
   }
 }
 
@@ -323,13 +437,38 @@ function prepararNavegacionRevisionMenu() {
     renderizarRevisionMenu(abierto ? Number(abierto.id.replace('revision-producto-', '')) : -1);
   });
 }
-function quitarProductoBorrador(i) { if(!borradorMenu || publicandoMenu)return;borradorMenu.productos.splice(i,1);renderizarRevisionMenu(); }
-function descartarRevisionMenu() {
-  if(publicandoMenu || leyendoMenu)return;
-  borradorMenu=null;document.getElementById('revision-menu').hidden=true;
+function quitarProductoBorrador(i) {
+  if (!borradorMenu || publicandoMenu) return;
+  borradorMenu.productos.splice(i, 1);
+  guardarEdicionBorradorMenu();
+  renderizarRevisionMenu();
+}
+
+async function descartarRevisionMenu() {
+  if (!borradorMenu || publicandoMenu || leyendoMenu) return;
+  if (borradorMenu.lectura_id) {
+    publicandoMenu = true;
+    const revision = document.getElementById('revision-menu');
+    revision.setAttribute('inert', '');
+    try {
+      const token = await sesionImportacion();
+      const respuesta = await fetch(`/api/lectura-menu/${encodeURIComponent(RESTAURANTE_ID)}/${encodeURIComponent(borradorMenu.lectura_id)}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!respuesta.ok) throw new Error('No se pudo descartar el borrador.');
+    } catch {
+      estadoImportacion('No se pudo descartar el borrador. Intenta de nuevo.', 'error');
+      return;
+    } finally {
+      publicandoMenu = false;
+      revision.removeAttribute('inert');
+    }
+  }
+  olvidarBorradorMenu();
   mostrarProgresoImportacion(-1);
   estadoImportacion('Lectura descartada. Tu carta publicada sigue igual.');
 }
+
 async function publicarMenuRevisado(event) {
   event.preventDefault();
   if(!borradorMenu || publicandoMenu || leyendoMenu)return;
@@ -358,7 +497,8 @@ async function publicarMenuRevisado(event) {
     const respuesta=await fetch('/api/publicar-menu',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(borradorMenu)});
     const resultado=await respuesta.json().catch(()=>({}));
     if(!respuesta.ok || !resultado.success)throw new Error(resultado.error || 'No se pudo publicar. Revisa tu carta publicada antes de reintentar.');
-    borradorMenu=null;document.getElementById('revision-menu').hidden=true;document.getElementById('form-importar-ia').reset();actualizarResumenFotosMenu();
+    olvidarBorradorMenu();
+    document.getElementById('form-importar-ia').reset();actualizarResumenFotosMenu();
     mostrarProgresoImportacion(-1);
     await cargarProductos();estadoImportacion(`Carta publicada: ${resultado.count} productos.`,'exito');
   } catch(error) {estadoImportacion(mensajeErrorImportacion(error,'publicacion'),'error');}
@@ -439,4 +579,16 @@ function prepararCentroVelox() {
 }
 
 window.addEventListener('DOMContentLoaded', prepararCentroVelox, { once: true });
-window.addEventListener('beforeunload',event=>{if(borradorMenu){event.preventDefault();event.returnValue='';}});
+window.addEventListener('pagehide', guardarEdicionBorradorMenu);
+window.addEventListener('beforeunload', event => {
+  if (subiendoArchivosMenu || (borradorMenu && !borradorMenu.lectura_id)) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !document.getElementById('sec-menu-ia').classList.contains('hidden')) recuperarLecturaMenu();
+});
+window.addEventListener('DOMContentLoaded', () => {
+  if (!document.getElementById('sec-menu-ia').classList.contains('hidden')) recuperarLecturaMenu();
+}, { once: true });

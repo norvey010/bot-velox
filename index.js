@@ -50,7 +50,7 @@ const limitesPorUsuario = new Map();
 let llamadasIAActivas = 0;
 const MAX_LLAMADAS_IA_ACTIVAS = 3;
 
-function reservarLlamadaIA(res) {
+function tomarCupoIA() {
     if (llamadasIAActivas >= MAX_LLAMADAS_IA_ACTIVAS) return false;
     llamadasIAActivas += 1;
     let liberada = false;
@@ -59,6 +59,12 @@ function reservarLlamadaIA(res) {
         liberada = true;
         llamadasIAActivas = Math.max(0, llamadasIAActivas - 1);
     };
+    return liberar;
+}
+
+function reservarLlamadaIA(res) {
+    const liberar = tomarCupoIA();
+    if (!liberar) return false;
     res.once('finish', liberar);
     res.once('close', liberar);
     return true;
@@ -926,10 +932,22 @@ async function autenticarImportacionMenu(req, res, next) {
 
         req.usuarioImportacion = data.user;
         const esLectura = req.path === '/api/importar-menu';
-        if (!limitarAccion(`${esLectura ? 'importar' : 'publicar'}:${data.user.id}`, esLectura ? 5 : 10, 10 * 60 * 1000)) {
+        if (req.method === 'POST' && !limitarAccion(`${esLectura ? 'importar' : 'publicar'}:${data.user.id}`, esLectura ? 5 : 10, 10 * 60 * 1000)) {
             return res.status(429).json({ error: 'Has realizado varias lecturas seguidas. Espera unos minutos antes de intentarlo de nuevo.' });
         }
-        if (esLectura && !reservarLlamadaIA(res)) {
+        if (esLectura && req.headers['x-velox-background'] === '1') {
+            req.liberarCupoLectura = tomarCupoIA();
+            if (req.liberarCupoLectura) {
+                const liberarAlCerrar = () => {
+                    if (!req.lecturaSeparada) req.liberarCupoLectura();
+                };
+                res.once('finish', liberarAlCerrar);
+                res.once('close', liberarAlCerrar);
+            }
+        } else if (esLectura) {
+            req.cupoLecturaDirecta = reservarLlamadaIA(res);
+        }
+        if (esLectura && !req.liberarCupoLectura && !req.cupoLecturaDirecta) {
             return res.status(503).json({ error: 'Hay varias lecturas en curso. Espera un momento y vuelve a intentarlo.' });
         }
         req.supabaseUsuario = createClient(supabaseUrl, supabaseKey, {
@@ -962,6 +980,81 @@ app.use('/api/importar-menu', (req, res, next) => {
     next();
 });
 
+const TABLA_LECTURAS_MENU = 'velox_lecturas_menu';
+const DURACION_LECTURA_MENU_MS = 20 * 60 * 1000;
+
+async function restauranteImportacionAutorizado(req, restauranteId) {
+    const { data, error } = await req.supabaseUsuario.from('restaurantes').select('id')
+        .eq('id', restauranteId).eq('id_usuario', req.usuarioImportacion.id).maybeSingle();
+    if (error) throw error;
+    return Boolean(data);
+}
+
+function consultaLecturaMenu(restauranteId, usuarioId) {
+    return supabaseAdmin.from(TABLA_LECTURAS_MENU).select('id, estado, resultado, mensaje, vence_en')
+        .eq('restaurante_id', restauranteId).eq('usuario_id', usuarioId).maybeSingle();
+}
+
+function estadoLecturaMenu(lectura) {
+    if (!lectura) return null;
+    if (lectura.estado === 'procesando' && Date.parse(lectura.vence_en) <= Date.now()) {
+        return { id: lectura.id, estado: 'error', mensaje: 'La lectura se interrumpió. Puedes volver a subir los archivos.' };
+    }
+    return { id: lectura.id, estado: lectura.estado, resultado: lectura.resultado, mensaje: lectura.mensaje };
+}
+
+app.get('/api/lectura-menu/:restaurante', autenticarImportacionMenu, async (req, res) => {
+    try {
+        res.set('Cache-Control', 'no-store');
+        if (!await restauranteImportacionAutorizado(req, req.params.restaurante)) {
+            return res.status(403).json({ error: 'No tienes acceso a esta lectura.' });
+        }
+        const { data, error } = await consultaLecturaMenu(req.params.restaurante, req.usuarioImportacion.id);
+        if (error) throw error;
+        return res.json({ lectura: estadoLecturaMenu(data) });
+    } catch (error) {
+        console.error('Error al recuperar la lectura:', error.message);
+        return res.status(503).json({ error: 'No pudimos consultar la lectura. Intenta de nuevo en un momento.' });
+    }
+});
+
+app.delete('/api/lectura-menu/:restaurante/:id', autenticarImportacionMenu, async (req, res) => {
+    try {
+        if (!await restauranteImportacionAutorizado(req, req.params.restaurante)) {
+            return res.status(403).json({ error: 'No tienes acceso a esta lectura.' });
+        }
+        const { error } = await supabaseAdmin.from(TABLA_LECTURAS_MENU).delete()
+            .eq('restaurante_id', req.params.restaurante).eq('usuario_id', req.usuarioImportacion.id)
+            .eq('id', req.params.id).eq('estado', 'listo');
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (error) {
+        console.error('Error al descartar la lectura:', error.message);
+        return res.status(503).json({ error: 'No se pudo descartar el borrador. Intenta de nuevo.' });
+    }
+});
+
+async function guardarResultadoLecturaMenu(id, valores) {
+    const { error } = await supabaseAdmin.from(TABLA_LECTURAS_MENU).update(valores).eq('id', id).eq('estado', 'procesando');
+    if (error) throw error;
+}
+
+async function ejecutarLecturaEnFondo(id, entrada, liberar) {
+    try {
+        const resultado = await procesarFuentesLecturaMenu(entrada);
+        await guardarResultadoLecturaMenu(id, { estado: 'listo', resultado });
+    } catch (error) {
+        const { mensaje } = errorLecturaMenu(error);
+        try {
+            await guardarResultadoLecturaMenu(id, { estado: 'error', mensaje });
+        } catch (errorGuardado) {
+            console.error('No se pudo guardar el estado de la lectura:', errorGuardado.message);
+        }
+    } finally {
+        liberar();
+    }
+}
+
 app.post('/api/importar-menu', autenticarImportacionMenu, (req, res, next) => {
     // Devolver un error claro si Multer no puede recibir los archivos.
     uploadMenuFiles(req, res, (error) => {
@@ -980,6 +1073,7 @@ app.post('/api/importar-menu', autenticarImportacionMenu, (req, res, next) => {
         next();
     });
 }, async (req, res) => {
+    let tareaIniciada = false;
     try {
         const { restaurante_id } = req.body;
         const files = req.files;
@@ -987,21 +1081,50 @@ app.post('/api/importar-menu', autenticarImportacionMenu, (req, res, next) => {
         if (!files || files.length === 0 || !restaurante_id) {
             return res.status(400).json({ error: "Faltan los archivos del menú o el ID del restaurante." });
         }
-        const { data: restauranteAutorizado, error: errorPropiedad } = await req.supabaseUsuario
-            .from('restaurantes')
-            .select('id')
-            .eq('id', restaurante_id)
-            .eq('id_usuario', req.usuarioImportacion.id)
-            .maybeSingle();
-        if (errorPropiedad) throw errorPropiedad;
-        if (!restauranteAutorizado) {
+        if (!await restauranteImportacionAutorizado(req, restaurante_id)) {
             return res.status(403).json({ error: 'No tienes permiso para modificar el menú de este restaurante.' });
         }
 
         const fuentesMenu = await prepararFuentesMenu(files);
         const { data: versionMenu, error: errorVersion } = await req.supabaseUsuario.rpc('velox_menu_version', { p_restaurante: restaurante_id });
         if (errorVersion) throw errorVersion;
+        const entrada = { fuentesMenu, versionMenu, restaurante_id, idLectura: req.idLectura };
+        if (!req.liberarCupoLectura) {
+            const resultado = await procesarFuentesLecturaMenu(entrada, () => res.destroyed);
+            return res.json(resultado);
+        }
+        if (res.destroyed) return;
+        const usuarioId = req.usuarioImportacion.id;
+        const ahora = new Date().toISOString();
+        const { error: errorLimpieza } = await supabaseAdmin.from(TABLA_LECTURAS_MENU).delete()
+            .eq('restaurante_id', restaurante_id).eq('usuario_id', usuarioId)
+            .or(`estado.eq.error,and(estado.eq.procesando,vence_en.lt.${ahora})`);
+        if (errorLimpieza) throw errorLimpieza;
+        if (res.destroyed) return;
+        req.lecturaSeparada = true;
+        const id = crypto.randomUUID();
+        const { error } = await supabaseAdmin.from(TABLA_LECTURAS_MENU).insert({
+            id, restaurante_id, usuario_id: usuarioId, estado: 'procesando',
+            vence_en: new Date(Date.now() + DURACION_LECTURA_MENU_MS).toISOString()
+        });
+        if (error?.code === '23505') {
+            const existente = await consultaLecturaMenu(restaurante_id, usuarioId);
+            if (existente.error) throw existente.error;
+            return res.status(409).json({ lectura: estadoLecturaMenu(existente.data), error: 'Ya hay una lectura para este restaurante.' });
+        }
+        if (error) throw error;
+        tareaIniciada = true;
+        void ejecutarLecturaEnFondo(id, entrada, req.liberarCupoLectura);
+        if (!res.destroyed) return res.status(202).json({ lectura: { id, estado: 'procesando' } });
+    } catch (error) {
+        const { estado, mensaje } = errorLecturaMenu(error);
+        if (!res.destroyed) return res.status(estado).json({ error: mensaje });
+    } finally {
+        if (req.lecturaSeparada && !tareaIniciada) req.liberarCupoLectura();
+    }
+});
 
+async function procesarFuentesLecturaMenu({ fuentesMenu, versionMenu, restaurante_id, idLectura }, conexionCerrada = () => false) {
         const promptTexto = `Transcribe el menú de las imágenes, páginas PDF o textos como un OCR literal. La carta es la única fuente de verdad.
 
 REGLAS OBLIGATORIAS:
@@ -1020,7 +1143,7 @@ REGLAS OBLIGATORIAS:
         const resultadoParcial = { productos: [], variantes: [] };
         // Lotes pequeños limitan el tamaño de respuesta y se reúnen antes de vincular variantes.
         for (let inicio = 0; inicio < fuentesMenu.length; inicio += 2) {
-          if (res.destroyed) throw errorMenu('Se interrumpió la lectura. Tu carta actual se conserva.');
+          if (conexionCerrada()) throw errorMenu('Se interrumpió la lectura. Tu carta actual se conserva.');
           const messagesContent = [{ type: 'text', text: promptTexto }, ...fuentesMenu.slice(inicio, inicio + 2)];
         // Modelo de visión eficiente para importaciones de alto volumen.
         // Se puede cambiar desde Railway con OPENAI_MENU_MODEL si se necesita
@@ -1098,7 +1221,7 @@ REGLAS OBLIGATORIAS:
         const eleccion = response.choices?.[0];
         const uso = response.usage || {};
         console.info("Respuesta OpenAI importar-menu:", JSON.stringify({
-            id_lectura: req.idLectura || null,
+            id_lectura: idLectura || null,
             restaurante_id,
             model: response.model || modeloImportacionMenu,
             finish_reason: eleccion?.finish_reason || null,
@@ -1229,9 +1352,10 @@ REGLAS OBLIGATORIAS:
                 revision_opciones: productosParaSupabase[indice].revision_opciones || (!tieneOpciones && posibleEleccion)
             };
         });
-        return res.json({ success: true, borrador: true, productos: productosConRevision, version: versionMenu, paginas: fuentesMenu.length });
+        return { success: true, borrador: true, productos: productosConRevision, version: versionMenu, paginas: fuentesMenu.length };
+}
 
-    } catch (error) {
+function errorLecturaMenu(error) {
         const status = error.status || error.response?.status || null;
         const code = error.code || error.error?.code || null;
         const type = error.type || error.error?.type || null;
@@ -1255,9 +1379,8 @@ REGLAS OBLIGATORIAS:
         } else if (status === 401) {
             mensajeUsuario = "OpenAI rechazó la clave API configurada en Railway. Revisa OPENAI_API_KEY.";
         }
-        return res.status(error.publicMessage ? error.status : 500).json({ error: error.publicMessage || mensajeUsuario });
-    }
-});
+        return { estado: error.publicMessage ? error.status : 500, mensaje: error.publicMessage || mensajeUsuario };
+}
 
 app.post('/api/publicar-menu', autenticarImportacionMenu, async (req, res) => {
     try {
@@ -1271,6 +1394,17 @@ app.post('/api/publicar-menu', autenticarImportacionMenu, async (req, res) => {
         if (error) {
             if (error.message?.includes('CARTA_CAMBIO')) return res.status(409).json({error:'La carta publicada cambió mientras revisabas. Vuelve a leerla para evitar sobrescribir esos cambios.'});
             throw error;
+        }
+        const lecturaId = req.body?.lectura_id;
+        if (typeof lecturaId === 'string' && /^[0-9a-f-]{36}$/i.test(lecturaId)) {
+            try {
+                const { error: errorLimpieza } = await supabaseAdmin.from(TABLA_LECTURAS_MENU).delete()
+                    .eq('id', lecturaId).eq('restaurante_id', restauranteId)
+                    .eq('usuario_id', req.usuarioImportacion.id).eq('estado', 'listo');
+                if (errorLimpieza) throw errorLimpieza;
+            } catch (errorLimpieza) {
+                console.error('Carta publicada, pero no se pudo retirar el borrador:', errorLimpieza.message);
+            }
         }
         return res.json({success:true,count:data});
     } catch (error) {
