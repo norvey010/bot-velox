@@ -176,14 +176,102 @@ function guardarEdicionBorradorMenu() {
   } catch { /* La lectura original sigue disponible en el servidor. */ }
 }
 
-const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=miniatura';
+const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=editor-borrador';
+const fotosBorradorMenu = new Map();
+let generandoFotoBorradorMenu = false;
+
+function liberarFotoBorradorMenu(producto) {
+  const foto = fotosBorradorMenu.get(producto);
+  if (!foto) return;
+  URL.revokeObjectURL(foto.previa);
+  fotosBorradorMenu.delete(producto);
+}
+
+function seleccionarFotoBorradorMenu(i, archivo) {
+  const producto = borradorMenu?.productos[i];
+  if (!producto || !archivo || publicandoMenu) return;
+  if (!/^image\/(jpeg|png|webp|gif|avif)$/.test(archivo.type) || !archivo.size) {
+    estadoProductoBorrador('Elige una imagen válida, por ejemplo JPG, PNG o WebP.', 'error');
+    return;
+  }
+  if (archivo.size > 5 * 1024 * 1024) {
+    estadoProductoBorrador('Elige una foto de hasta 5 MB.', 'error');
+    return;
+  }
+  const previa = URL.createObjectURL(archivo);
+  liberarFotoBorradorMenu(producto);
+  fotosBorradorMenu.set(producto, { archivo, previa });
+  const miniatura = document.getElementById('revision-foto-previa');
+  miniatura.src = previa;
+  document.getElementById('revision-foto-cambiar').hidden = false;
+  document.getElementById('revision-producto-status').classList.add('hidden');
+}
+
+async function generarFotoBorradorMenu(i, boton) {
+  const producto = borradorMenu?.productos[i];
+  if (!producto || generandoFotoBorradorMenu || publicandoMenu) return;
+  const nombre = producto.nombre.trim();
+  if (!nombre) {
+    estadoProductoBorrador('Escribe el nombre del producto para crear su foto.', 'info');
+    return;
+  }
+  if (!confirm('La IA creará una foto ilustrativa. Cada generación tiene un costo. ¿Continuar?')) return;
+  generandoFotoBorradorMenu = true;
+  const selector = document.getElementById('revision-foto-archivo');
+  const cambiar = document.getElementById('revision-foto-cambiar');
+  selector.disabled = cambiar.disabled = boton.disabled = true;
+  boton.textContent = 'Generando imagen…';
+  document.getElementById('revision-producto-status').classList.add('hidden');
+  try {
+    const token = await sesionImportacion();
+    const respuesta = await fetch('/api/productos/generar-imagen-borrador', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restaurante_id: RESTAURANTE_ID, producto: {
+        nombre, categoria: producto.categoria.trim(), descripcion: (producto.descripcion || '').trim()
+      } })
+    });
+    if (!respuesta.ok || !respuesta.headers.get('content-type')?.startsWith('image/webp')) {
+      const resultado = await respuesta.json().catch(() => ({}));
+      throw new Error(resultado.error || 'No se pudo crear la foto. Inténtalo de nuevo.');
+    }
+    const imagen = await respuesta.blob();
+    seleccionarFotoBorradorMenu(i, new File([imagen], 'foto-ia.webp', { type: 'image/webp' }));
+    selector.value = '';
+  } catch (error) {
+    estadoProductoBorrador(error.message, 'error');
+  } finally {
+    generandoFotoBorradorMenu = false;
+    selector.disabled = cambiar.disabled = boton.disabled = false;
+    boton.textContent = 'Crear foto con IA';
+  }
+}
+
+async function prepararFotosParaPublicarMenu() {
+  const bucket = fotosBorradorMenu.size ? supabaseClient.storage.from('productos') : null;
+  for (const producto of borradorMenu.productos) {
+    const foto = fotosBorradorMenu.get(producto);
+    if (!foto) continue;
+    const extension = foto.archivo.type.split('/')[1];
+    foto.ruta ??= `restaurante_${RESTAURANTE_ID}/borrador-${crypto.randomUUID()}.${extension}`;
+    const { error } = await bucket.upload(foto.ruta, foto.archivo, { upsert: false });
+    if (error && String(error.statusCode) !== '409') throw new Error(`No pudimos subir la foto de «${producto.nombre}». Inténtalo de nuevo.`);
+    producto.imagen_url = bucket.getPublicUrl(foto.ruta).data.publicUrl;
+    liberarFotoBorradorMenu(producto);
+    guardarEdicionBorradorMenu();
+  }
+}
+
 
 function enviarVistaClientesBorrador(marco) {
   if (!borradorMenu) return;
   marco.contentWindow?.postMessage({
     tipo: 'velox-borrador-carta',
     restaurante: document.getElementById('nombre-restaurante-header').innerText || 'Tu restaurante',
-    productos: borradorMenu.productos,
+    productos: borradorMenu.productos.map(producto => {
+      const foto = fotosBorradorMenu.get(producto);
+      return foto ? { ...producto, imagen_url: foto.previa } : producto;
+    }),
     editable: marco.id === 'revision-carta-frame'
   }, window.location.origin);
 }
@@ -194,7 +282,7 @@ function cargarVistaClientesBorrador(marco) {
 }
 
 function abrirCartaBorrador(indice = null) {
-  if (!borradorMenu || publicandoMenu || (indice !== null && !borradorMenu.productos[indice])) return;
+  if (!borradorMenu || publicandoMenu || generandoFotoBorradorMenu || (indice !== null && !borradorMenu.productos[indice])) return;
   const dialogo = document.getElementById('revision-carta-ampliada');
   const marco = document.getElementById('revision-carta-frame');
   const editar = indice !== null;
@@ -226,6 +314,7 @@ function olvidarBorradorMenu() {
   if (borradorMenu?.lectura_id) {
     try { localStorage.removeItem(`velox-borrador-menu:${borradorMenu.restaurante_id}`); } catch {}
   }
+  for (const producto of fotosBorradorMenu.keys()) liberarFotoBorradorMenu(producto);
   borradorMenu = null;
   document.getElementById('cargar-carta-ayuda').textContent = 'Fotos o PDF';
   document.getElementById('revision-menu').hidden = true;
@@ -366,6 +455,7 @@ function renderizarRevisionMenu(i) {
   const p = borradorMenu?.productos[i];
   if (!p) return;
   const categoria = categoriaProductoBorrador(p);
+  const foto = fotosBorradorMenu.get(p)?.previa || p.imagen_url;
     const campo=(key,label,valor,extra='')=>`<label class="block text-xs text-slate-300">${label}<input ${extra} value="${escaparHtmlUI(valor)}" oninput="editarDatoBorrador(${i}, '${key}', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`;
     const opciones=(p.opciones||[]).map((o,j)=>o.grupo==='__velox_combo_family__'?'':`<div class="grid gap-2 rounded-lg border border-slate-700 p-2">${['grupo','nombre','descripcion'].map(key=>`<label class="text-xs text-slate-300">${({grupo:'Grupo',nombre:'Opción',descripcion:'Descripción'})[key]}<input value="${escaparHtmlUI(o[key]||'')}" oninput="editarDatoBorrador(${i}, '${key}', this.value, ${j})" maxlength="${key==='descripcion'?5000:key==='grupo'?120:200}" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`).join('')}<button type="button" onclick="cambiarOpcionesBorrador(${i}, ${j})" class="min-h-11 justify-self-start text-xs text-red-300">Quitar opción</button></div>`).join('');
     document.getElementById('revision-menu-lista').innerHTML = `<article id="revision-producto-${i}" tabindex="-1" class="rounded-lg border border-slate-700 bg-slate-900 p-3">
@@ -378,6 +468,14 @@ function renderizarRevisionMenu(i) {
         <div class="mt-3 space-y-2 border-t border-slate-700 pt-3">
           <div class="grid gap-3 sm:grid-cols-2">${campo('nombre','Nombre',p.nombre,'maxlength="200"')}${campo('categoria','Categoría',p.categoria,'maxlength="120"')}${campo('precio','Precio en pesos (COP)',formatearPrecioCOP(p.precio),'inputmode="numeric"')}
             <label class="block text-xs text-slate-300">Descripción e ingredientes<textarea maxlength="5000" oninput="editarDatoBorrador(${i}, 'descripcion', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white" rows="3">${escaparHtmlUI(p.descripcion||'')}</textarea></label>
+          </div>
+          <div class="space-y-2">
+            <label for="revision-foto-archivo" class="block text-xs text-slate-300">Foto del producto (opcional)</label>
+            <input id="revision-foto-archivo" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-xs text-white" onchange="seleccionarFotoBorradorMenu(${i}, this.files[0]); this.value = ''">
+            <button id="revision-foto-cambiar" type="button" aria-label="Cambiar foto" onclick="document.getElementById('revision-foto-archivo').click()"${foto ? '' : ' hidden'} class="rounded-lg border border-slate-600 p-1">
+              <img id="revision-foto-previa"${foto ? ` src="${escaparHtmlUI(foto)}"` : ''} alt="Vista previa de la foto" width="76" height="76" class="h-[76px] w-[76px] rounded object-cover">
+            </button>
+            <button type="button" onclick="generarFotoBorradorMenu(${i}, this)" class="block min-h-11 rounded-lg bg-slate-700 px-3 text-sm text-white">Crear foto con IA</button>
           </div>
           <details id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
             <summary class="cursor-pointer py-2 text-sm text-slate-200">Opciones del pedido</summary>
@@ -392,7 +490,7 @@ function renderizarRevisionMenu(i) {
 }
 function cambiarOpcionesBorrador(indice, opcion) {
   const producto = borradorMenu?.productos[indice];
-  if (publicandoMenu || !producto) return;
+  if (publicandoMenu || generandoFotoBorradorMenu || !producto) return;
   producto.opciones ??= [];
   if (opcion === undefined) producto.opciones.push({ grupo: '', nombre: '', descripcion: '' });
   else if (producto.opciones[opcion]?.grupo !== '__velox_combo_family__') producto.opciones.splice(opcion, 1);
@@ -407,7 +505,7 @@ function opcionesBorradorIncompletas(producto) {
 
 function confirmarOpcionesBorrador(indice) {
   const producto = borradorMenu?.productos[indice];
-  if (publicandoMenu || !producto) return;
+  if (publicandoMenu || generandoFotoBorradorMenu || !producto) return;
   if (opcionesBorradorIncompletas(producto)) {
     estadoProductoBorrador('Completa el grupo y el nombre de cada opción o quita la fila vacía.', 'error');
     return;
@@ -436,7 +534,8 @@ function editarDatoBorrador(i,key,value,opcion) {
 }
 
 function quitarProductoBorrador(i) {
-  if (!borradorMenu || publicandoMenu) return;
+  if (!borradorMenu || publicandoMenu || generandoFotoBorradorMenu) return;
+  liberarFotoBorradorMenu(borradorMenu.productos[i]);
   borradorMenu.productos.splice(i, 1);
   guardarEdicionBorradorMenu();
   document.getElementById('btn-publicar-menu').disabled = !borradorMenu.productos.length;
@@ -470,7 +569,7 @@ async function descartarRevisionMenu() {
 
 async function publicarMenuRevisado(event) {
   event.preventDefault();
-  if(!borradorMenu || publicandoMenu || leyendoMenu)return;
+  if(!borradorMenu || publicandoMenu || leyendoMenu || generandoFotoBorradorMenu)return;
   const invalido = borradorMenu.productos.findIndex(p => p.revision_opciones || opcionesBorradorIncompletas(p)
     || !p.nombre.trim() || !p.categoria.trim() || !Number.isSafeInteger(Number(p.precio)) || Number(p.precio) <= 0 || Number(p.precio) > 100000000);
   if (invalido >= 0) {
@@ -489,6 +588,7 @@ async function publicarMenuRevisado(event) {
   document.getElementById('revision-menu').setAttribute('inert','');
   try {
     const token=await sesionImportacion();
+    await prepararFotosParaPublicarMenu();
     const respuesta=await fetch('/api/publicar-menu',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(borradorMenu)});
     const resultado=await respuesta.json().catch(()=>({}));
     if(!respuesta.ok || !resultado.success)throw new Error(resultado.error || 'No se pudo publicar. Revisa tu carta publicada antes de reintentar.');
@@ -503,6 +603,9 @@ prepararSelectorArchivosMenu();
 for (const id of ['revision-miniatura-frame', 'revision-carta-frame']) {
   document.getElementById(id).addEventListener('load', event => enviarVistaClientesBorrador(event.currentTarget));
 }
+document.getElementById('revision-carta-ampliada').addEventListener('cancel', event => {
+  if (generandoFotoBorradorMenu) event.preventDefault();
+});
 document.getElementById('revision-carta-ampliada').addEventListener('close', () => {
   document.body.style.overflow = '';
   document.getElementById('revision-carta-frame').removeAttribute('src');
@@ -592,7 +695,7 @@ function prepararCentroVelox() {
 window.addEventListener('DOMContentLoaded', prepararCentroVelox, { once: true });
 window.addEventListener('pagehide', guardarEdicionBorradorMenu);
 window.addEventListener('beforeunload', event => {
-  if (subiendoArchivosMenu || (borradorMenu && !borradorMenu.lectura_id)) {
+  if (subiendoArchivosMenu || fotosBorradorMenu.size || generandoFotoBorradorMenu || (borradorMenu && !borradorMenu.lectura_id)) {
     event.preventDefault();
     event.returnValue = '';
   }

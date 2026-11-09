@@ -23,7 +23,7 @@ test('validación permite precio pendiente solo en borrador y nunca multiplica l
 function servidor({incompleto=false,transcripcion,esperarModelo,supabaseAdmin}={}){
  const routes=new Map(),calls=[],rpcCalls=[];let writes=0;
  const user={from(){return{select(){return this},eq(){return this},maybeSingle:async()=>({data:{id:'rest-1'}}),delete(){writes++;throw Error('No debe escribir')},insert(){writes++;throw Error('No debe escribir')}}},rpc:async(name,args)=>{rpcCalls.push({name,args});return{data:'a'.repeat(32)}}};
- const context={console:{info(){},error(){}},Buffer,crypto:require('node:crypto'),supabaseAdmin,process:{env:{}},prepararFuentesMenu,validarProductosMenu,errorMenu,upload:{array:()=>()=>{}},autenticarImportacionMenu(){},multer:{MulterError:class{}},app:{use(){},post:(route,...handlers)=>routes.set(route,handlers.at(-1)),get:(route,...handlers)=>routes.set('GET '+route,handlers.at(-1)),delete:(route,...handlers)=>routes.set('DELETE '+route,handlers.at(-1))},openai:{chat:{completions:{create:async input=>{calls.push(input);if(esperarModelo) await esperarModelo;return{choices:[{finish_reason:incompleto&&calls.length===2?'length':'stop',message:{content:JSON.stringify(transcripcion || {productos:[{...producto('Producto '+calls.length,500),familia:'',es_combo:false,familia_combo:''}],variantes:[]})}}],usage:{},model:'modelo-prueba'}}}}}};
+ const context={console:{info(){},error(){}},Buffer,crypto:require('node:crypto'),supabaseAdmin,supabaseUrl:"https://proyecto.supabase.co",process:{env:{}},prepararFuentesMenu,validarProductosMenu,errorMenu,upload:{array:()=>()=>{}},autenticarImportacionMenu(){},multer:{MulterError:class{}},app:{use(){},post:(route,...handlers)=>routes.set(route,handlers.at(-1)),get:(route,...handlers)=>routes.set('GET '+route,handlers.at(-1)),delete:(route,...handlers)=>routes.set('DELETE '+route,handlers.at(-1))},openai:{chat:{completions:{create:async input=>{calls.push(input);if(esperarModelo) await esperarModelo;return{choices:[{finish_reason:incompleto&&calls.length===2?'length':'stop',message:{content:JSON.stringify(transcripcion || {productos:[{...producto('Producto '+calls.length,500),familia:'',es_combo:false,familia_combo:''}],variantes:[]})}}],usage:{},model:'modelo-prueba'}}}}}};
  vm.createContext(context);const source=read('index.js');vm.runInContext(source.slice(source.indexOf('const uploadMenuFiles ='),source.indexOf('function normalizarTextoImagen')),context);
  const response=()=>({statusCode:200,status(n){this.statusCode=n;return this},json(data){this.data=data;return this}});
  return{routes,calls,rpcCalls,user,response,get writes(){return writes}};
@@ -321,4 +321,72 @@ test('el borrador abre solo el producto elegido y muestra la corrección al volv
  n.context.abrirCartaBorrador();
  assert.equal(marco.hidden, false);
  assert.equal(mensaje.productos[1].precio, 18000);
+});
+
+test('el borrador muestra la foto elegida y la sube una sola vez al publicar', async () => {
+ const n = navegador();
+ const foto = new Blob([png], { type: 'image/png' });
+ n.context.URL = URL;
+ n.context.crypto = require('node:crypto');
+ const subidas = [];
+ const urlPublica = ruta => 'https://proyecto.supabase.co/storage/v1/object/public/productos/' + ruta;
+ n.context.supabaseClient.storage = { from: () => ({
+   upload: async (ruta, archivo) => { subidas.push(ruta); assert.equal(archivo, foto); return {}; },
+   getPublicUrl: ruta => ({ data: { publicUrl: urlPublica(ruta) } })
+ }) };
+ await n.context.enviarMenuConIA({preventDefault(){}});
+ n.context.abrirCartaBorrador(0);
+ n.context.seleccionarFotoBorradorMenu(0, foto);
+ assert.match(n.el('revision-foto-previa').src, /^blob:/);
+ assert.equal(n.el('revision-foto-cambiar').hidden, false);
+ assert.equal(subidas.length, 0);
+ const publicaciones = [];
+ n.context.fetch = async (_url, req) => {
+   publicaciones.push(JSON.parse(req.body));
+   return publicaciones.length === 1
+     ? { ok: false, json: async () => ({ error: 'Fallo temporal' }) }
+     : { ok: true, json: async () => ({ success: true, count: 1 }) };
+ };
+ for (let i = 0; i < 2; i++) await n.context.publicarMenuRevisado({preventDefault(){}});
+ assert.equal(subidas.length, 1);
+ assert.equal(publicaciones[0].productos[0].imagen_url, urlPublica(subidas[0]));
+ assert.deepEqual(publicaciones[1], publicaciones[0]);
+});
+
+test('publicar acepta fotos del restaurante y rechaza una ruta de otro', async () => {
+ const s = servidor();
+ const restaurante = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const url = `https://proyecto.supabase.co/storage/v1/object/public/productos/restaurante_${restaurante}/borrador-bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.webp`;
+ const publicar = s.routes.get('/api/publicar-menu');
+ const solicitud = imagen_url => ({ body: { restaurante_id: restaurante, version: 'a'.repeat(32), productos: [{ ...producto(), imagen_url }] }, supabaseUsuario: s.user });
+ const correcta = s.response();
+ await publicar(solicitud(url), correcta);
+ assert.equal(correcta.data.success, true);
+ assert.equal(s.rpcCalls.at(-1).args.p_productos[0].imagen_url, url);
+ const incorrecta = s.response();
+ await publicar(solicitud(url.replace(restaurante, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')), incorrecta);
+ assert.equal(incorrecta.statusCode, 400);
+ assert.equal(s.rpcCalls.length, 1);
+});
+
+test('crear foto con IA usa el generador existente y la muestra en el borrador', async () => {
+ const n = navegador();
+ n.context.URL = URL;
+ n.context.File = require('node:buffer').File;
+ n.context.confirm = () => true;
+ await n.context.enviarMenuConIA({preventDefault(){}});
+ n.context.abrirCartaBorrador(0);
+ n.context.fetch = async (url, req) => {
+   assert.equal(url, '/api/productos/generar-imagen-borrador');
+   assert.equal(JSON.parse(req.body).producto.nombre, producto().nombre);
+   return { ok: true, headers: { get: () => 'image/webp' }, blob: async () => new Blob(['foto']) };
+ };
+ const boton = {};
+ await n.context.generarFotoBorradorMenu(0, boton);
+ assert.match(n.el('revision-foto-previa').src, /^blob:/);
+ assert.equal(boton.disabled, false);
+ const frame = n.el('revision-carta-frame');
+ frame.contentWindow = { postMessage: datos => assert.match(datos.productos[0].imagen_url, /^blob:/) };
+ n.context.enviarVistaClientesBorrador(frame);
+ n.context.descartarRevisionMenu();
 });
