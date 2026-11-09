@@ -383,6 +383,12 @@
         <label for="prod-descripcion">Descripción (opcional)</label>
         <input type="text" id="prod-descripcion" placeholder="Ej: Carne, queso y salsa especial" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
       </div>
+      <details id="prod-opciones-panel" class="sm:col-span-2">
+        <summary class="cursor-pointer py-2 text-sm font-semibold text-white">Opciones del pedido</summary>
+        <label for="prod-opciones">Una opción por línea</label>
+        <textarea id="prod-opciones" rows="3" aria-describedby="prod-opciones-ayuda" placeholder="Proteína: ¼ de pollo&#10;Proteína: costilla churrasco" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></textarea>
+        <p id="prod-opciones-ayuda" class="mt-1 text-xs text-slate-400">Escribe el grupo y la opción separados por dos puntos. El cliente elige una por grupo, al mismo precio.</p>
+      </details>
       <div class="sm:col-span-2">
         <label for="prod-imagen-file">Foto del producto (opcional)</label>
         <input type="file" id="prod-imagen-file" accept="image/*" aria-describedby="producto-foto-ayuda" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
@@ -1064,6 +1070,27 @@
       if (id) eliminarProducto(id);
     }
 
+    let opcionesGuardadasProducto = [];
+    let textoOpcionesGuardadas = '';
+
+    function leerOpcionesEditadasProducto() {
+      const texto = document.getElementById('prod-opciones').value.trim();
+      if (texto === textoOpcionesGuardadas) return null;
+      const opciones = texto.split(/\r?\n/).map(linea => linea.trim()).filter(Boolean).map(linea => {
+        const separador = linea.indexOf(':');
+        const grupo = linea.slice(0, separador).trim();
+        const nombre = linea.slice(separador + 1).trim();
+        if (separador < 1 || !grupo || !nombre || grupo.startsWith('__') || grupo.length > 120 || nombre.length > 200) {
+          throw new Error('Escribe cada opción así: Grupo: opción. Por ejemplo, Proteína: ¼ de pollo.');
+        }
+        const anterior = opcionesGuardadasProducto.find(opcion => opcion?.grupo === grupo && opcion.nombre === nombre);
+        return { grupo, nombre, descripcion: anterior?.descripcion || '' };
+      });
+      const internas = opcionesGuardadasProducto.filter(opcion => opcion?.grupo === '__velox_combo_family__');
+      if (opciones.length + internas.length > 200) throw new Error('Usa máximo 200 opciones por producto.');
+      return [...opciones, ...internas];
+    }
+
     async function guardarProducto(event) {
       event.preventDefault();
       if (guardandoProducto || generandoImagenIA) return;
@@ -1088,6 +1115,7 @@
         const precioNumerico = Number(document.getElementById('prod-precio').value.replace(/\D/g, ''));
         if (!Number.isSafeInteger(precioNumerico) || precioNumerico <= 0) throw new Error('Ingresa un precio válido mayor que $0.');
 
+        const opciones = leerOpcionesEditadasProducto();
         const file = fileInput.files[0] || fotoBorradorIA;
         if (file) {
           const fileExt = file.name.split('.').pop();
@@ -1109,6 +1137,7 @@
           restaurante_id: RESTAURANTE_ID
         };
 
+        if (opciones) payload.opciones = opciones;
         if (!id) payload.disponible = true;
         if (urlImagenFinal) payload.imagen_url = urlImagenFinal;
 
@@ -1236,6 +1265,13 @@
       document.getElementById('prod-nombre').value = data.nombre || '';
       document.getElementById('prod-precio').value = formatearPrecioCOP(data.precio || '');
       document.getElementById('prod-descripcion').value = data.descripcion || '';
+      opcionesGuardadasProducto = Array.isArray(data.opciones) ? data.opciones : [];
+      textoOpcionesGuardadas = opcionesGuardadasProducto
+        .filter(opcion => opcion && opcion.grupo !== '__velox_combo_family__')
+        .map(opcion => typeof opcion === 'string' ? `Variante: ${opcion}`
+          : `${opcion.grupo || 'Variante'}: ${opcion.nombre || ''}`)
+        .join('\n').trim();
+      document.getElementById('prod-opciones').value = textoOpcionesGuardadas;
       document.getElementById('prod-categoria').value = data.categoria || '';
       imagenGuardadaProducto = data.imagen_url || '';
       mostrarMiniaturaProducto();
@@ -1288,6 +1324,10 @@
 
     function limpiarFormProducto() {
       document.getElementById('form-producto').reset();
+      document.getElementById('prod-opciones').value = '';
+      document.getElementById('prod-opciones-panel').open = false;
+      opcionesGuardadasProducto = [];
+      textoOpcionesGuardadas = '';
       limpiarMiniaturaProducto();
       document.getElementById('prod-id').value = '';
       document.getElementById('producto-edicion-acciones').classList.add('hidden');

@@ -204,18 +204,20 @@ function renderizarRevisionMenu(indiceAbierto = -1) {
   barra.innerHTML = categorias.map(categoria => `<button type="button" data-categoria-revision="${escaparHtmlUI(categoria)}" aria-pressed="${!busqueda && categoria === categoriaRevisionMenu}" class="min-h-11 shrink-0 rounded-xl border px-3.5 py-2 text-sm font-semibold text-slate-200">${escaparHtmlUI(categoria)}</button>`).join('');
   barra.scrollLeft = posicion;
   barra.hidden = !categorias.length;
-  document.getElementById('revision-menu-resumen').textContent = `${productos.length} productos en el borrador · Mostrando ${Math.min(limiteRevisionMenu, visibles.length)} de ${visibles.length}`;
+  const pendientes = productos.filter(producto => producto.revision_opciones).length;
+  document.getElementById('revision-menu-resumen').textContent = `${productos.length} productos en el borrador · Mostrando ${Math.min(limiteRevisionMenu, visibles.length)} de ${visibles.length}${pendientes ? ` · ${pendientes} con opciones por revisar` : ''}`;
   document.getElementById('revision-siguiente').hidden = limiteRevisionMenu >= visibles.length;
   document.getElementById('btn-publicar-menu').disabled=!productos.length || publicandoMenu;
   document.getElementById('revision-menu-lista').innerHTML=visibles.slice(0, limiteRevisionMenu).map(({producto: p, i, categoria})=>{
     const campo=(key,label,valor,extra='')=>`<label class="block text-xs text-slate-300">${label}<input ${extra} value="${escaparHtmlUI(valor)}" oninput="editarDatoBorrador(${i}, '${key}', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`;
-    const opciones=(p.opciones||[]).map((o,j)=>o.grupo==='__velox_combo_family__'?'':`<div class="grid gap-2 rounded-lg border border-slate-700 p-2">${['grupo','nombre','descripcion'].map(key=>`<label class="text-xs text-slate-300">${({grupo:'Grupo',nombre:'Opción',descripcion:'Descripción'})[key]}<input value="${escaparHtmlUI(o[key]||'')}" oninput="editarDatoBorrador(${i}, '${key}', this.value, ${j})" maxlength="${key==='descripcion'?5000:key==='grupo'?120:200}" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`).join('')}</div>`).join('');
+    const opciones=(p.opciones||[]).map((o,j)=>o.grupo==='__velox_combo_family__'?'':`<div class="grid gap-2 rounded-lg border border-slate-700 p-2">${['grupo','nombre','descripcion'].map(key=>`<label class="text-xs text-slate-300">${({grupo:'Grupo',nombre:'Opción',descripcion:'Descripción'})[key]}<input value="${escaparHtmlUI(o[key]||'')}" oninput="editarDatoBorrador(${i}, '${key}', this.value, ${j})" maxlength="${key==='descripcion'?5000:key==='grupo'?120:200}" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`).join('')}<button type="button" onclick="cambiarOpcionesBorrador(${i}, ${j})" class="min-h-11 justify-self-start text-xs text-red-300">Quitar opción</button></div>`).join('');
     return `<article class="rounded-lg border border-slate-700 bg-slate-900 p-3">
       <details id="revision-producto-${i}" name="producto-borrador"${i === indiceAbierto ? ' open' : ''}>
         <summary class="flex min-h-11 cursor-pointer items-center justify-between gap-3">
           <span class="min-w-0">
             <strong id="revision-nombre-${i}" class="block break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre || 'Producto sin nombre')}</strong>
             <span id="revision-precio-${i}" class="block text-sm font-bold text-slate-200">${escaparHtmlUI(precioProductoBorrador(p))}</span>
+            ${p.revision_opciones ? '<span class="block text-xs font-semibold text-amber-300">Revisar opciones</span>' : ''}
             <span id="revision-categoria-${i}" class="block break-words text-xs text-slate-400">${escaparHtmlUI(categoria)}</span>
           </span>
           <span class="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white">${iconoVelox('editar')} Editar</span>
@@ -224,7 +226,13 @@ function renderizarRevisionMenu(indiceAbierto = -1) {
           <div class="grid gap-3 sm:grid-cols-2">${campo('nombre','Nombre',p.nombre,'maxlength="200"')}${campo('categoria','Categoría',p.categoria,'maxlength="120"')}${campo('precio','Precio en pesos (COP)',formatearPrecioCOP(p.precio),'inputmode="numeric"')}
             <label class="block text-xs text-slate-300">Descripción e ingredientes<textarea maxlength="5000" oninput="editarDatoBorrador(${i}, 'descripcion', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white" rows="3">${escaparHtmlUI(p.descripcion||'')}</textarea></label>
           </div>
-          ${opciones?`<details><summary class="cursor-pointer py-2 text-sm text-slate-200">Revisar opciones y sabores</summary><div class="space-y-2">${opciones}</div></details>`:''}
+          <details id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
+            <summary class="cursor-pointer py-2 text-sm text-slate-200">Opciones del pedido</summary>
+            ${p.revision_opciones ? '<p class="mb-2 text-xs text-amber-300">Compara con la descripción. Agrega las opciones de precio fijo que se eligen de una en una. Si hay precios distintos, revisa si deben ser productos separados.</p>' : ''}
+            <div class="space-y-2">${opciones}</div>
+            <button type="button" onclick="cambiarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-white">+ Agregar opción</button>
+            ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
+          </details>
           <button type="button" onclick="quitarProductoBorrador(${i})" class="min-h-11 px-2 text-xs text-red-300">Quitar de esta carga</button>
         </div>
       </details>
@@ -233,6 +241,32 @@ function renderizarRevisionMenu(indiceAbierto = -1) {
     ? '<p class="text-sm text-slate-300">No encontramos ese producto.</p>'
     : '<p class="text-sm text-slate-300">Quitaste todos los productos. Puedes descartar la lectura o subir otros archivos.</p>');
 }
+function cambiarOpcionesBorrador(indice, opcion) {
+  const producto = borradorMenu?.productos[indice];
+  if (publicandoMenu || !producto) return;
+  producto.opciones ??= [];
+  if (opcion === undefined) producto.opciones.push({ grupo: '', nombre: '', descripcion: '' });
+  else if (producto.opciones[opcion]?.grupo !== '__velox_combo_family__') producto.opciones.splice(opcion, 1);
+  renderizarRevisionMenu(indice);
+  document.getElementById(`revision-opciones-${indice}`).open = true;
+}
+
+function opcionesBorradorIncompletas(producto) {
+  return (producto.opciones || []).some(opcion => !opcion.grupo.trim() || !opcion.nombre.trim());
+}
+
+function confirmarOpcionesBorrador(indice) {
+  const producto = borradorMenu?.productos[indice];
+  if (publicandoMenu || !producto) return;
+  if (opcionesBorradorIncompletas(producto)) {
+    estadoImportacion('Completa el grupo y el nombre de cada opción o quita la fila vacía.', 'error');
+    return;
+  }
+  producto.revision_opciones = false;
+  renderizarRevisionMenu(indice);
+  estadoImportacion('Opciones revisadas.', 'exito');
+}
+
 function editarDatoBorrador(i,key,value,opcion) {
   if(publicandoMenu || !borradorMenu?.productos[i]) return;
   if(opcion!==undefined) {
@@ -288,14 +322,21 @@ function descartarRevisionMenu() {
 async function publicarMenuRevisado(event) {
   event.preventDefault();
   if(!borradorMenu || publicandoMenu || leyendoMenu)return;
-  const invalido=borradorMenu.productos.findIndex(p=>!p.nombre.trim() || !p.categoria.trim() || !Number.isSafeInteger(Number(p.precio)) || Number(p.precio)<=0 || Number(p.precio)>100000000);
-  if(invalido>=0){
+  const invalido = borradorMenu.productos.findIndex(p => p.revision_opciones || opcionesBorradorIncompletas(p)
+    || !p.nombre.trim() || !p.categoria.trim() || !Number.isSafeInteger(Number(p.precio)) || Number(p.precio) <= 0 || Number(p.precio) > 100000000);
+  if (invalido >= 0) {
+    const producto = borradorMenu.productos[invalido];
     categoriaRevisionMenu = categoriaProductoBorrador(borradorMenu.productos[invalido]);
     document.getElementById('buscar-revision-menu').value = '';
     limiteRevisionMenu = LOTE_REVISION_MENU;
     renderizarRevisionMenu(invalido);
     document.getElementById(`revision-producto-${invalido}`)?.scrollIntoView({block:'center'});
-    estadoImportacion(`Revisa nombre, categoría y precio del producto ${invalido+1}.`,'error');
+    if (producto.revision_opciones || opcionesBorradorIncompletas(producto)) {
+      document.getElementById(`revision-opciones-${invalido}`).open = true;
+      estadoImportacion(`Revisa las opciones de «${producto.nombre}» antes de publicar.`, 'error');
+    } else {
+      estadoImportacion(`Revisa nombre, categoría y precio del producto ${invalido + 1}.`, 'error');
+    }
     return;
   }
   publicandoMenu=true;

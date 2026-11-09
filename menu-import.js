@@ -60,7 +60,9 @@ function validarProductosMenu(productos, { permitirCero=false }={}) {
     const precio=Number(p.precio);
     if (!nombre || !categoria || !Number.isSafeInteger(precio) || precio < (permitirCero?0:1) || precio>100000000) throw errorMenu(`Revisa el nombre, la categoría y el precio del producto ${i+1}.`);
     if (!Array.isArray(p.opciones || []) || (p.opciones || []).length>200) throw errorMenu(`Revisa las opciones del producto ${i+1}.`);
+    if (!permitirCero && p.revision_opciones === true) throw errorMenu(`Revisa las opciones de «${nombre}» antes de publicar.`);
     const opciones=(p.opciones||[]).map(o=>({grupo:texto(o?.grupo,120,'el grupo de opciones'),nombre:texto(o?.nombre,200,'la opción'),descripcion:texto(o?.descripcion||'',5000,'la descripción de la opción')}));
+    if (opciones.some(opcion => !opcion.grupo || !opcion.nombre)) throw errorMenu(`Completa el grupo y el nombre de las opciones de «${nombre}».`);
     return {nombre,categoria,precio,descripcion:texto(p.descripcion||'',5000,'la descripción'),opciones};
   });
 }

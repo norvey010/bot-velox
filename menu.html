@@ -484,43 +484,25 @@ function opcionesValidasProducto(producto) {
     const categorias = new Set(todosLosProductos.map(p => normalizarTexto(p.categoria || '')).filter(Boolean));
     const unicas = new Map();
     obtenerOpcionesProducto(producto).forEach(opcion => {
-        const nombre = quitarTamanoDeOpcion(opcion.nombre);
-        const normalizada = normalizarTexto(nombre);
-        if (!normalizada || esOpcionDeTamano(nombre) || esEtiquetaOpcion(nombre) || categorias.has(normalizada)) return;
         const grupo = opcion.grupo || 'Variante';
+        const esVarianteGenerica = normalizarTexto(grupo) === 'variante';
+        const nombre = esVarianteGenerica ? quitarTamanoDeOpcion(opcion.nombre) : opcion.nombre;
+        const normalizada = normalizarTexto(nombre);
+        if (!normalizada || (esVarianteGenerica && (esOpcionDeTamano(nombre) || esEtiquetaOpcion(nombre) || categorias.has(normalizada)))) return;
         const llave = `${normalizarTexto(grupo)}|${normalizada}`;
         if (!unicas.has(llave)) unicas.set(llave, { grupo, nombre, descripcion: opcion.descripcion || '' });
     });
     return [...unicas.values()];
 }
 
-function productoMencionaBebida(texto) {
-    return /\b(?:gaseosa|gaseosas|refresco|refrescos|bebida|bebidas|soda|sodas|jugo|jugos|limonada|limonadas|agua|aguas|cerveza|cervezas)\b/.test(texto);
-}
-
-function obtenerBebidasDisponibles() {
-    return [...new Set(todosLosProductos
-        .filter(producto => producto.disponible !== false && /\b(?:bebidas?|gaseosas?|refrescos?|jugos?|limonadas?|aguas?|cervezas?)\b/.test(normalizarTexto(producto.categoria || '')))
-        .map(producto => quitarTamanoDeOpcion(producto.nombre))
-        .filter(nombre => nombre && !esOpcionDeTamano(nombre)))];
-}
-
 function obtenerPersonalizacionProducto(producto) {
     const opcionesProducto = opcionesValidasProducto(producto);
-    const texto = normalizarTexto(`${producto.nombre || ''} ${producto.descripcion || ''}`);
-    const bebidasDisponibles = obtenerBebidasDisponibles();
-    const mencionaBebidaDelMenu = bebidasDisponibles.some(bebida => bebida.length >= 3 && texto.includes(normalizarTexto(bebida)));
-    const esComboConBebida = /\b(?:combo|combos|incluye|con)\b/.test(texto)
-        && (productoMencionaBebida(texto) || mencionaBebidaDelMenu);
     const grupos = new Map();
     opcionesProducto.forEach(opcion => {
         const grupo = opcion.grupo || 'Variante';
         if (!grupos.has(grupo)) grupos.set(grupo, []);
         grupos.get(grupo).push(opcion);
     });
-    if (esComboConBebida && bebidasDisponibles.length) {
-        grupos.set('Bebida', bebidasDisponibles.map(nombre => ({ grupo: 'Bebida', nombre, descripcion: '' })));
-    }
     const selectores = [...grupos.entries()].map(([grupo, opciones]) => ({
         etiqueta: /^(sabor|sabores|especialidad|especialidades)$/i.test(normalizarTexto(grupo)) ? 'Elige un sabor' : `Elige ${grupo.toLowerCase()}`,
         grupo,
@@ -534,7 +516,10 @@ function textoBotonPersonalizacion(selectores) {
     if (selectores.length && selectores.every(selector => /^(sabor|sabores|especialidad|especialidades)$/i.test(normalizarTexto(selector.grupo)))) {
         return 'Elegir sabores';
     }
-    return selectores.length > 1 ? 'Elegir opciones' : 'Elegir variante';
+    if (selectores.length === 1 && /^(proteina|acompanamiento|bebida)$/.test(normalizarTexto(selectores[0].grupo))) {
+        return `Elegir ${selectores[0].grupo.toLowerCase()}`;
+    }
+    return 'Elegir opciones';
 }
 
 function escaparHtml(valor) {
