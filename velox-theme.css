@@ -521,43 +521,6 @@ body:has(#contenedor-menu) > header {
   justify-content: center;
   gap: .38em;
 }
-.velox-actividad {
-  background: linear-gradient(110deg, rgb(201 22 57 / 12%), transparent 45%), var(--velox-panel);
-  border: 1px solid var(--velox-frame);
-  border-radius: var(--velox-radius-card);
-  corner-shape: round bevel;
-}
-.velox-actividad > summary {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: .65rem;
-  align-items: center;
-  padding: .65rem .8rem;
-  cursor: pointer;
-}
-.velox-actividad-senal {
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  color: var(--velox-focus);
-  background: rgb(255 140 159 / 8%);
-  border: 1px solid rgb(255 140 159 / 24%);
-  border-radius: var(--velox-radius-control);
-}
-.velox-actividad-texto { display: grid; gap: .13rem; font-size: .75rem; }
-.velox-actividad-texto strong { font-size: .82rem; }
-#velox-actividad-resumen, #velox-actividad-lista time { color: var(--velox-muted); }
-.velox-actividad-flecha { color: var(--velox-focus); }
-.velox-actividad[open] .velox-actividad-flecha { rotate: 180deg; }
-#velox-actividad-lista {
-  margin: 0 .8rem .55rem;
-  border-block-start: 1px solid var(--velox-border);
-  font-size: .75rem;
-}
-#velox-actividad-lista li { display: flex; justify-content: space-between; gap: .5rem; padding: .4rem 0; }
-#velox-actividad-lista time { text-align: end; }
-
 #velox-progreso-importacion {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
