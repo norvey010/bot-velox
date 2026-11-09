@@ -43,12 +43,12 @@ function archivosSeleccionadosMenu() {
   return Array.from(document.getElementById('menuFile').files || []);
 }
 function actualizarResumenFotosMenu() {
-  const files=archivosSeleccionadosMenu();
-  const resumen=document.getElementById('menu-file-summary');
-  const pdf=files.filter(f=>f.type==='application/pdf').length;
-  const fotos=files.length-pdf;
-  resumen.textContent=files.length===1 ? (files[0].name || '1 archivo seleccionado') : [fotos ? `${fotos} ${fotos===1?'foto':'fotos'}` : '',pdf ? `${pdf} PDF` : ''].filter(Boolean).join(' · ');
-  resumen.classList.toggle('hidden',files.length===0);
+  const cantidad = archivosSeleccionadosMenu().length;
+  const resumen = document.getElementById('menu-file-summary');
+  resumen.textContent = cantidad === 0 ? '' : cantidad === 1
+    ? '1 archivo seleccionado'
+    : `${cantidad} archivos seleccionados`;
+  resumen.classList.toggle('hidden', cantidad === 0);
 }
 function mensajeErrorImportacion(error, accion='lectura') {
   const mensaje=String(error?.message || '');
