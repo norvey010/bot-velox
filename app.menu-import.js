@@ -257,8 +257,6 @@ async function publicarMenuRevisado(event) {
     if(!respuesta.ok || !resultado.success)throw new Error(resultado.error || 'No se pudo publicar. Revisa tu carta publicada antes de reintentar.');
     borradorMenu=null;document.getElementById('revision-menu').hidden=true;document.getElementById('form-importar-ia').reset();actualizarResumenFotosMenu();
     mostrarProgresoImportacion(-1);
-    const publicadoEn = Date.now();
-    registrarActividadVelox('carta:' + publicadoEn, 'Carta publicada', publicadoEn);
     await cargarProductos();estadoImportacion(`Carta publicada: ${resultado.count} productos.`,'exito');
   } catch(error) {estadoImportacion(mensajeErrorImportacion(error,'publicacion'),'error');}
   finally {publicandoMenu=false;document.getElementById('revision-menu').removeAttribute('inert');boton.disabled=false;boton.textContent='Publicar carta';}
@@ -285,8 +283,7 @@ const ICONOS_VELOX = {
   imprimir: 'M7 8V4h10v4M6 17H3V9h18v8h-3M7 14h10v6H7z m10-2h1',
   telefono: 'M7 3h8l2 2v16H7z m4 15h2',
   reloj: 'M12 3l7 3 2 6-2 6-7 3-7-3-2-6 2-6z m0 4v5l3 2',
-  agregar: 'M12 5v14M5 12h14',
-  actividad: 'M2 12h5l3-7 4 14 3-7h5'
+  agregar: 'M12 5v14M5 12h14'
 };
 
 function iconoVelox(nombre) {
@@ -306,52 +303,11 @@ function aplicarIconosVelox(raiz, controles) {
   }
 }
 
-const historialActividadVelox = [];
-const formatoActividadVelox = new Intl.DateTimeFormat('es-CO', {
-  day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'America/Bogota'
-});
-
-function registrarActividadVelox(clave, texto, fecha) {
-  const lista = document.getElementById('velox-actividad-lista');
-  if (!lista || !Number.isFinite(fecha) || historialActividadVelox.some(registro => registro.clave === clave)) return;
-  historialActividadVelox.push({ clave, texto, fecha });
-  historialActividadVelox.sort((a, b) => b.fecha - a.fecha);
-  if (historialActividadVelox.length > 3 && historialActividadVelox.pop().clave === clave) return;
-  const [ultimo] = historialActividadVelox;
-  const resumen = document.getElementById('velox-actividad-resumen');
-  const resumenNuevo = `${ultimo.texto} · ${formatoActividadVelox.format(ultimo.fecha)}`;
-  if (resumen.textContent !== resumenNuevo) resumen.textContent = resumenNuevo;
-  lista.innerHTML = historialActividadVelox.map(registro =>
-    `<li><span>${escaparHtmlUI(registro.texto)}</span><time datetime="${new Date(registro.fecha).toISOString()}">${formatoActividadVelox.format(registro.fecha)}</time></li>`
-  ).join('');
-}
-
-function registrarPedidoVelox(pedido) {
-  if (!pedido?.id || !pedido.created_at) return;
-  registrarActividadVelox('pedido:' + pedido.id, 'Pedido recibido', Date.parse(pedido.created_at));
-}
-
 function prepararCentroVelox() {
   document.getElementById('nombre-restaurante-header').previousSibling.nodeValue = 'Velox Bot ';
   document.querySelector('header nav').setAttribute('aria-label', 'Secciones de Velox Bot');
   document.querySelector('#ajustes-inicio h2 + p').textContent = 'Administra tu negocio y la operación de Velox Bot.';
   document.querySelector('#printer-width-preview > div:first-child').textContent = 'Velox Bot · Comanda';
-
-  const actividad = document.createElement('details');
-  actividad.className = 'velox-actividad';
-  actividad.innerHTML = `
-    <summary>
-      <span class="velox-actividad-senal">${iconoVelox('actividad')}</span>
-      <span class="velox-actividad-texto">
-        <strong>Actividad reciente</strong>
-        <span id="velox-actividad-resumen" role="status">Aquí verás pedidos y cartas publicadas.</span>
-      </span>
-      <span class="velox-actividad-flecha" aria-hidden="true">⌄</span>
-    </summary>
-    <ol id="velox-actividad-lista" aria-label="Eventos recientes del restaurante">
-      <li>Aún no hay actividad registrada en esta sesión.</li>
-    </ol>`;
-  document.querySelector('main').prepend(actividad);
 
   const progreso = document.createElement('ol');
   progreso.id = 'velox-progreso-importacion';
@@ -376,19 +332,6 @@ function prepararCentroVelox() {
   for (const id of ['cargar-carta-titulo', 'btn-foto-ia-editor', 'productos-body', 'pedidos-body', 'pedidos-cards', 'ajustes-opciones']) {
     iconosDinamicos.observe(document.getElementById(id), { childList: true });
   }
-
-  // Comparte el resultado del registro y la entrega de pedidos nuevos del canal existente.
-  const renderizarRegistro = renderTablaPedidos;
-  renderTablaPedidos = function (pedidos) {
-    renderizarRegistro(pedidos);
-    registrarPedidoVelox(pedidos?.[0]);
-  };
-  const entregarComanda = imprimirTicketAutomatico;
-  imprimirTicketAutomatico = function (pedido, opciones) {
-    entregarComanda(pedido, opciones);
-    if (!opciones?.permitirReimpresion) registrarPedidoVelox(pedido);
-  };
-  registrarPedidoVelox(pedidosRenderizados.values().next().value);
 }
 
 window.addEventListener('DOMContentLoaded', prepararCentroVelox, { once: true });
