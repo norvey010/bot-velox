@@ -693,7 +693,7 @@ function prepararCentroVelox() {
   const controles = [
     ['#tab-menu', 'carta', '🍽️'], ['#tab-pedidos', 'pedido', '📦'],
     ['#tab-configuracion, #ajustes-inicio h2', 'ajustes', '⚙️'],
-    ['#editar-menu-acceso-titulo, #productos-body button[onclick^="prepararEdicionProducto"]', 'editar', '✏️'],
+    ['#editar-menu-acceso-titulo', 'editar', '✏️'],
     ['#cargar-carta-titulo, #btn-foto-ia-editor', 'escanear', '✨'],
     ['#ajustes-inicio button > span:first-child, #ajustes-opciones button > span:first-child', 'negocio', '🏪'],
     ['#ajustes-opciones button > span:first-child', 'telefono', '📲'],
@@ -704,7 +704,7 @@ function prepararCentroVelox() {
   ];
   aplicarIconosVelox(document, controles);
   const iconosDinamicos = new MutationObserver(() => aplicarIconosVelox(document, controles));
-  for (const id of ['cargar-carta-titulo', 'btn-foto-ia-editor', 'productos-body', 'pedidos-body', 'pedidos-cards', 'ajustes-opciones']) {
+  for (const id of ['cargar-carta-titulo', 'btn-foto-ia-editor', 'pedidos-body', 'pedidos-cards', 'ajustes-opciones']) {
     iconosDinamicos.observe(document.getElementById(id), { childList: true });
   }
 }

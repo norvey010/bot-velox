@@ -174,3 +174,27 @@ test('dos aperturas durante la misma carga comparten una sola consulta',async()=
 test('formulario se abre en una ventana y conserva una sola acción Agregar producto',()=>{
   const html=read('dashboard.html');assert.equal((html.match(/onclick="nuevoProducto\(\)"/g)||[]).length,1);assert(!html.includes('id="details-producto-form"'));assert(html.includes('<dialog id="editor-producto"'));assert(html.includes('id="producto-form-summary-text" class="text-lg font-bold text-white">Agregar producto</h2>'));assert(html.includes("if (!document.getElementById('sec-menu-ia').classList.contains('hidden')) cargarProductos();"));
 });
+
+test('Editar menú abre la tarjeta con los datos ya cargados y permite quitar su foto', () => {
+  const d = dashboard();
+  d.el('producto-imagen-miniatura').removeAttribute = function (name) { delete this[name]; };
+  d.el('editor-producto').showModal = function () { this.open = true; };
+  d.run(`RESTAURANTE_ID='rest-1';
+    productosEditor=[{id:'1',nombre:'Pizza',categoria:'Pizzas',precio:19000,imagen_url:'https://velox.test/pizza.webp'}];
+    actualizarCategoriasProductos();
+    renderizarProductos();`);
+  const lista = d.el('productos-body').innerHTML;
+  assert.match(lista, /data-editar-tarjeta[^>]+aria-label="Editar Pizza"/);
+  assert.match(lista, /onclick="cambiarDisponibilidadProducto/);
+  assert.equal(d.el('productos-editor-ayuda').hidden, false);
+  d.context.prepararEdicionProducto('1');
+  assert.equal(d.el('editor-producto').open, true);
+  assert.equal(d.el('prod-nombre').value, 'Pizza');
+  assert.equal(d.el('producto-imagen-miniatura').src, 'https://velox.test/pizza.webp');
+  d.context.mostrarMiniaturaProducto(new Blob(['foto']));
+  d.context.quitarFotoProducto();
+  assert.equal(d.el('producto-imagen-miniatura').src, 'https://velox.test/pizza.webp');
+  d.context.quitarFotoProducto();
+  assert.equal(d.el('producto-imagen-preview').hidden, true);
+  assert.equal(d.run('quitarImagenGuardadaProducto'), true);
+});
