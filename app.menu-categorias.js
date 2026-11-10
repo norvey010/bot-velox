@@ -110,7 +110,7 @@ function habilitarDeslizamientoCategorias(contenedor, cambiarCategoria) {
             return;
         }
         const objetivo = event.target instanceof Element ? event.target : null;
-        if (objetivo?.closest('button, a, input, select, textarea, [role="dialog"]')) {
+        if (objetivo?.closest('button:not([data-editar-tarjeta]), a, input, select, textarea, [role="dialog"]')) {
             inicioGesto = null;
             return;
         }

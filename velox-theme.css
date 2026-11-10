@@ -622,3 +622,19 @@ body:has(#contenedor-menu) > header {
 }
 #revision-foto-controles[hidden] { display: none; }
 #revision-foto-quitar { color: #fda4af; }
+
+#productos-body [data-editar-tarjeta] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  cursor: pointer;
+}
+#productos-body [data-editar-tarjeta]:focus-visible { outline-offset: -3px; }
+#producto-imagen-quitar {
+  min-width: 44px;
+  min-height: 44px;
+  color: #fda4af;
+}

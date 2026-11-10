@@ -109,7 +109,7 @@
     :is(#carta-ampliada, #revision-carta-ampliada)[open] { display: flex; flex-direction: column; }
     :is(#carta-ampliada, #revision-carta-ampliada) iframe { flex: 1; min-height: 0; width: 100%; border: 0; background: white; }
   </style>
-    <link rel="stylesheet" href="/velox-theme.css?v=tarjeta-borrador">
+    <link rel="stylesheet" href="/velox-theme.css?v=editar-carta-publicada">
 </head>
 <body class="text-slate-100 min-h-screen font-sans">
 
@@ -296,6 +296,7 @@
             <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
             <p id="producto-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
             <button id="reintentar-productos" type="button" onclick="cargarProductos()" hidden class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-white">Reintentar</button>
+            <p id="productos-editor-ayuda" class="velox-aviso-editar" hidden><span aria-hidden="true">✎</span> Toca <strong>cualquier parte</strong> de la tarjeta para editar el producto.</p>
             <div id="productos-body" class="grid touch-pan-y grid-cols-1 gap-2 lg:grid-cols-2"><p class="text-sm text-slate-400">Tus productos aparecerán aquí.</p></div>
             <button type="button" id="productos-editor-mas" onclick="mostrarMasProductos()" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm text-white" hidden>Mostrar más</button>
 
@@ -405,9 +406,12 @@
         <label for="prod-imagen-file">Foto del producto (opcional)</label>
         <input type="file" id="prod-imagen-file" accept="image/*" aria-describedby="producto-foto-ayuda" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
         <figure id="producto-imagen-preview" class="mt-3" hidden>
-          <button type="button" onclick="document.getElementById('prod-imagen-file').click()" aria-controls="prod-imagen-file" aria-label="Cambiar foto" class="inline-flex rounded-lg border border-slate-700 p-1 hover:border-red-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400">
-            <img id="producto-imagen-miniatura" alt="" width="96" height="96" class="h-24 w-24 rounded-lg bg-slate-900 object-contain">
-          </button>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="document.getElementById('prod-imagen-file').click()" aria-controls="prod-imagen-file" aria-label="Cambiar foto" class="inline-flex rounded-lg border border-slate-700 p-1 hover:border-red-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400">
+              <img id="producto-imagen-miniatura" alt="" width="96" height="96" class="h-24 w-24 rounded-lg bg-slate-900 object-contain">
+            </button>
+            <button type="button" id="producto-imagen-quitar" onclick="quitarFotoProducto()" aria-label="Quitar foto" class="rounded-lg text-2xl">×</button>
+          </div>
           <figcaption id="producto-imagen-estado" class="mt-1 text-xs text-slate-300" aria-live="polite"></figcaption>
         </figure>
         <div class="mt-3 space-y-1">
@@ -448,7 +452,7 @@
     </section>
   </dialog>
 
-  <script src="/app.menu-categorias.js"></script>
+  <script src="/app.menu-categorias.js?v=editar-carta-publicada"></script>
   <script>
     let RESTAURANTE_ID = null;
     let ANCHO_PAPEL_IMPRESORA = 80;
@@ -1015,6 +1019,7 @@
       document.getElementById('productos-editor-resumen').textContent = productos.length
         ? `Mostrando ${visibles.length} de ${productos.length} productos`
         : '0 productos encontrados';
+      document.getElementById('productos-editor-ayuda').hidden = !productos.length;
       if (!productos.length) {
         contenedor.innerHTML = `<p class="rounded-lg bg-slate-900 p-4 text-sm text-slate-400 lg:col-span-2">${productosEditor.length ? 'No encontramos ese producto. Prueba otro nombre o categoría.' : 'Tu menú está vacío. Toca “Agregar producto” o carga fotos de tu carta.'}</p>`;
         return;
@@ -1023,13 +1028,13 @@
         const id = escaparHtmlUI(JSON.stringify(String(p.id)));
         let foto = '';
         try { const url = new URL(p.imagen_url); if (['https:', 'http:'].includes(url.protocol)) foto = url.href; } catch {}
-        return `<article class="rounded-lg border border-slate-700 bg-slate-900 p-3">
+        return `<article class="relative rounded-lg border border-slate-700 bg-slate-900 p-3">
           <div class="flex items-center gap-3">
             ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="${escaparHtmlUI(p.nombre)}" loading="lazy" width="56" height="56" class="h-14 w-14 shrink-0 rounded-lg object-cover">` : '<div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-center text-xs text-slate-400">Sin foto</div>'}
             <div class="min-w-0 flex-1"><h3 class="break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre)}</h3><p class="text-sm font-bold text-slate-200">$${Number(p.precio).toLocaleString('es-CO')}</p><p class="truncate text-xs text-slate-400">${escaparHtmlUI(resolverCategoriaCombo(p))}</p></div>
           </div>
-          <div class="mt-2 flex flex-wrap gap-2"><button type="button" onclick="prepararEdicionProducto(${id})" aria-haspopup="dialog" class="min-h-11 flex-1 rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white">✏️ Editar</button>
-          <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${p.disponible === false}, this)" aria-label="${p.disponible === false ? 'Volver a ofrecer' : 'Marcar agotado'}: ${escaparHtmlUI(p.nombre)}" aria-pressed="${p.disponible !== false}" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold ${p.disponible === false ? 'text-amber-300' : 'text-emerald-300'}">${p.disponible === false ? 'Agotado · Activar' : 'Disponible ✓'}</button></div>
+          <button type="button" data-editar-tarjeta onclick="prepararEdicionProducto(${id})" aria-label="Editar ${escaparHtmlUI(p.nombre)}" aria-haspopup="dialog"></button>
+          <div class="mt-2 flex justify-end"><button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${p.disponible === false}, this)" aria-label="${p.disponible === false ? 'Volver a ofrecer' : 'Marcar agotado'}: ${escaparHtmlUI(p.nombre)}" aria-pressed="${p.disponible !== false}" class="relative z-10 min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold ${p.disponible === false ? 'text-amber-300' : 'text-emerald-300'}">${p.disponible === false ? 'Agotado · Activar' : 'Disponible ✓'}</button></div>
         </article>`;
       }).join('');
     }
@@ -1186,6 +1191,7 @@
         if (opciones) payload.opciones = opciones;
         if (!id) payload.disponible = true;
         if (urlImagenFinal) payload.imagen_url = urlImagenFinal;
+        else if (id && quitarImagenGuardadaProducto) payload.imagen_url = null;
 
         const { error } = id
           ? await supabaseClient.from('productos').update(payload).eq('id', id).eq('restaurante_id', RESTAURANTE_ID)
@@ -1262,6 +1268,7 @@
         // La última acción sobre la foto gana, incluso si había un archivo pendiente.
         fileInput.value = '';
         imagenGuardadaProducto = resultado.imagen_url;
+        quitarImagenGuardadaProducto = false;
         mostrarMiniaturaProducto(null, resultado.mensaje || 'Foto con IA guardada');
         await cargarProductos();
       } catch (error) {
@@ -1297,14 +1304,11 @@
       }
     }
 
-    async function prepararEdicionProducto(id) {
+    function prepararEdicionProducto(id) {
       const dialogo = document.getElementById('editor-producto');
-      const { data, error } = await supabaseClient.from('productos').select('*').eq('id', id).eq('restaurante_id', RESTAURANTE_ID).maybeSingle();
-      if (dialogo.open || guardandoProducto) return;
-      if (error || !data) {
-        alert('No se pudo cargar el producto.');
-        return;
-      }
+      if (!RESTAURANTE_ID || dialogo.open || guardandoProducto || generandoImagenIA) return;
+      const data = productosEditor.find(producto => String(producto.id) === id);
+      if (!data) return;
       limpiarFormProducto();
       document.getElementById('producto-edicion-acciones').classList.remove('hidden');
       document.getElementById('prod-id').value = data.id;
@@ -1327,6 +1331,7 @@
 
     let fotoBorradorIA = null;
     let imagenGuardadaProducto = '';
+    let quitarImagenGuardadaProducto = false;
     let urlMiniaturaProducto = '';
 
     function mostrarMiniaturaProducto(archivo, mensaje = '') {
@@ -1338,7 +1343,7 @@
       urlMiniaturaProducto = '';
       if (archivo) urlMiniaturaProducto = URL.createObjectURL(archivo);
 
-      const url = urlMiniaturaProducto || imagenGuardadaProducto;
+      const url = urlMiniaturaProducto || (quitarImagenGuardadaProducto ? '' : imagenGuardadaProducto);
       vista.hidden = !url;
       if (!url) return;
 
@@ -1346,6 +1351,16 @@
       estado.textContent = mensaje || (archivo ? 'Foto seleccionada' : 'Foto actual');
       imagen.src = url;
       if (mensaje) vista.scrollIntoView({ block: 'nearest' });
+    }
+
+    function quitarFotoProducto() {
+      if (guardandoProducto || generandoImagenIA) return;
+      const selector = document.getElementById('prod-imagen-file');
+      if (!urlMiniaturaProducto) quitarImagenGuardadaProducto = true;
+      selector.value = '';
+      fotoBorradorIA = null;
+      mostrarMiniaturaProducto();
+      selector.focus({ preventScroll: true });
     }
 
     document.getElementById('prod-imagen-file').addEventListener('change', event => {
@@ -1365,6 +1380,7 @@
     function limpiarMiniaturaProducto() {
       fotoBorradorIA = null;
       imagenGuardadaProducto = '';
+      quitarImagenGuardadaProducto = false;
       mostrarMiniaturaProducto();
     }
 
@@ -1758,6 +1774,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=tarjeta-borrador"></script>
+  <script src="/app.menu-import.js?v=editar-carta-publicada"></script>
 </body>
 </html>
