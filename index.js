@@ -981,7 +981,9 @@ app.use('/api/importar-menu', (req, res, next) => {
 });
 
 const TABLA_LECTURAS_MENU = 'velox_lecturas_menu';
-const DURACION_LECTURA_MENU_MS = 20 * 60 * 1000;
+// Cada lote renueva su plazo. Un proceso interrumpido deja de bloquear la lectura.
+const DURACION_LECTURA_MENU_MS = 2 * 60 * 1000;
+const MENSAJE_LECTURA_VENCIDA = 'La lectura se interrumpió. Vuelve a seleccionar los archivos e inténtalo de nuevo.';
 
 async function restauranteImportacionAutorizado(req, restauranteId) {
     const { data, error } = await req.supabaseUsuario.from('restaurantes').select('id')
@@ -998,9 +1000,9 @@ function consultaLecturaMenu(restauranteId, usuarioId) {
 function estadoLecturaMenu(lectura) {
     if (!lectura) return null;
     if (lectura.estado === 'procesando' && Date.parse(lectura.vence_en) <= Date.now()) {
-        return { id: lectura.id, estado: 'error', mensaje: 'La lectura se interrumpió. Puedes volver a subir los archivos.' };
+        return { id: lectura.id, estado: 'error', mensaje: MENSAJE_LECTURA_VENCIDA };
     }
-    return { id: lectura.id, estado: lectura.estado, resultado: lectura.resultado, mensaje: lectura.mensaje };
+    return { id: lectura.id, estado: lectura.estado, resultado: lectura.resultado, mensaje: lectura.mensaje, vence_en: lectura.vence_en };
 }
 
 app.get('/api/lectura-menu/:restaurante', autenticarImportacionMenu, async (req, res) => {
@@ -1035,22 +1037,62 @@ app.delete('/api/lectura-menu/:restaurante/:id', autenticarImportacionMenu, asyn
 });
 
 async function guardarResultadoLecturaMenu(id, valores) {
-    const { error } = await supabaseAdmin.from(TABLA_LECTURAS_MENU).update(valores).eq('id', id).eq('estado', 'procesando');
+    const { data, error } = await supabaseAdmin.from(TABLA_LECTURAS_MENU).update(valores)
+        .eq('id', id).eq('estado', 'procesando').gt('vence_en', new Date().toISOString())
+        .select('id').maybeSingle();
     if (error) throw error;
+    if (!data) throw errorMenu(MENSAJE_LECTURA_VENCIDA);
 }
 
 async function ejecutarLecturaEnFondo(id, entrada, liberar) {
+    const controlador = new AbortController();
+    let temporizador;
+    let rechazarPlazo;
+    const limite = new Promise((_, rechazar) => { rechazarPlazo = rechazar; });
+    const renovarPlazo = () => {
+        clearTimeout(temporizador);
+        temporizador = setTimeout(() => {
+            controlador.abort();
+            rechazarPlazo(errorMenu(MENSAJE_LECTURA_VENCIDA));
+        }, DURACION_LECTURA_MENU_MS);
+    };
+    renovarPlazo();
     try {
-        const resultado = await procesarFuentesLecturaMenu(entrada);
-        await guardarResultadoLecturaMenu(id, { estado: 'listo', resultado });
+        const avance = async (inicio, total) => {
+            if (controlador.signal.aborted) throw errorMenu(MENSAJE_LECTURA_VENCIDA);
+            await guardarResultadoLecturaMenu(id, {
+                mensaje: `Leyendo páginas ${inicio + 1}–${Math.min(inicio + 2, total)} de ${total}…`,
+                vence_en: new Date(Date.now() + DURACION_LECTURA_MENU_MS).toISOString()
+            });
+            renovarPlazo();
+        };
+        const tarea = async () => {
+            const resultado = await procesarFuentesLecturaMenu(
+                entrada, () => controlador.signal.aborted, avance, controlador.signal);
+            if (controlador.signal.aborted) throw errorMenu(MENSAJE_LECTURA_VENCIDA);
+            await guardarResultadoLecturaMenu(id, { estado: 'listo', resultado, mensaje: null });
+        };
+        await Promise.race([tarea(), limite]);
     } catch (error) {
         const { mensaje } = errorLecturaMenu(error);
+        let limiteGuardado;
         try {
-            await guardarResultadoLecturaMenu(id, { estado: 'error', mensaje });
+            // La limpieza también tiene plazo para liberar el cupo si falla la base de datos.
+            await Promise.race([
+                supabaseAdmin.from(TABLA_LECTURAS_MENU).update({ estado: 'error', mensaje })
+                    .eq('id', id).eq('estado', 'procesando'),
+                new Promise((_, rechazar) => {
+                    limiteGuardado = setTimeout(() => rechazar(new Error('No se pudo guardar el error a tiempo.')), 15000);
+                })
+            ]).then(respuesta => { if (respuesta?.error) throw respuesta.error; });
         } catch (errorGuardado) {
             console.error('No se pudo guardar el estado de la lectura:', errorGuardado.message);
+        } finally {
+            clearTimeout(limiteGuardado);
         }
     } finally {
+        clearTimeout(temporizador);
+        controlador.abort();
         liberar();
     }
 }
@@ -1115,7 +1157,7 @@ app.post('/api/importar-menu', autenticarImportacionMenu, (req, res, next) => {
         if (error) throw error;
         tareaIniciada = true;
         void ejecutarLecturaEnFondo(id, entrada, req.liberarCupoLectura);
-        if (!res.destroyed) return res.status(202).json({ lectura: { id, estado: 'procesando' } });
+        if (!res.destroyed) return res.status(202).json({ lectura: { id, estado: 'procesando', vence_en: new Date(Date.now() + DURACION_LECTURA_MENU_MS).toISOString() } });
     } catch (error) {
         const { estado, mensaje } = errorLecturaMenu(error);
         if (!res.destroyed) return res.status(estado).json({ error: mensaje });
@@ -1124,7 +1166,7 @@ app.post('/api/importar-menu', autenticarImportacionMenu, (req, res, next) => {
     }
 });
 
-async function procesarFuentesLecturaMenu({ fuentesMenu, versionMenu, restaurante_id, idLectura }, conexionCerrada = () => false) {
+async function procesarFuentesLecturaMenu({ fuentesMenu, versionMenu, restaurante_id, idLectura }, conexionCerrada = () => false, informarAvance = async () => {}, signal) {
         const promptTexto = `Transcribe el menú de las imágenes, páginas PDF o textos como un OCR literal. La carta es la única fuente de verdad.
 
 REGLAS OBLIGATORIAS:
@@ -1144,6 +1186,8 @@ REGLAS OBLIGATORIAS:
         // Lotes pequeños limitan el tamaño de respuesta y se reúnen antes de vincular variantes.
         for (let inicio = 0; inicio < fuentesMenu.length; inicio += 2) {
           if (conexionCerrada()) throw errorMenu('Se interrumpió la lectura. Tu carta actual se conserva.');
+          await informarAvance(inicio, fuentesMenu.length);
+          if (conexionCerrada()) throw errorMenu(MENSAJE_LECTURA_VENCIDA);
           const messagesContent = [{ type: 'text', text: promptTexto }, ...fuentesMenu.slice(inicio, inicio + 2)];
         // Modelo de visión eficiente para importaciones de alto volumen.
         // Se puede cambiar desde Railway con OPENAI_MENU_MODEL si se necesita
@@ -1216,7 +1260,7 @@ REGLAS OBLIGATORIAS:
             },
             // Los menús completos pueden producir bastante JSON; 4096 truncaba la respuesta con cartas extensas.
             max_completion_tokens: 16000
-        }, { timeout: 90000, maxRetries: 0 });
+        }, { timeout: 90000, maxRetries: 0, signal });
 
         const eleccion = response.choices?.[0];
         const uso = response.usage || {};
@@ -1368,7 +1412,9 @@ function errorLecturaMenu(error) {
         }));
 
         let mensajeUsuario = "No se pudo completar la lectura del menú. Revisa los registros de Railway para ver el motivo exacto.";
-        if (code === "context_length_exceeded" || /context length|maximum context|too many tokens/i.test(message)) {
+        if (/timeout|timed out|aborted/i.test(message) || error.name === 'AbortError' || error.name === 'APIConnectionTimeoutError') {
+            mensajeUsuario = 'La lectura tardó demasiado y se detuvo. Vuelve a intentarlo con fotos más claras o menos páginas.';
+        } else if (code === "context_length_exceeded" || /context length|maximum context|too many tokens/i.test(message)) {
             mensajeUsuario = "Las imágenes juntas exceden la capacidad de una sola lectura. Reduce el tamaño de las páginas. Tu carta publicada se conserva.";
         } else if (/respuesta de IA quedó vacía o incompleta/i.test(message)) {
             mensajeUsuario = "La IA empezó a leer el menú, pero no alcanzó a devolver todo el resultado. Prueba imágenes menos densas o revisa que las páginas sean legibles. Tu carta publicada se conserva.";

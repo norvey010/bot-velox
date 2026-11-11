@@ -24,11 +24,11 @@ function estadoImportacion(mensaje, tipo='info') {
   mostrarAviso(document.getElementById('importacion-menu-status'), mensaje, tipo);
 }
 
-function mostrarLecturaArchivosMenu() {
+function mostrarLecturaArchivosMenu(mensaje = 'Leyendo archivos…') {
   const estado = document.getElementById('importacion-menu-status');
   estadoImportacion('Leyendo archivos…');
   estado.innerHTML = `
-    <span class="velox-lectura-titulo">Leyendo archivos…</span>
+    <span class="velox-lectura-titulo">${escaparHtmlUI(mensaje)}</span>
     <span class="velox-lectura-linea" aria-hidden="true"></span>
     <small class="velox-lectura-nota">Archivos recibidos. Puedes salir y volver.<br>Los cambios se aplican al publicar.</small>`;
 }
@@ -135,9 +135,27 @@ function mensajeErrorImportacion(error, accion='lectura') {
   }
   return mensaje || (accion==='publicacion' ? 'No se pudo confirmar la publicación. Revisa tu carta.' : 'No se pudo leer el archivo. Tu carta actual no cambió.');
 }
+async function conPlazoLecturaMenu(accion, plazo, mensaje) {
+  const controlador = new AbortController();
+  let temporizador;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => accion(controlador.signal)),
+      new Promise((_, rechazar) => {
+        temporizador = setTimeout(() => {
+          controlador.abort();
+          rechazar(new Error(mensaje));
+        }, plazo);
+      })
+    ]);
+  } finally {
+    clearTimeout(temporizador);
+  }
+}
+
 async function sesionImportacion() {
   try {
-    const {data:{session},error}=await supabaseClient.auth.getSession();
+    const {data:{session},error}=await conPlazoLecturaMenu(() => supabaseClient.auth.getSession(), 15000, 'No pudimos validar tu sesión. Revisa tu conexión e inténtalo de nuevo.');
     if(error) throw error;
     if(!session?.access_token) throw new Error('Tu sesión venció. Inicia sesión de nuevo.');
     return session.access_token;
@@ -366,10 +384,11 @@ function aplicarEstadoLecturaMenu(lectura) {
     document.getElementById('cargar-carta-ayuda').textContent = 'Lectura en curso';
     indicarLecturaMenu(true);
     mostrarProgresoImportacion(1);
-    mostrarLecturaArchivosMenu();
+    mostrarLecturaArchivosMenu(lectura.mensaje || 'Leyendo archivos…');
     programarConsultaLecturaMenu();
     return;
   }
+  clearTimeout(consultaLecturaMenu);
   indicarLecturaMenu(false);
   if (lectura.estado === 'listo') {
     mostrarBorradorMenu(lectura.resultado, lectura.id);
@@ -385,12 +404,18 @@ async function recuperarLecturaMenu() {
   consultandoLecturaMenu = true;
   clearTimeout(consultaLecturaMenu);
   try {
-    const token = await sesionImportacion();
-    const respuesta = await fetch(`/api/lectura-menu/${encodeURIComponent(RESTAURANTE_ID)}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!respuesta.ok) throw new Error('No se pudo consultar la lectura.');
-    const { lectura } = await respuesta.json();
+    const { lectura } = await conPlazoLecturaMenu(async signal => {
+      const token = await sesionImportacion();
+      const respuesta = await fetch(`/api/lectura-menu/${encodeURIComponent(RESTAURANTE_ID)}`, {
+        headers: { Authorization: `Bearer ${token}` }, signal, cache: 'no-store'
+      });
+      if (!respuesta.ok) {
+        const error = new Error('No se pudo consultar la lectura.');
+        error.sesionVencida = respuesta.status === 401 || respuesta.status === 403;
+        throw error;
+      }
+      return respuesta.json();
+    }, 20000, 'No pudimos consultar el avance. Revisa tu conexión.');
     if (!lectura) {
       if (leyendoMenu) {
         indicarLecturaMenu(false);
@@ -402,8 +427,17 @@ async function recuperarLecturaMenu() {
     }
     aplicarEstadoLecturaMenu(lectura);
     return true;
-  } catch {
-    if (leyendoMenu) programarConsultaLecturaMenu();
+  } catch (error) {
+    if (error.sesionVencida) {
+      indicarLecturaMenu(false);
+      mostrarProgresoImportacion(1, true);
+      estadoImportacion('Tu sesión venció. Inicia sesión de nuevo para recuperar la lectura.', 'error');
+    } else if (leyendoMenu) {
+      estadoImportacion('No pudimos consultar el avance. Reintentando la conexión…');
+      programarConsultaLecturaMenu();
+    } else {
+      estadoImportacion('No pudimos recuperar la lectura. Revisa tu conexión y vuelve a entrar.', 'error');
+    }
     return false;
   } finally {
     consultandoLecturaMenu = false;
@@ -436,9 +470,13 @@ async function enviarMenuConIA(event) {
     formData.set('restaurante_id',RESTAURANTE_ID);
     estadoImportacion('Subiendo archivos… Mantén el panel abierto hasta confirmar la recepción.');
     const referencia=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : '';
-    const respuesta=await fetch('/api/importar-menu',{method:'POST',headers:{Authorization:`Bearer ${token}`, 'X-Velox-Background': '1', ...(referencia ? {'X-Velox-Request-Id':referencia} : {})},body:formData});
-    if ([502, 503, 504].includes(respuesta.status)) throw new Error('No pudimos confirmar la recepción. Tu carta publicada sigue igual.');
-    const resultado = await respuesta.json().catch(() => ({}));
+    const { respuesta, resultado } = await conPlazoLecturaMenu(async signal => {
+      const respuesta = await fetch('/api/importar-menu', { method: 'POST', signal,
+        headers: { Authorization: `Bearer ${token}`, 'X-Velox-Background': '1',
+          ...(referencia ? { 'X-Velox-Request-Id': referencia } : {}) }, body: formData });
+      if ([502, 503, 504].includes(respuesta.status)) throw new Error('No pudimos confirmar la recepción. Revisa la conexión.');
+      return { respuesta, resultado: await respuesta.json().catch(() => ({})) };
+    }, 120000, 'No pudimos confirmar la recepción de los archivos. Comprobaremos si empezó la lectura.');
     if (resultado.lectura && (respuesta.ok || respuesta.status === 409)) {
       aplicarEstadoLecturaMenu(resultado.lectura);
       return;
@@ -453,6 +491,8 @@ async function enviarMenuConIA(event) {
     mostrarProgresoImportacion(0, true);
     estadoImportacion(mensajeErrorImportacion(error), 'error');
     indicarLecturaMenu(false);
+    // Una respuesta perdida puede ocultar una tarea aceptada. Consultar no genera otra lectura.
+    programarConsultaLecturaMenu();
   } finally {
     subiendoArchivosMenu = false;
   }
