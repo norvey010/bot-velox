@@ -107,7 +107,7 @@ test('publicación usa RPC autenticado y detecta carta cambiada',async()=>{
  s.user.rpc=async()=>({error:{message:'CARTA_CAMBIO'}});const conflicto=s.response();await s.routes.get('/api/publicar-menu')({body:{restaurante_id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',version:'a'.repeat(32),productos:[producto()]},supabaseUsuario:s.user},conflicto);assert.equal(conflicto.statusCode,409);
 });
 function navegador(){
- const elements=new Map(),requests=[];const el=id=>{if(!elements.has(id))elements.set(id,{id,files:[],value:'',hidden:true,classList:{toggle(){},add(){},remove(){}},addEventListener(){},scrollIntoView(){},focus(){},showModal(){this.open=true},setAttribute(k,v){this[k]=v},getAttribute(k){return this[k]},removeAttribute(k){delete this[k]},reset(){this.files=[]}});return elements.get(id)};
+ const elements=new Map(),requests=[];const el=id=>{if(!elements.has(id))elements.set(id,{id,files:[],value:'',hidden:true,classList:{toggle(){},add(){},remove(){},contains(){return false;}},addEventListener(){},scrollIntoView(){},focus(){},showModal(){this.open=true},close(){this.open=false},setAttribute(k,v){this[k]=v},getAttribute(k){return this[k]},removeAttribute(k){delete this[k]},reset(){this.files=[]}});return elements.get(id)};
  const context={console,AbortController,RESTAURANTE_ID:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',supabaseClient:{auth:{getSession:async()=>({data:{session:{access_token:'sesion-prueba'}}})}},document:{getElementById:el,addEventListener(){},body:{style:{}}},window:{addEventListener(){},location:{origin:'https://velox.example'}},Blob,setTimeout,clearTimeout,FormData:class{set(){}append(nombre,blob,archivo){this.archivos??=[];this.archivos.push({nombre,blob,archivo})}},escaparHtmlUI:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),formatearPrecioCOP:n=>String(n),mostrarAviso:(el,msg)=>el.textContent=msg,cargarProductos:async()=>{},fetch:async(url,req)=>{requests.push({url,req});return{ok:true,json:async()=>url==='/api/importar-menu'?{success:true,borrador:true,productos:[producto()],version:'a'.repeat(32),paginas:1}:{success:true,count:1}}}};
  context.document.querySelector=()=>({replaceWith:elemento=>elements.set(elemento.id,elemento)});
  context.document.createElement=tag=>({tag,setAttribute(k,v){this[k]=v}});
@@ -251,7 +251,8 @@ test('un panel recién abierto recupera un borrador listo sin reenviar archivos'
  };
  assert.equal(await n.context.recuperarLecturaMenu(), true);
  assert.equal(n.el('revision-menu').hidden, false);
- assert.match(n.el('revision-miniatura-frame').src, /vista=borrador/);
+ assert.equal(n.el('revision-carta-ampliada').open, true);
+ assert.match(n.el('revision-carta-frame').src, /vista=borrador/);
  assert.equal(n.run('borradorMenu.productos[0].nombre'), 'Pizza recuperada');
  assert.match(n.requests[0].url, /^\/api\/lectura-menu\//);
  assert.equal(n.requests.length, 1);
