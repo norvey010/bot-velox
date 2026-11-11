@@ -22,6 +22,9 @@ function mostrarProgresoImportacion(etapa, interrumpida = false) {
 
 function estadoImportacion(mensaje, tipo='info') {
   mostrarAviso(document.getElementById('importacion-menu-status'), mensaje, tipo);
+  if (tipo === 'error' && document.getElementById('revision-carta-ampliada').open) {
+    mostrarAviso(document.getElementById('revision-accion-status'), mensaje, tipo);
+  }
 }
 
 function mostrarLecturaArchivosMenu(mensaje = 'Leyendo archivos…') {
@@ -248,6 +251,7 @@ async function generarFotoBorradorMenu(i, boton) {
   }
   if (!confirm('La IA creará una foto ilustrativa. Cada generación tiene un costo. ¿Continuar?')) return;
   generandoFotoBorradorMenu = true;
+  actualizarAccionesBorrador();
   const selector = document.getElementById('revision-foto-archivo');
   const cambiar = document.getElementById('revision-foto-cambiar');
   const quitar = document.getElementById('revision-foto-quitar');
@@ -274,6 +278,7 @@ async function generarFotoBorradorMenu(i, boton) {
     estadoProductoBorrador(error.message, 'error');
   } finally {
     generandoFotoBorradorMenu = false;
+    actualizarAccionesBorrador();
     selector.disabled = cambiar.disabled = quitar.disabled = boton.disabled = false;
     boton.textContent = 'Crear foto con IA';
   }
@@ -324,6 +329,7 @@ function abrirCartaBorrador(indice = null) {
   document.getElementById('revision-volver-carta').hidden = !editar;
   document.getElementById('revision-carta-ampliada-titulo').textContent = editar ? 'Editar producto' : 'Carta del borrador';
   if (!dialogo.open) {
+    document.getElementById('revision-accion-status').classList.add('hidden');
     dialogo.showModal();
     document.body.style.overflow = 'hidden';
   }
@@ -348,13 +354,15 @@ function olvidarBorradorMenu() {
   }
   for (const producto of fotosBorradorMenu.keys()) liberarFotoBorradorMenu(producto);
   borradorMenu = null;
+  const dialogo = document.getElementById('revision-carta-ampliada');
+  if (dialogo.open) dialogo.close();
   document.getElementById('cargar-carta-ayuda').textContent = 'Fotos o PDF';
   document.getElementById('revision-menu').hidden = true;
   document.getElementById('revision-miniatura-frame').removeAttribute('src');
   document.getElementById('revision-carta-frame').removeAttribute('src');
 }
 
-function mostrarBorradorMenu(resultado, lecturaId, desplazar = false) {
+function mostrarBorradorMenu(resultado, lecturaId) {
   borradorMenu = { restaurante_id: RESTAURANTE_ID, version: resultado.version, productos: resultado.productos };
   if (lecturaId) {
     borradorMenu.lectura_id = lecturaId;
@@ -367,11 +375,14 @@ function mostrarBorradorMenu(resultado, lecturaId, desplazar = false) {
   }
   document.getElementById('cargar-carta-ayuda').textContent = 'Borrador listo para revisar';
   document.getElementById('revision-menu').hidden = false;
-  document.getElementById('btn-publicar-menu').disabled = !borradorMenu.productos.length;
+  actualizarAccionesBorrador();
   cargarVistaClientesBorrador(document.getElementById('revision-miniatura-frame'));
   mostrarProgresoImportacion(2);
   estadoImportacion(`${borradorMenu.productos.length} productos en el borrador. Revisa y publica.`, 'exito');
-  if (desplazar) document.getElementById('revision-menu').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!document.hidden && !document.getElementById('sec-menu-ia').classList.contains('hidden')
+      && !document.getElementById('importar-menu-fotos').classList.contains('hidden')) {
+    abrirCartaBorrador();
+  }
 }
 
 function programarConsultaLecturaMenu() {
@@ -486,7 +497,7 @@ async function enviarMenuConIA(event) {
     }
     // Permite que el panel anterior y el nuevo servidor convivan durante el despliegue.
     indicarLecturaMenu(false);
-    mostrarBorradorMenu(resultado, null, true);
+    mostrarBorradorMenu(resultado, null);
   } catch (error) {
     mostrarProgresoImportacion(0, true);
     estadoImportacion(mensajeErrorImportacion(error), 'error');
@@ -595,14 +606,31 @@ function quitarProductoBorrador(i) {
   liberarFotoBorradorMenu(borradorMenu.productos[i]);
   borradorMenu.productos.splice(i, 1);
   guardarEdicionBorradorMenu();
-  document.getElementById('btn-publicar-menu').disabled = !borradorMenu.productos.length;
+  actualizarAccionesBorrador();
   abrirCartaBorrador();
 }
 
+function actualizarAccionesBorrador(accion) {
+  const ocupado = publicandoMenu || generandoFotoBorradorMenu;
+  const publicar = document.getElementById('btn-publicar-menu');
+  const descartar = document.getElementById('btn-descartar-menu');
+  publicar.disabled = ocupado || !borradorMenu?.productos.length;
+  descartar.disabled = ocupado || !borradorMenu;
+  publicar.textContent = accion === 'publicar' ? 'Publicando…' : 'Publicar carta';
+  descartar.textContent = accion === 'descartar' ? 'Descartando…' : 'Descartar borrador';
+  for (const id of ['revision-carta-frame', 'revision-edicion']) {
+    const vista = document.getElementById(id);
+    if (publicandoMenu) vista.setAttribute('inert', '');
+    else vista.removeAttribute('inert');
+  }
+}
+
 async function descartarRevisionMenu() {
-  if (!borradorMenu || publicandoMenu || leyendoMenu) return;
+  if (!borradorMenu || publicandoMenu || leyendoMenu || generandoFotoBorradorMenu) return;
   if (borradorMenu.lectura_id) {
     publicandoMenu = true;
+    actualizarAccionesBorrador('descartar');
+    document.getElementById('revision-accion-status').classList.add('hidden');
     const revision = document.getElementById('revision-menu');
     revision.setAttribute('inert', '');
     try {
@@ -616,6 +644,7 @@ async function descartarRevisionMenu() {
       return;
     } finally {
       publicandoMenu = false;
+      actualizarAccionesBorrador();
       revision.removeAttribute('inert');
     }
   }
@@ -626,7 +655,8 @@ async function descartarRevisionMenu() {
 
 async function publicarMenuRevisado(event) {
   event.preventDefault();
-  if(!borradorMenu || publicandoMenu || leyendoMenu || generandoFotoBorradorMenu)return;
+  if (!borradorMenu?.productos.length || publicandoMenu || leyendoMenu || generandoFotoBorradorMenu) return;
+  document.getElementById('revision-accion-status').classList.add('hidden');
   const invalido = borradorMenu.productos.findIndex(p => p.revision_opciones || opcionesBorradorIncompletas(p)
     || !p.nombre.trim() || !p.categoria.trim() || !Number.isSafeInteger(Number(p.precio)) || Number(p.precio) <= 0 || Number(p.precio) > 100000000);
   if (invalido >= 0) {
@@ -641,7 +671,7 @@ async function publicarMenuRevisado(event) {
     return;
   }
   publicandoMenu=true;
-  const boton=document.getElementById('btn-publicar-menu');boton.disabled=true;boton.textContent='Publicando…';
+  actualizarAccionesBorrador('publicar');
   document.getElementById('revision-menu').setAttribute('inert','');
   try {
     const token=await sesionImportacion();
@@ -654,14 +684,14 @@ async function publicarMenuRevisado(event) {
     mostrarProgresoImportacion(-1);
     await cargarProductos();estadoImportacion(`Carta publicada: ${resultado.count} productos.`,'exito');
   } catch(error) {estadoImportacion(mensajeErrorImportacion(error,'publicacion'),'error');}
-  finally {publicandoMenu=false;document.getElementById('revision-menu').removeAttribute('inert');boton.disabled=false;boton.textContent='Publicar carta';}
+  finally {publicandoMenu=false;document.getElementById('revision-menu').removeAttribute('inert');actualizarAccionesBorrador();}
 }
 prepararSelectorArchivosMenu();
 for (const id of ['revision-miniatura-frame', 'revision-carta-frame']) {
   document.getElementById(id).addEventListener('load', event => enviarVistaClientesBorrador(event.currentTarget));
 }
 document.getElementById('revision-carta-ampliada').addEventListener('cancel', event => {
-  if (generandoFotoBorradorMenu) event.preventDefault();
+  if (generandoFotoBorradorMenu || publicandoMenu) event.preventDefault();
 });
 document.getElementById('revision-carta-ampliada').addEventListener('close', () => {
   document.body.style.overflow = '';
