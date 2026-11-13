@@ -593,14 +593,14 @@ body:has(#contenedor-menu) > header {
 
 .velox-aviso-editar {
   margin: .45rem 0 0;
-  color: #fff1f4;
+  color: #fafafa;
   font-size: .9rem;
   line-height: 1.5;
 }
 .velox-aviso-editar strong {
   display: inline-block;
-  color: #fda4af;
-  text-shadow: 0 0 .65rem rgb(251 113 133 / 45%);
+  color: inherit;
+  text-shadow: 0 0 .65rem rgb(255 255 255 / 45%);
 }
 @media (prefers-reduced-motion: no-preference) {
   .velox-aviso-editar:not([hidden]) {
@@ -613,8 +613,8 @@ body:has(#contenedor-menu) > header {
     text-shadow: 0 0 transparent;
   }
   50% {
-    transform: translateY(-2px);
-    text-shadow: 0 0 .6rem rgb(251 113 133 / 55%);
+    transform: translateY(-3px);
+    text-shadow: 0 0 .6rem rgb(255 255 255 / 55%);
   }
 }
 
