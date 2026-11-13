@@ -110,7 +110,7 @@
     :is(#carta-ampliada, #revision-carta-ampliada) iframe { flex: 1; min-height: 0; width: 100%; border: 0; background: white; }
     #revision-carta-ampliada > header { flex-shrink: 0; }
   </style>
-    <link rel="stylesheet" href="/velox-theme.css?v=frase-completa">
+    <link rel="stylesheet" href="/velox-theme.css?v=frase-menu-blanca">
 </head>
 <body class="text-slate-100 min-h-screen font-sans">
 
@@ -294,7 +294,7 @@
             <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
             <p id="producto-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
             <button id="reintentar-productos" type="button" onclick="cargarProductos()" hidden class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-white">Reintentar</button>
-            <p id="productos-editor-ayuda" class="velox-aviso-editar" hidden><span aria-hidden="true">✎</span> Toca <strong>cualquier parte</strong> de la tarjeta para editar el producto.</p>
+            <p id="productos-editor-ayuda" class="velox-aviso-editar" hidden><span aria-hidden="true">✎</span> Toca <strong>cualquier parte</strong> del menú para editar el producto.</p>
             <div id="productos-body" class="grid touch-pan-y grid-cols-1 gap-2 lg:grid-cols-2"><p class="text-sm text-slate-400">Tus productos aparecerán aquí.</p></div>
             <button type="button" id="productos-editor-mas" onclick="mostrarMasProductos()" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm text-white" hidden>Mostrar más</button>
 
@@ -438,7 +438,7 @@
     <header class="flex items-start justify-between gap-2 border-b border-slate-700 p-3">
       <div class="min-w-0">
         <h2 id="revision-carta-ampliada-titulo" class="font-semibold">Carta del borrador</h2>
-        <p id="revision-carta-ayuda" class="velox-aviso-editar"><span aria-hidden="true">✎</span> Toca <strong>cualquier parte</strong> de la tarjeta para editar el producto.</p>
+        <p id="revision-carta-ayuda" class="velox-aviso-editar"><span aria-hidden="true">✎</span> Toca <strong>cualquier parte</strong> del menú para editar el producto.</p>
         <button id="revision-volver-carta" type="button" onclick="abrirCartaBorrador()" class="velox-volver" hidden>‹ Carta</button>
       </div>
       <button type="button" onclick="if (!generandoFotoBorradorMenu && !publicandoMenu) document.getElementById('revision-carta-ampliada').close()" class="min-h-11 shrink-0 rounded-lg bg-slate-700 px-3 text-sm" autofocus>Cerrar ✕</button>
