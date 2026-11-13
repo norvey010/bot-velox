@@ -604,7 +604,8 @@ body:has(#contenedor-menu) > header {
 }
 @media (prefers-reduced-motion: no-preference) {
   .velox-aviso-editar:not([hidden]) {
-    animation: velox-aviso-editar 3.2s ease-in-out infinite;
+    transform-origin: left center;
+    animation: velox-aviso-editar 1.8s ease-in-out infinite;
   }
 }
 @keyframes velox-aviso-editar {
@@ -613,8 +614,8 @@ body:has(#contenedor-menu) > header {
     text-shadow: 0 0 transparent;
   }
   50% {
-    transform: translateY(-3px);
-    text-shadow: 0 0 .6rem rgb(255 255 255 / 55%);
+    transform: translateY(-7px) scale(1.04);
+    text-shadow: 0 0 .85rem rgb(255 255 255 / 80%);
   }
 }
 
