@@ -605,15 +605,15 @@ body:has(#contenedor-menu) > header {
 @media (prefers-reduced-motion: no-preference) {
   .velox-aviso-editar:not([hidden]) {
     transform-origin: left center;
-    animation: velox-aviso-editar 1.8s ease-in-out infinite;
+    animation: velox-aviso-editar 5s ease-in-out infinite;
   }
 }
 @keyframes velox-aviso-editar {
-  0%, 100% {
+  0%, 8%, 16%, 100% {
     transform: translateY(0);
     text-shadow: 0 0 transparent;
   }
-  50% {
+  4%, 12% {
     transform: translateY(-7px) scale(1.04);
     text-shadow: 0 0 .85rem rgb(255 255 255 / 80%);
   }
