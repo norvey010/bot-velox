@@ -125,7 +125,7 @@
     
     <!-- Pestañas de Navegación -->
     <nav aria-label="Secciones de Velox" class="max-w-full flex gap-1 overflow-x-auto bg-[#F6EFE5] p-1 rounded-xl border border-slate-800">
-      <button onclick="cambiarSeccion('menu')" id="tab-menu" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">🍽️ Mi menú</button>
+      <button onclick="cambiarSeccion('menu')" id="tab-menu" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">🍽️ Mi carta</button>
       <button onclick="cambiarSeccion('pedidos')" id="tab-pedidos" class="px-3 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white whitespace-nowrap">📦 Pedidos</button>
       <button onclick="cambiarSeccion('configuracion')" id="tab-configuracion" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">⚙️ Ajustes</button>
     </nav>
@@ -227,7 +227,7 @@
     <section id="sec-menu-ia" class="hidden order-1 space-y-4">
       <div class="rounded-xl border border-slate-700 bg-slate-800 p-3 sm:p-4 shadow-lg">
         <div id="menu-inicio">
-          <h2 id="menu-inicio-titulo" class="mb-3 text-lg font-bold text-white" tabindex="-1">Tu menú</h2>
+          <h2 id="menu-inicio-titulo" class="mb-3 text-lg font-bold text-white" tabindex="-1">Mi carta</h2>
           <div class="space-y-2">
             <button id="menu-acceso-importar" type="button" onclick="mostrarPantallaMenu('importar-menu-fotos')" aria-controls="importar-menu-fotos" class="flex min-h-16 w-full items-center gap-3 rounded-lg border border-slate-700 bg-slate-900 p-3 text-left hover:border-red-500">
               <span class="min-w-0 flex-1">
@@ -242,7 +242,8 @@
             </button>
           </div>
           <div class="space-y-3 pt-3">
-            <h3 class="text-sm font-semibold text-white">Vista previa</h3>
+            <h3 class="text-sm font-semibold text-white">Carta publicada</h3>
+            <a id="compartir-carta" class="velox-volver inline-block" hidden>Compartir por WhatsApp</a>
             <p id="carta-preview-status" class="text-xs text-slate-400" role="status">Cargando vista previa…</p>
             <button id="carta-miniatura" type="button" onclick="abrirMenuEnVivo()" class="carta-miniatura" aria-label="Ampliar vista previa de mi carta" aria-haspopup="dialog" hidden>
               <iframe id="carta-preview-frame" title="Miniatura de la carta" tabindex="-1" aria-hidden="true" loading="lazy"></iframe>
@@ -251,7 +252,7 @@
           </div>
         </div>
         <section id="importar-menu-fotos" class="hidden" aria-labelledby="menu-importar-titulo">
-          <button type="button" onclick="mostrarPantallaMenu('menu-inicio')" class="velox-volver mb-2">‹ Mi menú</button>
+          <button type="button" onclick="mostrarPantallaMenu('menu-inicio')" class="velox-volver mb-2">‹ Mi carta</button>
           <h2 id="menu-importar-titulo" class="text-lg font-bold text-white" tabindex="-1">Cargar carta con IA</h2>
           <div class="pt-3">
             <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-2">
@@ -275,7 +276,7 @@
             </form>
             <p id="importacion-menu-status" class="mt-3 hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
             <section id="revision-menu" hidden class="mt-4 space-y-3 rounded-xl border border-slate-600 p-3" aria-labelledby="revision-menu-titulo">
-              <h3 id="revision-menu-titulo" class="text-base font-bold text-white">Revisar carta</h3>
+              <h3 id="revision-menu-titulo" class="text-base font-bold text-white">Borrador</h3>
               <p class="text-sm text-slate-300">Al publicar, reemplazas tu carta actual.</p>
               <button id="revision-miniatura" type="button" onclick="abrirCartaBorrador()" class="carta-miniatura" aria-label="Ampliar la carta del borrador" aria-haspopup="dialog">
                 <iframe id="revision-miniatura-frame" title="Miniatura de la carta del borrador" tabindex="-1" aria-hidden="true" sandbox="allow-scripts allow-same-origin"></iframe>
@@ -285,7 +286,7 @@
           </div>
         </section>
         <section id="editar-menu" class="hidden" aria-labelledby="menu-editar-titulo">
-          <button type="button" onclick="mostrarPantallaMenu('menu-inicio')" class="velox-volver mb-2">‹ Mi menú</button>
+          <button type="button" onclick="mostrarPantallaMenu('menu-inicio')" class="velox-volver mb-2">‹ Mi carta</button>
           <h2 id="menu-editar-titulo" class="text-lg font-bold text-white" tabindex="-1">Editar menú</h2>
           <div class="mt-4 space-y-4">
             <div class="flex flex-wrap gap-2">
@@ -457,6 +458,9 @@
       <div id="revision-menu-lista"></div>
     </section>
     <footer class="shrink-0 border-t border-slate-700 bg-slate-900 p-3">
+      <p id="revision-resumen" class="text-sm font-semibold" aria-live="polite"></p>
+      <p id="revision-bloqueos" class="text-xs text-amber-300" hidden></p>
+      <button id="revision-siguiente" type="button" onclick="revisarSiguienteProducto()" class="velox-volver min-h-10 text-sm" hidden>Revisar pendientes</button>
       <p id="revision-accion-status" class="mb-2 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
       <button id="btn-completar-fotos" type="button" onclick="completarFotosBorrador()" class="mb-2 min-h-11 w-full rounded-lg border border-slate-600 px-2 py-2 text-sm text-white disabled:opacity-50">Completar fotos con IA</button>
       <form id="form-revision-menu" onsubmit="publicarMenuRevisado(event)" class="grid grid-cols-2 gap-2">
@@ -1427,6 +1431,11 @@
       miniatura.hidden = false;
       estado.hidden = true;
       estado.textContent = '';
+      const compartir = document.getElementById('compartir-carta');
+      compartir.href = 'https://wa.me/?text=' + encodeURIComponent(urlVistaPreviaCarta);
+      compartir.target = '_blank';
+      compartir.rel = 'noopener noreferrer';
+      compartir.hidden = false;
       actualizarVistaPreviaCarta();
     }
 
@@ -1797,6 +1806,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=fotos-completas"></script>
+  <script src="/app.menu-import.js?v=orden-carta"></script>
 </body>
 </html>
