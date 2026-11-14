@@ -468,7 +468,7 @@ function olvidarBorradorMenu() {
   borradorMenu = null;
   const dialogo = document.getElementById('revision-carta-ampliada');
   if (dialogo.open) dialogo.close();
-  document.getElementById('cargar-carta-ayuda').textContent = 'Fotos o PDF';
+  document.getElementById('cargar-carta-ayuda').textContent = '';
   document.getElementById('revision-menu').hidden = true;
   document.getElementById('revision-miniatura-frame').removeAttribute('src');
   document.getElementById('revision-carta-frame').removeAttribute('src');
@@ -542,7 +542,7 @@ async function recuperarLecturaMenu() {
     if (!lectura) {
       if (leyendoMenu) {
         indicarLecturaMenu(false);
-        document.getElementById('cargar-carta-ayuda').textContent = 'Fotos o PDF';
+        document.getElementById('cargar-carta-ayuda').textContent = '';
         mostrarProgresoImportacion(-1);
         estadoImportacion('Ya no hay una lectura activa. Puedes volver a subir los archivos.');
       }
