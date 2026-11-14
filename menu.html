@@ -101,7 +101,7 @@
         outline-offset: -3px;
     }
 </style>
-    <link rel="stylesheet" href="/velox-theme.css">
+    <link rel="stylesheet" href="/velox-theme.css?v=fotos-completas">
 </head>
 
 <body class="text-slate-100 min-h-screen pb-28">
@@ -299,7 +299,7 @@ function obtenerVisualProducto(producto) {
         && (url.startsWith('http') || (window.VELOX_VISTA_BORRADOR && url.startsWith(`blob:${window.location.origin}/`)));
     const url = propia;
     if (valida(url)) {
-        return `<img src="${escaparHtml(url)}" alt="${escaparHtml(producto.nombre)}" loading="lazy" decoding="async" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">`;
+        return `<img src="${escaparHtml(url)}" alt="${escaparHtml(producto.nombre)}" loading="lazy" decoding="async" class="block w-full h-full object-contain">`;
     }
 
     const texto = `${producto.categoria || ''} ${producto.nombre || ''}`
@@ -400,7 +400,7 @@ function renderizarProductos(listaProds) {
                         <div class="mt-2 sm:mt-5 flex flex-col gap-2 sm:gap-3">
                             <span class="font-extrabold text-white text-base sm:text-xl">${precio}</span>
                             ${editar && (producto.revisionFoto || producto.revision_opciones || !(Number(producto.precio) > 0))
-                                ? `<span class="text-xs font-semibold text-amber-300">Revisar${producto.revisionFoto ? ' · ' + escaparHtml(producto.revisionFoto) : ''}</span>` : ''}
+                                ? `<button type="button" data-editar-borrador="${escaparHtml(producto.id)}" class="relative z-10 min-h-11 self-start rounded-lg border border-amber-400/50 px-2 text-left text-xs font-semibold text-amber-300">Revisar${producto.revisionFoto ? ' · ' + escaparHtml(producto.revisionFoto) : producto.revision_opciones ? ' opciones' : ' precio'}</button>` : ''}
                             ${accionHtml}
                         </div>
                     </div>

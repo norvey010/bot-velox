@@ -642,3 +642,16 @@ body:has(#contenedor-menu) > header {
   min-height: 44px;
   color: #fda4af;
 }
+
+/* Las fotos conservan el encuadre original dentro de cada tarjeta. */
+#contenedor-menu .menu-product-reveal > div:first-child:has(> img) {
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 1;
+  align-self: center;
+}
+@media (max-width: 639px) {
+  #contenedor-menu .menu-product-reveal > div:first-child:has(> img) {
+    width: 39%;
+  }
+}
