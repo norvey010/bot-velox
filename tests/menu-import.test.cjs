@@ -506,3 +506,40 @@ test('un servidor que vuelve después del vencimiento devuelve un error recupera
  assert.match(respuesta.data.lectura.mensaje,/Vuelve a seleccionar/);
  assert.equal(s.calls.length,0);
 });
+
+test('reutiliza solo fotos propias para la misma receta aunque cambie el precio', () => {
+ const s = servidor();
+ const foto = 'https://proyecto.supabase.co/clasica.webp';
+ const repetida = 'https://proyecto.supabase.co/pizza.webp';
+ const clasica = { ...producto(), imagen_url: foto };
+ s.context.clasica = clasica;
+ s.context.actuales = [clasica, { ...producto('Pizza personal'), imagen_url: repetida },
+   { ...producto('Pizza familiar'), imagen_url: repetida }];
+ vm.runInContext('globalThis.fotos = fotosReutilizablesMenu(actuales)', s.context);
+ assert.equal(s.context.fotos.size, 1);
+ assert.equal(vm.runInContext('fotos.get(claveFotoMenu({...clasica, precio:20000}))', s.context), foto);
+ assert.equal(vm.runInContext('fotos.get(claveFotoMenu({...clasica, descripcion:"Nueva receta"}))', s.context), undefined);
+});
+
+test('completar fotos omite platos con foto o sin ingredientes y limita el lote', async () => {
+ const n = navegador();
+ n.context.URL = URL;
+ n.context.File = require('node:buffer').File;
+ n.context.confirm = mensaje => /Crear 3 fotos/.test(mensaje);
+ await n.context.enviarMenuConIA({preventDefault() {}});
+ n.run(`borradorMenu.productos = [
+   { nombre:'Con foto', categoria:'Pizzas', descripcion:'Queso', imagen_url:'https://velox.test/pizza.webp' },
+   { nombre:'Especial', categoria:'Pizzas', descripcion:'' },
+   ...Array.from({length:4}, (_, i) => ({nombre:'Plato ' + i, categoria:'Pizzas', descripcion:'Queso'}))
+ ];`);
+ const pedidos = [];
+ n.context.fetch = async (url, req) => {
+   assert.equal(url, '/api/productos/generar-imagen-borrador');
+   pedidos.push(JSON.parse(req.body).producto.nombre);
+   return { ok:true, headers:{get:()=> 'image/webp'}, blob:async()=> new Blob(['foto']) };
+ };
+ await n.context.completarFotosBorrador();
+ assert.deepEqual(pedidos, ['Plato 0', 'Plato 1', 'Plato 2']);
+ assert.equal(n.run('fotosBorradorMenu.size'), 3);
+ await n.context.descartarRevisionMenu();
+});
