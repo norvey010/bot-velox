@@ -197,7 +197,7 @@ function guardarEdicionBorradorMenu() {
   } catch { /* La lectura original sigue disponible en el servidor. */ }
 }
 
-const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=carta-preparada';
+const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=fotos-completas';
 const fotosBorradorMenu = new Map();
 let generandoFotoBorradorMenu = false;
 let completandoFotosMenu = false;
@@ -376,7 +376,7 @@ function enviarVistaClientesBorrador(marco) {
     productos: borradorMenu.productos.map(producto => {
       const foto = fotosBorradorMenu.get(producto);
       const imagen_url = foto?.previa || producto.imagen_url;
-      const revisionFoto = !imagen_url && (revisarDatosFotoMenu(producto) || 'Foto pendiente');
+      const revisionFoto = revisarDatosFotoMenu(producto) || (!imagen_url ? 'Foto pendiente' : '');
       return { ...producto, imagen_url, revisionFoto };
     }),
     editable: marco.id === 'revision-carta-frame'
@@ -612,7 +612,7 @@ function renderizarRevisionMenu(i) {
             <input id="revision-foto-archivo" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-xs text-white" onchange="seleccionarFotoBorradorMenu(${i}, this.files[0]); this.value = ''">
             <div id="revision-foto-controles"${foto ? '' : ' hidden'}>
               <button id="revision-foto-cambiar" type="button" aria-label="Cambiar foto" onclick="document.getElementById('revision-foto-archivo').click()" class="rounded-lg border border-slate-600 p-1">
-                <img id="revision-foto-previa"${foto ? ` src="${escaparHtmlUI(foto)}"` : ''} alt="Vista previa de la foto" width="76" height="76" class="h-[76px] w-[76px] rounded object-cover">
+                <img id="revision-foto-previa"${foto ? ` src="${escaparHtmlUI(foto)}"` : ''} alt="Vista previa de la foto" width="76" height="76" class="h-[76px] w-[76px] rounded object-contain">
               </button>
               <button id="revision-foto-quitar" type="button" aria-label="Quitar foto" onclick="quitarFotoBorradorMenu(${i})" class="min-h-11 min-w-11 rounded-lg text-2xl">×</button>
             </div>
