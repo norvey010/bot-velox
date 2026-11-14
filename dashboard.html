@@ -9,13 +9,13 @@
   <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    :root { --velox-page: #101216; --velox-surface: #1b1f26; --velox-raised: #232831; --velox-inset: #14171d; --velox-border: #353b45; }
+    :root { --velox-page: #F6EFE5; --velox-surface: #FFFBF5; --velox-raised: #F0E3D5; --velox-inset: #F6EFE5; --velox-border: #D7C2AD; }
     body { background: radial-gradient(ellipse at 8% 0%, rgb(127 29 29 / 12%), transparent 28%), var(--velox-page); }
     .bg-slate-900 { background-color: var(--velox-inset) !important; }
     .bg-slate-800 { background-color: var(--velox-surface) !important; }
     .bg-slate-700 { background-color: var(--velox-raised) !important; }
     .border-slate-700 { border-color: var(--velox-border) !important; }
-    .border-slate-800 { border-color: #2b3039 !important; }
+    .border-slate-800 { border-color: #D7C2AD !important; }
     input, select, textarea { min-height: 42px; }
     button { transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
     button:hover:not(:disabled) { transform: translateY(-1px); }
@@ -30,7 +30,7 @@
     }
     .velox-volver:hover,
     .velox-volver:focus-visible {
-      color: #fca5a5;
+      color: #A53D24;
       text-decoration: underline;
       text-underline-offset: .25em;
     }
@@ -49,30 +49,30 @@
       border: 1px solid var(--velox-border);
       border-radius: .875rem;
       background: var(--velox-surface);
-      color: #f9fafb;
+      color: #2B211B;
     }
     #editor-producto::backdrop { background: rgb(0 0 0 / 75%); }
     html:has(#editor-producto[open]) { overflow: hidden; }
     #form-producto label {
       display: block;
       margin-bottom: .375rem;
-      color: #e5e7eb !important;
+      color: #2B211B !important;
       font-size: .8125rem;
       font-weight: 600;
     }
     #form-producto input {
       min-height: 46px;
-      border: 1px solid #454c57 !important;
+      border: 1px solid #CDB69F !important;
       border-radius: .625rem;
       background: var(--velox-inset) !important;
       padding: .625rem .75rem;
-      color: #f9fafb !important;
+      color: #2B211B !important;
       font-size: .875rem;
     }
     #form-producto #prod-precio { padding-left: 2rem; }
-    #form-producto input::placeholder { color: #a1a1aa; opacity: 1; }
+    #form-producto input::placeholder { color: #69544A; opacity: 1; }
     #form-producto input:focus {
-      border-color: #f87171 !important;
+      border-color: #A53D24 !important;
       outline: none;
       box-shadow: 0 0 0 2px rgb(248 113 113 / 22%);
     }
@@ -91,8 +91,8 @@
     .carta-miniatura { position: relative; display: block; width: 220px; max-width: 100%; height: 300px; overflow: hidden; border: 1px solid var(--velox-border); border-radius: 12px; background: #fff; }
     .carta-miniatura[hidden] { display: none; }
     .carta-miniatura iframe { width: 390px; height: 532px; border: 0; transform: scale(.5641); transform-origin: top left; pointer-events: none; }
-    .carta-miniatura:focus-visible { outline: 3px solid #f87171; outline-offset: 4px; }
-    .carta-miniatura span { position: absolute; inset: auto 0 0; padding: 10px; background: #101216ee; color: #fff; font-size: 12px; font-weight: 600; }
+    .carta-miniatura:focus-visible { outline: 3px solid #A53D24; outline-offset: 4px; }
+    .carta-miniatura span { position: absolute; inset: auto 0 0; padding: 10px; background: #FFFBF5ee; color: var(--velox-text); font-size: 12px; font-weight: 600; }
     #productos-editor-categorias[hidden], #productos-editor-mas[hidden] { display: none; }
     #productos-editor-categorias button {
       background: var(--velox-inset);
@@ -104,18 +104,18 @@
       border-color: var(--velox-primary);
       color: white;
     }
-    :is(#carta-ampliada, #revision-carta-ampliada) { width: min(1200px, 96vw); max-width: 96vw; height: 94dvh; max-height: 94dvh; padding: 0; border: 1px solid var(--velox-border); border-radius: 14px; background: var(--velox-page); color: #fff; }
+    :is(#carta-ampliada, #revision-carta-ampliada) { width: min(1200px, 96vw); max-width: 96vw; height: 94dvh; max-height: 94dvh; padding: 0; border: 1px solid var(--velox-border); border-radius: 14px; background: var(--velox-page); color: var(--velox-text); }
     :is(#carta-ampliada, #revision-carta-ampliada)::backdrop { background: rgb(0 0 0 / 75%); }
     :is(#carta-ampliada, #revision-carta-ampliada)[open] { display: flex; flex-direction: column; }
     :is(#carta-ampliada, #revision-carta-ampliada) iframe { flex: 1; min-height: 0; width: 100%; border: 0; background: white; }
     #revision-carta-ampliada > header { flex-shrink: 0; }
   </style>
-    <link rel="stylesheet" href="/velox-theme.css?v=doble-pulso">
+    <link rel="stylesheet" href="/velox-theme.css?v=crema-terracota">
 </head>
 <body class="text-slate-100 min-h-screen font-sans">
 
   <!-- Header -->
-  <header class="bg-[#171a20]/95 border-b border-red-950/80 px-3 md:px-5 py-3 flex flex-col md:flex-row justify-between items-center gap-2 md:gap-3 sticky top-0 z-40 shadow-lg shadow-black/20 backdrop-blur-xl">
+  <header class="bg-[#F6EFE5]/95 border-b border-red-950/80 px-3 md:px-5 py-3 flex flex-col md:flex-row justify-between items-center gap-2 md:gap-3 sticky top-0 z-40 shadow-lg shadow-black/20 backdrop-blur-xl">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-red-950/40">V</div>
   <h1 class="text-lg font-extrabold tracking-wide text-white">
@@ -124,7 +124,7 @@
   </div>
     
     <!-- Pestañas de Navegación -->
-    <nav aria-label="Secciones de Velox" class="max-w-full flex gap-1 overflow-x-auto bg-[#14171d] p-1 rounded-xl border border-slate-800">
+    <nav aria-label="Secciones de Velox" class="max-w-full flex gap-1 overflow-x-auto bg-[#F6EFE5] p-1 rounded-xl border border-slate-800">
       <button onclick="cambiarSeccion('menu')" id="tab-menu" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">🍽️ Mi menú</button>
       <button onclick="cambiarSeccion('pedidos')" id="tab-pedidos" class="px-3 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white whitespace-nowrap">📦 Pedidos</button>
       <button onclick="cambiarSeccion('configuracion')" id="tab-configuracion" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">⚙️ Ajustes</button>
@@ -1488,8 +1488,8 @@
         const guardado = diasGuardados[dia.id] || {};
         return `<div class="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-2 py-2">
           <label class="flex min-w-[66px] items-center gap-1.5 text-xs font-semibold text-slate-200"><input type="checkbox" data-horario-dia="${dia.id}" ${guardado.abierto === true ? 'checked' : ''} class="h-4 w-4 accent-red-600"><span>${dia.corto}</span></label>
-          <label class="min-w-0 text-[10px] text-slate-400">Abre<input type="time" data-horario-desde="${dia.id}" value="${/^\d{2}:\d{2}$/.test(guardado.desde || '') ? guardado.desde : '09:00'}" class="mt-1 w-full rounded-md border border-slate-700 bg-[#14171d] px-1.5 py-1 text-xs text-white"></label>
-          <label class="min-w-0 text-[10px] text-slate-400">Cierra<input type="time" data-horario-hasta="${dia.id}" value="${/^\d{2}:\d{2}$/.test(guardado.hasta || '') ? guardado.hasta : '21:00'}" class="mt-1 w-full rounded-md border border-slate-700 bg-[#14171d] px-1.5 py-1 text-xs text-white"></label>
+          <label class="min-w-0 text-[10px] text-slate-400">Abre<input type="time" data-horario-desde="${dia.id}" value="${/^\d{2}:\d{2}$/.test(guardado.desde || '') ? guardado.desde : '09:00'}" class="mt-1 w-full rounded-md border border-slate-700 bg-[#F6EFE5] px-1.5 py-1 text-xs text-white"></label>
+          <label class="min-w-0 text-[10px] text-slate-400">Cierra<input type="time" data-horario-hasta="${dia.id}" value="${/^\d{2}:\d{2}$/.test(guardado.hasta || '') ? guardado.hasta : '21:00'}" class="mt-1 w-full rounded-md border border-slate-700 bg-[#F6EFE5] px-1.5 py-1 text-xs text-white"></label>
         </div>`;
       }).join('');
       actualizarCamposHorarioMenu();

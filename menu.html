@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-    :root { --velox-page: #101216; --velox-surface: #1b1f26; --velox-raised: #232831; --velox-inset: #14171d; --velox-border: #353b45; }
+    :root { --velox-page: #F6EFE5; --velox-surface: #FFFBF5; --velox-raised: #F0E3D5; --velox-inset: #F6EFE5; --velox-border: #D7C2AD; }
     body { background: radial-gradient(ellipse at 8% 0%, rgb(127 29 29 / 10%), transparent 26%), var(--velox-page); }
     .bg-slate-900 { background-color: var(--velox-inset) !important; }
     .bg-slate-800 { background-color: var(--velox-surface) !important; }
@@ -35,7 +35,7 @@
         padding: 6px;
         border: 1px solid rgba(255, 255, 255, .12);
         border-radius: 22px;
-        background: rgba(27, 31, 38, .92);
+        background: rgba(255, 251, 245, .96);
         box-shadow: 0 14px 40px rgba(0, 0, 0, .42);
         -webkit-backdrop-filter: blur(14px);
         backdrop-filter: blur(14px);
@@ -54,17 +54,17 @@
     }
     .velox-option-list {
         scrollbar-width: thin;
-        scrollbar-color: rgba(248, 113, 113, .55) rgba(15, 23, 42, .7);
+        scrollbar-color: rgba(165, 61, 36, .55) rgba(215, 194, 173, .7);
     }
     .velox-option-list::-webkit-scrollbar { width: 6px; }
-    .velox-option-list::-webkit-scrollbar-track { background: rgba(15, 23, 42, .7); border-radius: 999px; }
-    .velox-option-list::-webkit-scrollbar-thumb { background: rgba(248, 113, 113, .55); border-radius: 999px; }
+    .velox-option-list::-webkit-scrollbar-track { background: rgba(215, 194, 173, .7); border-radius: 999px; }
+    .velox-option-list::-webkit-scrollbar-thumb { background: rgba(165, 61, 36, .55); border-radius: 999px; }
     .velox-option:has(input:checked) {
-        border-color: rgba(248, 113, 113, .85);
-        background: linear-gradient(115deg, rgba(127, 29, 29, .46), rgba(30, 30, 34, .96));
-        box-shadow: inset 0 0 0 1px rgba(248, 113, 113, .14), 0 8px 22px rgba(127, 29, 29, .12);
+        border-color: rgba(165, 61, 36, .85);
+        background: linear-gradient(115deg, rgba(165, 61, 36, .14), rgba(246, 239, 229, .96));
+        box-shadow: inset 0 0 0 1px rgba(165, 61, 36, .14), 0 8px 22px rgba(127, 29, 29, .12);
     }
-    .velox-option:has(input:checked) .velox-option-title { color: #f9fafb; }
+    .velox-option:has(input:checked) .velox-option-title { color: #2B211B; }
     @keyframes menuCategoryFromRight {
         from { opacity: 0; transform: translate3d(34px, 0, 0) scale(.985); filter: blur(3px); }
         to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
@@ -97,17 +97,17 @@
         cursor: pointer;
     }
     .tarjeta-borrador-editar:focus-visible {
-        outline: 2px solid #fda4af;
+        outline: 2px solid #A53D24;
         outline-offset: -3px;
     }
 </style>
-    <link rel="stylesheet" href="/velox-theme.css?v=fotos-completas">
+    <link rel="stylesheet" href="/velox-theme.css?v=crema-terracota">
 </head>
 
 <body class="text-slate-100 min-h-screen pb-28">
 
     <!-- HEADER -->
-    <header class="bg-[#171a20]/95 border-b border-red-950/80 p-4 sticky top-0 z-40 shadow-[0_8px_30px_rgba(0,0,0,.28)] backdrop-blur-xl">
+    <header class="bg-[#F6EFE5]/95 border-b border-red-950/80 p-4 sticky top-0 z-40 shadow-[0_8px_30px_rgba(0,0,0,.28)] backdrop-blur-xl">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
             <div>
                 <h1 id="nombre-restaurante" class="text-xl font-bold text-white" aria-live="polite"></h1>
@@ -128,9 +128,9 @@
     <main class="max-w-7xl mx-auto p-4 md:px-6 space-y-4" id="contenedor-menu">
         <div id="estado-carga" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-label="Cargando menú" role="status">
             <span class="sr-only">Cargando menú...</span>
-            <div class="h-28 rounded-2xl border border-slate-800 bg-[#1b1f26] animate-pulse"></div>
-            <div class="h-28 rounded-2xl border border-slate-800 bg-[#1b1f26] animate-pulse hidden sm:block"></div>
-            <div class="h-28 rounded-2xl border border-slate-800 bg-[#1b1f26] animate-pulse hidden lg:block"></div>
+            <div class="h-28 rounded-2xl border border-slate-800 bg-[#FFFBF5] animate-pulse"></div>
+            <div class="h-28 rounded-2xl border border-slate-800 bg-[#FFFBF5] animate-pulse hidden sm:block"></div>
+            <div class="h-28 rounded-2xl border border-slate-800 bg-[#FFFBF5] animate-pulse hidden lg:block"></div>
         </div>
     </main>
 
@@ -145,7 +145,7 @@
 
    <!-- MODAL DE PERSONALIZACIÓN DE PRODUCTO -->
 <div id="modal-personalizar" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4 z-[60]" role="dialog" aria-modal="true" aria-labelledby="titulo-personalizar">
-    <form id="form-personalizar" onsubmit="confirmarPersonalizacion(event)" class="relative bg-[#101114] border border-red-900/50 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-[0_24px_80px_rgba(0,0,0,.65)] text-slate-100 max-h-[90vh] overflow-y-auto">
+    <form id="form-personalizar" onsubmit="confirmarPersonalizacion(event)" class="relative bg-[#F6EFE5] border border-red-900/50 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-[0_24px_80px_rgba(0,0,0,.65)] text-slate-100 max-h-[90vh] overflow-y-auto">
         <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-red-500/80 to-transparent"></div>
         <div class="flex justify-between items-start gap-4 mb-5 border-b border-white/10 pb-4">
             <div><p class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[.18em] text-white font-extrabold"><span class="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,.9)]"></span>Personaliza tu pedido</p><h3 id="titulo-personalizar" class="text-xl font-extrabold text-white mt-2">Elige cómo lo quieres</h3><p id="nombre-personalizar" class="text-sm text-slate-400 mt-1"></p></div>
@@ -161,7 +161,7 @@
 
    <!-- MODAL DE CONFIRMACIÓN DEL PEDIDO -->
 <div id="modal-pedido" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-    <div class="bg-[#1b1f26] border border-red-950/70 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100">
+    <div class="bg-[#FFFBF5] border border-red-950/70 rounded-2xl max-w-md w-full p-6 shadow-2xl text-slate-100">
         <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
             <h3 class="text-xl font-bold text-white">Finalizar Pedido 🛒</h3>
             <button onclick="cerrarModalPedido()" class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
@@ -279,7 +279,7 @@ function mostrarCartaMenu(restData, productos) {
     
     let botonesHtml = '';
     categoriasMenu.forEach(cat => {
-        botonesHtml += `<button type="button" data-categoria="${escaparHtml(cat)}" class="shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap">${escaparHtml(cat)}</button>`;
+        botonesHtml += `<button type="button" data-categoria="${escaparHtml(cat)}" class="shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#FFF8EF] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap">${escaparHtml(cat)}</button>`;
     });
     if (contenedorCategorias) contenedorCategorias.innerHTML = botonesHtml;
 
@@ -305,19 +305,19 @@ function obtenerVisualProducto(producto) {
     const texto = `${producto.categoria || ''} ${producto.nombre || ''}`
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const visuales = [
-        { claves: ['hamburg', 'burger'], iconos: ['🍔', '🍟', '🥪'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
-        { claves: ['arepa'], iconos: ['🫓', '🧀', '🌽'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
-        { claves: ['pizza'], iconos: ['🍕', '🧀', '🍅'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
-        { claves: ['bebida', 'jugo', 'gaseosa', 'limonada', 'coctel'], iconos: ['🥤', '🧃', '🍹'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
-        { claves: ['pollo', 'broaster', 'alita'], iconos: ['🍗', '🍟', '🍗'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
-        { claves: ['perro', 'salchipapa', 'salchicha'], iconos: ['🌭', '🍟', '🌭'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
-        { claves: ['postre', 'torta', 'helado', 'dulce'], iconos: ['🍰', '🍨', '🧁'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
-        { claves: ['ensalada', 'vegetar', 'vegano'], iconos: ['🥗', '🥑', '🥬'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
-        { claves: ['pasta', 'lasana', 'lasagna'], iconos: ['🍝', '🧀', '🍅'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' },
-        { claves: ['carne', 'parrilla', 'asado', 'chuzo'], iconos: ['🥩', '🍖', '🔥'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]' }
+        { claves: ['hamburg', 'burger'], iconos: ['🍔', '🍟', '🥪'], fondo: 'from-[#F0E3D5] via-[#FFFBF5] to-[#F6EFE5]' },
+        { claves: ['arepa'], iconos: ['🫓', '🧀', '🌽'], fondo: 'from-[#F0E3D5] via-[#FFFBF5] to-[#F6EFE5]' },
+        { claves: ['pizza'], iconos: ['🍕', '🧀', '🍅'], fondo: 'from-[#F0E3D5] via-[#FFFBF5] to-[#F6EFE5]' },
+        { claves: ['bebida', 'jugo', 'gaseosa', 'limonada', 'coctel'], iconos: ['🥤', '🧃', '🍹'], fondo: 'from-[#F0E3D5] via-[#FFFBF5] to-[#F6EFE5]' },
+        { claves: ['pollo', 'broaster', 'alita'], iconos: ['🍗', '🍟', '🍗'], fondo: 'from-[#F0E3D5] via-[#FFFBF5] to-[#F6EFE5]' },
+        { claves: ['perro', 'salchipapa', 'salchicha'], iconos: ['🌭', '🍟', '🌭'], fondo: 'from-[#F0E3D5] via-[#FFFBF5] to-[#F6EFE5]' },
+        { claves: ['postre', 'torta', 'helado', 'dulce'], iconos: ['🍰', '🍨', '🧁'], fondo: 'from-[#F0E3D5] via-[#FFFBF5] to-[#F6EFE5]' },
+        { claves: ['ensalada', 'vegetar', 'vegano'], iconos: ['🥗', '🥑', '🥬'], fondo: 'from-[#F0E3D5] via-[#FFFBF5] to-[#F6EFE5]' },
+        { claves: ['pasta', 'lasana', 'lasagna'], iconos: ['🍝', '🧀', '🍅'], fondo: 'from-[#F0E3D5] via-[#FFFBF5] to-[#F6EFE5]' },
+        { claves: ['carne', 'parrilla', 'asado', 'chuzo'], iconos: ['🥩', '🍖', '🔥'], fondo: 'from-[#F0E3D5] via-[#FFFBF5] to-[#F6EFE5]' }
     ];
     const visual = visuales.find(item => item.claves.some(clave => texto.includes(clave))) || {
-        iconos: ['🍽️', '✨', '🥘'], fondo: 'from-[#232831] via-[#1b1f26] to-[#14171d]'
+        iconos: ['🍽️', '✨', '🥘'], fondo: 'from-[#F0E3D5] via-[#FFFBF5] to-[#F6EFE5]'
     };
 
     // Selección estable por producto: el mismo plato conserva su visual al recargar.
@@ -390,8 +390,8 @@ function renderizarProductos(listaProds) {
                 ? 'Precio pendiente' : `$${Number(producto.precio).toLocaleString('es-CO')}`;
 
             html += `
-                <div data-animacion-scroll class="${editar ? 'tarjeta-borrador-editable ' : ''}menu-product-reveal group bg-[#1b1f26] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-row sm:flex-col">
-                    <div class="w-24 h-24 shrink-0 bg-[#11151b] overflow-hidden sm:w-full sm:h-44">${visualProducto}</div>
+                <div data-animacion-scroll class="${editar ? 'tarjeta-borrador-editable ' : ''}menu-product-reveal group bg-[#FFFBF5] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-900/80 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 flex flex-row sm:flex-col">
+                    <div class="w-24 h-24 shrink-0 bg-[#F0E3D5] overflow-hidden sm:w-full sm:h-44">${visualProducto}</div>
                     <div class="min-w-0 p-3 sm:p-4 flex flex-col flex-1">
                         <div class="flex-1">
                             <h3 class="font-extrabold text-white text-sm sm:text-lg leading-snug">${nombre}</h3>
@@ -438,7 +438,7 @@ function filtrarCategoria(categoriaElegida) {
         const activa = boton.dataset.categoria === categoriaElegida;
         boton.className = activa
             ? 'shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-red-600 text-white transition shadow whitespace-nowrap'
-            : 'shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#141518] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap';
+            : 'shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#FFF8EF] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap';
     });
     const barraCategorias = document.getElementById('contenedor-categorias');
     const botonActivo = Array.from(document.querySelectorAll('#contenedor-categorias [data-categoria]'))
@@ -580,7 +580,7 @@ function iniciarPersonalizacion(id) {
     const html = personalizacion.selectores.map((selector, index) => {
         const idCampo = `opcion-personalizar-${index}`;
         const opcionesHtml = selector.opciones.map((opcion, opcionIndex) => `
-            <label class="velox-option flex cursor-pointer items-start gap-3 rounded-xl border border-slate-700/70 bg-[#17191d] px-3.5 py-3 transition hover:border-red-500/60 hover:bg-[#1d1a1c]">
+            <label class="velox-option flex cursor-pointer items-start gap-3 rounded-xl border border-slate-700/70 bg-[#FFF8EF] px-3.5 py-3 transition hover:border-red-500/60 hover:bg-[#F0E3D5]">
                 <input type="radio" name="${idCampo}" data-selector-index="${index}" value="${opcionIndex}" required class="mt-0.5 h-4 w-4 shrink-0 accent-red-500 focus:ring-2 focus:ring-red-400/50">
                 <span class="min-w-0 flex-1">
                     <span class="velox-option-title block text-sm font-bold leading-snug text-slate-100 transition">${escaparHtml(opcion.nombre)}</span>

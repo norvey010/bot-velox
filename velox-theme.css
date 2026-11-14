@@ -10,23 +10,23 @@
 }
 
 :root {
-  color-scheme: dark;
-  --velox-page: #0b0d13;
-  --velox-surface: #151922;
-  --velox-raised: #202632;
-  --velox-inset: #0f131c;
-  --velox-border: #303847;
-  --velox-frame: #465369;
-  --velox-edge: #58667d;
-  --velox-text: #f6f8fc;
-  --velox-muted: #aeb9cb;
-  --velox-primary: #c91639;
-  --velox-primary-hover: #af1031;
-  --velox-focus: #ff8c9f;
-  --velox-success: #6ee7b7;
-  --velox-warning: #fcd34d;
-  --velox-panel: linear-gradient(150deg, #1c2432, #151b27 48%, #11151f 84%);
-  --velox-shadow: 0 16px 44px rgb(0 0 0 / 28%), inset 0 1px rgb(213 227 255 / 9%);
+  color-scheme: light;
+  --velox-page: #F6EFE5;
+  --velox-surface: #FFFBF5;
+  --velox-raised: #F0E3D5;
+  --velox-inset: #FFF8EF;
+  --velox-border: #D7C2AD;
+  --velox-frame: #CDB69F;
+  --velox-edge: #C9A78B;
+  --velox-text: #2B211B;
+  --velox-muted: #69544A;
+  --velox-primary: #A53D24;
+  --velox-primary-hover: #84301C;
+  --velox-focus: #A53D24;
+  --velox-success: #256444;
+  --velox-warning: #70450D;
+  --velox-panel: linear-gradient(150deg, #FFFBF5, #FFFBF5 48%, #F6EFE5 84%);
+  --velox-shadow: 0 16px 44px rgb(97 59 32 / 12%), inset 0 1px rgb(213 227 255 / 9%);
   --velox-radius-panel: .35rem 1.35rem;
   --velox-radius-card: .3rem .85rem;
   --velox-radius-control: .45rem;
@@ -37,8 +37,8 @@
 
 body:not(.velox-ticket) {
   background:
-    radial-gradient(ellipse at 87% 0%, rgb(113 25 55 / 27%), transparent 38rem),
-    radial-gradient(ellipse at 0% 45%, rgb(40 60 90 / 19%), transparent 42rem),
+    radial-gradient(ellipse at 87% 0%, rgb(165 61 36 / 27%), transparent 38rem),
+    radial-gradient(ellipse at 0% 45%, rgb(177 133 95 / 19%), transparent 42rem),
     var(--velox-page);
   color: var(--velox-text);
   font-family: var(--velox-font);
@@ -50,13 +50,13 @@ body:not(.velox-ticket) {
 body .text-slate-400 { color: var(--velox-muted); }
 body .bg-red-600 {
   background-color: var(--velox-primary);
-  background-image: linear-gradient(115deg, #c91639, #9e102d);
+  background-image: linear-gradient(115deg, #A53D24, #A53D24);
 }
 body .hover\:bg-red-700:hover:not(:disabled) {
   background-color: var(--velox-primary-hover);
-  background-image: linear-gradient(115deg, #b21334, #861027);
+  background-image: linear-gradient(115deg, #84301C, #84301C);
 }
-body :where(button, a).bg-red-600 { box-shadow: inset 0 1px rgb(255 255 255 / 22%), 0 5px 18px rgb(141 10 44 / 30%); }
+body :where(button, a).bg-red-600 { box-shadow: inset 0 1px rgb(255 255 255 / 22%), 0 5px 18px rgb(130 72 43 / 30%); }
 :where(a, button, summary, input, select, textarea):focus-visible {
   outline: 2px solid var(--velox-focus);
   outline-offset: 3px;
@@ -83,7 +83,7 @@ body :is(.velox-acceso, .velox-registro) :is(input, select):focus,
 body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hidden]), select, textarea):focus,
 #form-confirmar-pedido :is(input, select, textarea):focus {
   border-color: var(--velox-focus);
-  box-shadow: 0 0 0 3px rgb(255 140 159 / 14%);
+  box-shadow: 0 0 0 3px rgb(165 61 36 / 14%);
 }
 :where(button, input, select, textarea) { scroll-margin-block: 7rem 1rem; }
 
@@ -104,7 +104,7 @@ body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hi
   pointer-events: none;
   inset: 0 12% auto;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #f17389, transparent);
+  background: linear-gradient(90deg, transparent, #C28361, transparent);
   z-index: 1;
 }
 .velox-acceso-marca {
@@ -112,8 +112,8 @@ body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hi
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at 80% 28%, rgb(170 29 65 / 36%), transparent 56%),
-    linear-gradient(155deg, #271521, #111622 76%);
+    radial-gradient(ellipse at 80% 28%, rgb(165 61 36 / 36%), transparent 56%),
+    linear-gradient(155deg, #F3D9C1, #F6EFE5 76%);
 }
 .velox-acceso-marca::before {
   content: "";
@@ -122,8 +122,8 @@ body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hi
   inset: 0;
   opacity: .36;
   background:
-    repeating-linear-gradient(90deg, transparent 0 31px, rgb(248 160 181 / 13%) 31px 32px),
-    repeating-linear-gradient(0deg, transparent 0 31px, rgb(248 160 181 / 13%) 31px 32px);
+    repeating-linear-gradient(90deg, transparent 0 31px, rgb(165 61 36 / 13%) 31px 32px),
+    repeating-linear-gradient(0deg, transparent 0 31px, rgb(165 61 36 / 13%) 31px 32px);
   mask-image: radial-gradient(ellipse at 75% 35%, #000, transparent 74%);
 }
 .velox-acceso-marca::after {
@@ -134,9 +134,9 @@ body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hi
   aspect-ratio: 1;
   right: -7rem;
   top: 1.75rem;
-  border: 1px solid rgb(255 136 160 / 25%);
+  border: 1px solid rgb(165 61 36 / 25%);
   border-radius: 50%;
-  box-shadow: 0 0 0 1.5rem rgb(255 136 160 / 5%), 0 0 0 3.5rem rgb(255 136 160 / 3%);
+  box-shadow: 0 0 0 1.5rem rgb(165 61 36 / 5%), 0 0 0 3.5rem rgb(165 61 36 / 3%);
 }
 .velox-acceso h1 {
   max-width: 12ch;
@@ -162,15 +162,15 @@ body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hi
   text-transform: uppercase;
 }
 .velox-marca, body:has(#tab-menu) > header > div:first-child > div:first-child {
-  background: linear-gradient(145deg, #ff4d68, #aa1239 76%);
-  border: 1px solid rgb(255 165 184 / 45%);
+  background: linear-gradient(145deg, #A53D24, #84301C 76%);
+  border: 1px solid rgb(170 105 73 / 45%);
   border-radius: var(--velox-radius-card);
   corner-shape: round bevel;
-  box-shadow: inset 0 1px rgb(255 255 255 / 24%), 0 5px 24px rgb(205 21 66 / 30%);
+  box-shadow: inset 0 1px rgb(255 255 255 / 24%), 0 5px 24px rgb(130 72 43 / 30%);
   flex: none;
 }
 .velox-acceso .velox-acceso-marca > a { letter-spacing: .14em; }
-.velox-registro { background: radial-gradient(ellipse at 50% 0%, rgb(127 30 59 / 26%), transparent 17rem), var(--velox-panel); }
+.velox-registro { background: radial-gradient(ellipse at 50% 0%, rgb(165 61 36 / 26%), transparent 17rem), var(--velox-panel); }
 #form-registro, .velox-acceso form { border-block-start: 1px solid var(--velox-border); padding-block-start: 1.15rem; }
 .velox-acceso #togglePassword, .velox-registro #togglePassword { min-width: 2rem; min-height: 2rem; justify-content: center; }
 .velox-acceso #togglePassword { display: grid; place-items: center; }
@@ -192,7 +192,7 @@ body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hi
 }
 .velox-plan:has(:checked) {
   border-color: var(--velox-focus);
-  background: linear-gradient(115deg, rgb(201 22 57 / 22%), transparent 75%), var(--velox-inset);
+  background: linear-gradient(115deg, rgb(165 61 36 / 22%), transparent 75%), var(--velox-inset);
 }
 .velox-plan small {
   margin-inline-start: auto;
@@ -210,16 +210,16 @@ body:has(#tab-menu) :is(input:not([type=checkbox]):not([type=file]):not([type=hi
 
 /* Panel y navegación compartida con la carta */
 body:has(#tab-menu) > header, body:has(#contenedor-menu) > header {
-  background: linear-gradient(125deg, rgb(26 30 42 / 97%), rgb(13 16 24 / 96%) 65%);
+  background: linear-gradient(125deg, rgb(255 251 245 / 97%), rgb(246 239 229 / 96%) 65%);
   border-color: var(--velox-border);
-  box-shadow: 0 10px 36px rgb(0 0 0 / 38%);
+  box-shadow: 0 10px 36px rgb(97 59 32 / 14%);
 }
 body:has(#tab-menu) > header::before, body:has(#contenedor-menu) > header::before {
   content: "";
   position: absolute;
   inset: 0 0 auto;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgb(255 140 159 / 52%), transparent 78%);
+  background: linear-gradient(90deg, transparent, rgb(165 61 36 / 52%), transparent 78%);
   pointer-events: none;
 }
 body:has(#tab-menu) > header {
@@ -255,7 +255,7 @@ body:has(#tab-menu) > header nav button {
   font-weight: 650;
   white-space: nowrap;
 }
-body:has(#tab-menu) > header nav button.bg-red-600 { border-color: rgb(255 164 182 / 35%); }
+body:has(#tab-menu) > header nav button.bg-red-600 { border-color: rgb(165 61 36 / 35%); }
 #connection-status { font-variant-numeric: tabular-nums; }
 body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
 #sec-configuracion { width: 100%; }
@@ -276,14 +276,14 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
   letter-spacing: -.033em;
 }
 #resumen-pedidos {
-  background: radial-gradient(ellipse at 90% 0%, rgb(145 26 62 / 26%), transparent 65%), var(--velox-panel);
+  background: radial-gradient(ellipse at 90% 0%, rgb(165 61 36 / 26%), transparent 65%), var(--velox-panel);
 }
 #resumen-pedidos > .grid > div {
   position: relative;
   min-width: 0;
   border-radius: var(--velox-radius-card);
   corner-shape: round bevel;
-  background: linear-gradient(145deg, #222936, #141922);
+  background: linear-gradient(145deg, #FFFBF5, #F6EFE5);
   box-shadow: inset 0 1px rgb(255 255 255 / 7%);
 }
 #resumen-pedidos > .grid > div::before {
@@ -293,7 +293,7 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
   height: 2px;
   margin-bottom: .55rem;
   border-radius: 2px;
-  background: #f4768b;
+  background: #A53D24;
 }
 #resumen-pedidos > .grid h3 {
   font-family: var(--velox-font-display);
@@ -325,8 +325,8 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
   box-shadow: none;
 }
 #productos-editor-categorias button[aria-pressed=true], #contenedor-categorias button.bg-red-600 {
-  background: linear-gradient(115deg, #c91639, #9e102d);
-  border-color: #e9637b;
+  background: linear-gradient(115deg, #A53D24, #A53D24);
+  border-color: #A53D24;
   color: var(--velox-text);
 }
 :is(#carta-miniatura, #revision-miniatura) {
@@ -377,7 +377,7 @@ body:has(#tab-menu) > main { padding-block-start: clamp(1rem, 3vw, 2.4rem); }
 
 /* Carta pública, personalización y confirmación */
 body:has(#contenedor-menu) > header {
-  background: radial-gradient(ellipse at 85% 0%, rgb(151 30 63 / 27%), transparent 36rem), #11151f;
+  background: radial-gradient(ellipse at 85% 0%, rgb(165 61 36 / 8%), transparent 36rem), #F6EFE5;
   padding: clamp(.75rem, 2.4vw, 1.35rem) clamp(.8rem, 3vw, 2rem) .45rem;
 }
 #nombre-restaurante {
@@ -408,20 +408,20 @@ body:has(#contenedor-menu) > header {
   corner-shape: round bevel;
   box-shadow: var(--velox-shadow);
 }
-#contenedor-menu .menu-product-reveal:hover { border-color: #72505e; }
+#contenedor-menu .menu-product-reveal:hover { border-color: #AD795D; }
 #contenedor-menu .menu-product-reveal > div:first-child {
-  background: #202634;
+  background: #F0E3D5;
   border-color: var(--velox-border);
 }
 #contenedor-menu .menu-product-reveal h3 { letter-spacing: -.018em; }
 #contenedor-menu .menu-product-reveal button[data-action] { min-height: 2.75rem; }
 #contenedor-menu .menu-product-reveal span, #total-carrito, #total-modal-carrito { font-variant-numeric: tabular-nums; }
 #barra-carrito {
-  background: rgb(20 24 35 / 96%);
-  border-color: #5a3846;
+  background: rgb(255 251 245 / 96%);
+  border-color: #CDB69F;
   border-radius: var(--velox-radius-card);
   corner-shape: round bevel;
-  box-shadow: 0 14px 40px rgb(0 0 0 / 45%), 0 0 24px rgb(138 19 52 / 20%);
+  box-shadow: 0 14px 40px rgb(0 0 0 / 45%), 0 0 24px rgb(130 72 43 / 20%);
 }
 #barra-carrito button { min-height: 3.05rem; gap: .45rem; padding-inline: .8rem; }
 #cant-items { white-space: nowrap; }
@@ -463,7 +463,7 @@ body:has(#contenedor-menu) > header {
 /* La vista en pantalla distingue la comanda; la impresión usa su formato térmico. */
 @media screen {
   html:has(.velox-ticket) {
-    background: radial-gradient(ellipse at 50% 0%, #311b2d, transparent 28rem), var(--velox-page);
+    background: radial-gradient(ellipse at 50% 0%, #F3D9C1, transparent 28rem), var(--velox-page);
   }
   body.velox-ticket {
     max-width: calc(100% - 1.5rem);
@@ -477,11 +477,11 @@ body:has(#contenedor-menu) > header {
   }
   .velox-ticket .btn-print {
     min-height: 2.75rem;
-    border: 1px solid rgb(255 165 184 / 38%);
+    border: 1px solid rgb(170 105 73 / 38%);
     border-radius: var(--velox-radius-control);
-    background: linear-gradient(115deg, #c91639, #9e102d);
+    background: linear-gradient(115deg, #A53D24, #A53D24);
   }
-  .velox-ticket .line { border-color: #5a6579; }
+  .velox-ticket .line { border-color: #CDB69F; }
   .velox-ticket h2 { letter-spacing: .04em; }
   .velox-ticket .total { font-variant-numeric: tabular-nums; }
 }
@@ -541,10 +541,10 @@ body:has(#contenedor-menu) > header {
 #velox-progreso-importacion [data-estado="actual"] {
   color: var(--velox-text);
   border-color: var(--velox-focus);
-  background: rgb(201 22 57 / 13%);
+  background: rgb(165 61 36 / 13%);
 }
 #velox-progreso-importacion [data-estado="listo"] .velox-numero-etapa { color: var(--velox-success); }
-#velox-progreso-importacion [data-estado="error"] { color: var(--velox-warning); border-color: rgb(252 211 77 / 55%); }
+#velox-progreso-importacion [data-estado="error"] { color: var(--velox-warning); border-color: rgb(174 116 33 / 55%); }
 
 /* Indica actividad durante la lectura, sin simular un porcentaje. */
 .velox-lectura-titulo {
@@ -593,7 +593,7 @@ body:has(#contenedor-menu) > header {
 
 .velox-aviso-editar {
   margin: .45rem 0 0;
-  color: #fafafa;
+  color: #2B211B;
   font-size: .9rem;
   line-height: 1.5;
 }
@@ -625,7 +625,7 @@ body:has(#contenedor-menu) > header {
   gap: .5rem;
 }
 #revision-foto-controles[hidden] { display: none; }
-#revision-foto-quitar { color: #fda4af; }
+#revision-foto-quitar { color: #A53D24; }
 
 #productos-body [data-editar-tarjeta] {
   position: absolute;
@@ -640,7 +640,7 @@ body:has(#contenedor-menu) > header {
 #producto-imagen-quitar {
   min-width: 44px;
   min-height: 44px;
-  color: #fda4af;
+  color: #A53D24;
 }
 
 /* Las fotos conservan el encuadre original dentro de cada tarjeta. */
@@ -655,3 +655,24 @@ body:has(#contenedor-menu) > header {
     width: 39%;
   }
 }
+
+/* Colores de las utilidades usadas en las pantallas y en contenido dinámico. */
+body:not(.velox-ticket) :is(.text-white, .text-slate-100, .text-slate-200) { color: var(--velox-text); }
+body:not(.velox-ticket) :is(.text-slate-300, .text-slate-400, .text-white\/45) { color: var(--velox-muted); }
+body :is(.bg-red-600, .bg-red-700, .velox-marca, #productos-editor-categorias button[aria-pressed=true], #contenedor-categorias button.bg-red-600),
+body :is(.bg-red-600, .bg-red-700, .velox-marca) .text-white { color: #fff; }
+body .bg-red-700 { background-color: var(--velox-primary-hover); }
+body :is(.bg-slate-900, .bg-slate-900\/50, .bg-slate-900\/70, .bg-slate-900\/80) { background-color: var(--velox-inset); }
+body :is(.bg-slate-750, .bg-slate-800) { background-color: var(--velox-surface); }
+body :is(.bg-slate-600, .bg-slate-700, .bg-white\/5) { background-color: var(--velox-raised); }
+body :is(.border-slate-500, .border-slate-600, .border-slate-700, .border-slate-800, .border-white\/10) { border-color: var(--velox-border); }
+body :is(.bg-amber-500\/10, .bg-amber-950\/30, .bg-amber-950\/50) { background-color: #F6E3B4; }
+body :is(.text-amber-200, .text-amber-300) { color: var(--velox-warning); }
+body :is(.bg-emerald-950\/40, .bg-emerald-950\/50) { background-color: #E4F0DF; }
+body :is(.text-emerald-200, .text-emerald-300) { color: var(--velox-success); }
+body :is(.bg-red-700\/10, .bg-red-950\/40, .bg-red-950\/50) { background-color: #F8E0D8; }
+body :is(.text-red-200, .text-red-300, .text-red-400) { color: var(--velox-primary); }
+body .hover\:bg-slate-600:hover, body .hover\:bg-slate-700:hover { background-color: #E9D5C3; }
+body .hover\:text-white:hover { color: var(--velox-text); }
+
+body:has(#tab-menu) > header > div:first-child > div:first-child { color: #fff; }
