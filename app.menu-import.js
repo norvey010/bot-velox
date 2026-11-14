@@ -200,6 +200,8 @@ function guardarEdicionBorradorMenu() {
 const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=fotos-por-plato';
 const fotosBorradorMenu = new Map();
 let generandoFotoBorradorMenu = false;
+let completandoFotosMenu = false;
+let lecturaConFotosMenu = null;
 
 function liberarFotoBorradorMenu(producto) {
   const foto = fotosBorradorMenu.get(producto);
@@ -243,7 +245,7 @@ function quitarFotoBorradorMenu(i) {
 
 async function generarFotoBorradorMenu(i, boton) {
   const producto = borradorMenu?.productos[i];
-  if (!producto || generandoFotoBorradorMenu || publicandoMenu) return;
+  if (!producto || generandoFotoBorradorMenu || completandoFotosMenu || publicandoMenu) return;
   const nombre = producto.nombre.trim();
   if (!nombre) {
     estadoProductoBorrador('Escribe el nombre del producto para crear su foto.', 'info');
@@ -293,40 +295,46 @@ async function solicitarFotoBorrador(producto) {
   }, 120000, 'La foto tardó demasiado. Inténtalo más tarde.');
 }
 
-async function completarFotosBorrador() {
-  if (!borradorMenu || publicandoMenu || generandoFotoBorradorMenu) return;
+async function completarFotosBorrador(automatico = false) {
+  if (!borradorMenu || publicandoMenu || generandoFotoBorradorMenu || completandoFotosMenu) return;
   const pendientes = borradorMenu.productos.filter(producto =>
     !producto.imagen_url && !fotosBorradorMenu.has(producto));
   const lote = pendientes.filter(producto =>
     producto.nombre.trim() && producto.categoria.trim() && producto.descripcion?.trim()).slice(0, 3);
   const estado = document.getElementById('revision-accion-status');
   if (!lote.length) {
+    if (automatico && !pendientes.length) return;
     mostrarAviso(estado, pendientes.length
       ? 'Completa el nombre, la categoría y los ingredientes de los platos pendientes.'
       : 'Todos los platos ya tienen foto.', 'info');
     return;
   }
-  if (!confirm(`Crear ${lote.length} fotos ilustrativas con IA tiene costo. ¿Continuar?`)) return;
+  if (!automatico && !confirm(`Crear ${lote.length} fotos ilustrativas con IA tiene costo. ¿Continuar?`)) return;
   const boton = document.getElementById('btn-completar-fotos');
-  generandoFotoBorradorMenu = true;
+  completandoFotosMenu = true;
   actualizarAccionesBorrador();
   let listas = 0;
   try {
     for (const producto of lote) {
       boton.textContent = `Creando foto ${listas + 1} de ${lote.length}…`;
+      if (!borradorMenu.productos.includes(producto) || producto.imagen_url || fotosBorradorMenu.has(producto)) continue;
+      const datos = JSON.stringify([producto.nombre, producto.categoria, producto.descripcion]);
       const imagen = await solicitarFotoBorrador(producto);
+      if (!borradorMenu.productos.includes(producto) || producto.imagen_url || fotosBorradorMenu.has(producto)
+          || datos !== JSON.stringify([producto.nombre, producto.categoria, producto.descripcion])) continue;
       const archivo = new File([imagen], 'foto-ia.webp', { type: 'image/webp' });
       fotosBorradorMenu.set(producto, { archivo, previa: URL.createObjectURL(archivo) });
       listas++;
+      enviarVistaClientesBorrador(document.getElementById('revision-carta-frame'));
     }
     mostrarAviso(estado, `${listas} fotos listas para revisar.`, 'exito');
   } catch (error) {
     mostrarAviso(estado, `${listas} fotos listas. ${error.message}`, 'error');
   } finally {
-    generandoFotoBorradorMenu = false;
+    completandoFotosMenu = false;
     actualizarAccionesBorrador();
     boton.textContent = 'Completar fotos con IA';
-    abrirCartaBorrador();
+
   }
 }
 
@@ -450,6 +458,10 @@ function aplicarEstadoLecturaMenu(lectura) {
   indicarLecturaMenu(false);
   if (lectura.estado === 'listo') {
     mostrarBorradorMenu(lectura.resultado, lectura.id);
+    if (lecturaConFotosMenu === lectura.id) {
+      lecturaConFotosMenu = null;
+      void completarFotosBorrador(true);
+    }
   } else {
     document.getElementById('cargar-carta-ayuda').textContent = 'Revisar lectura';
     mostrarProgresoImportacion(1, true);
@@ -515,6 +527,7 @@ async function enviarMenuConIA(event) {
   if(files.some(f=>f.size>8*1024*1024 || !tipos.includes(f.type))) { estadoImportacion('Usa JPG, PNG, WEBP, GIF o PDF, de máximo 8 MB cada uno.','error');return; }
   if(files.reduce((n,f)=>n+f.size,0)>25*1024*1024) { estadoImportacion('Los archivos juntos deben pesar máximo 25 MB.','error');return; }
   if(!RESTAURANTE_ID) { estadoImportacion('Espera a que termine de cargar tu restaurante.','error');return; }
+  const crearFotos = document.getElementById('menu-fotos-automaticas').checked;
   subiendoArchivosMenu = true;
   indicarLecturaMenu(true);
   document.getElementById('btn-procesar-ia').textContent = 'Subiendo archivos…';
@@ -536,6 +549,7 @@ async function enviarMenuConIA(event) {
       return { respuesta, resultado: await respuesta.json().catch(() => ({})) };
     }, 120000, 'No pudimos confirmar la recepción de los archivos. Comprobaremos si empezó la lectura.');
     if (resultado.lectura && (respuesta.ok || respuesta.status === 409)) {
+      if (crearFotos && respuesta.ok) lecturaConFotosMenu = resultado.lectura.id;
       aplicarEstadoLecturaMenu(resultado.lectura);
       return;
     }
@@ -545,6 +559,7 @@ async function enviarMenuConIA(event) {
     // Permite que el panel anterior y el nuevo servidor convivan durante el despliegue.
     indicarLecturaMenu(false);
     mostrarBorradorMenu(resultado, null);
+    if (crearFotos) void completarFotosBorrador(true);
   } catch (error) {
     mostrarProgresoImportacion(0, true);
     estadoImportacion(mensajeErrorImportacion(error), 'error');
@@ -658,7 +673,7 @@ function quitarProductoBorrador(i) {
 }
 
 function actualizarAccionesBorrador(accion) {
-  const ocupado = publicandoMenu || generandoFotoBorradorMenu;
+  const ocupado = publicandoMenu || generandoFotoBorradorMenu || completandoFotosMenu;
   const publicar = document.getElementById('btn-publicar-menu');
   const descartar = document.getElementById('btn-descartar-menu');
   document.getElementById('btn-completar-fotos').disabled = ocupado || !borradorMenu?.productos.length;
@@ -674,7 +689,7 @@ function actualizarAccionesBorrador(accion) {
 }
 
 async function descartarRevisionMenu() {
-  if (!borradorMenu || publicandoMenu || leyendoMenu || generandoFotoBorradorMenu) return;
+  if (!borradorMenu || publicandoMenu || leyendoMenu || generandoFotoBorradorMenu || completandoFotosMenu) return;
   if (borradorMenu.lectura_id) {
     publicandoMenu = true;
     actualizarAccionesBorrador('descartar');
@@ -703,7 +718,7 @@ async function descartarRevisionMenu() {
 
 async function publicarMenuRevisado(event) {
   event.preventDefault();
-  if (!borradorMenu?.productos.length || publicandoMenu || leyendoMenu || generandoFotoBorradorMenu) return;
+  if (!borradorMenu?.productos.length || publicandoMenu || leyendoMenu || generandoFotoBorradorMenu || completandoFotosMenu) return;
   document.getElementById('revision-accion-status').classList.add('hidden');
   const invalido = borradorMenu.productos.findIndex(p => p.revision_opciones || opcionesBorradorIncompletas(p)
     || !p.nombre.trim() || !p.categoria.trim() || !Number.isSafeInteger(Number(p.precio)) || Number(p.precio) <= 0 || Number(p.precio) > 100000000);
@@ -830,7 +845,7 @@ function prepararCentroVelox() {
 window.addEventListener('DOMContentLoaded', prepararCentroVelox, { once: true });
 window.addEventListener('pagehide', guardarEdicionBorradorMenu);
 window.addEventListener('beforeunload', event => {
-  if (subiendoArchivosMenu || fotosBorradorMenu.size || generandoFotoBorradorMenu || (borradorMenu && !borradorMenu.lectura_id)) {
+  if (subiendoArchivosMenu || fotosBorradorMenu.size || generandoFotoBorradorMenu || completandoFotosMenu || (borradorMenu && !borradorMenu.lectura_id)) {
     event.preventDefault();
     event.returnValue = '';
   }
