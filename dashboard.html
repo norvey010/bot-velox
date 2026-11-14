@@ -432,10 +432,14 @@
   </dialog>
   <dialog id="carta-ampliada" aria-labelledby="carta-ampliada-titulo">
     <div class="flex items-center justify-between gap-3 border-b border-slate-700 p-3">
-      <h2 id="carta-ampliada-titulo" class="font-semibold">Así ven tu carta los clientes</h2>
+      <h2 id="carta-ampliada-titulo" class="font-semibold">Carta publicada</h2>
       <button type="button" onclick="document.getElementById('carta-ampliada').close()" class="rounded-lg bg-slate-700 px-4 py-2 text-sm" autofocus>Cerrar ✕</button>
     </div>
     <iframe id="carta-ampliada-frame" title="Carta del restaurante en tamaño completo"></iframe>
+    <footer class="shrink-0 border-t border-slate-700 bg-slate-900 p-3">
+      <button type="button" class="min-h-11 w-full rounded-lg border border-slate-600 px-3 py-2 text-sm text-white"
+        onclick="irAlBorradorDesdeCarta()">Ir al borrador de Subir menú con IA</button>
+    </footer>
   </dialog>
 
   <dialog id="revision-carta-ampliada" aria-labelledby="revision-carta-ampliada-titulo">
@@ -1442,6 +1446,15 @@
       document.body.style.overflow = 'hidden';
     }
 
+    async function irAlBorradorDesdeCarta() {
+      const dialogo = document.getElementById('carta-ampliada');
+      dialogo.addEventListener('close', async () => {
+        mostrarPantallaMenu('importar-menu-fotos', false);
+        if (borradorMenu && !leyendoMenu) abrirCartaBorrador();
+      }, { once: true });
+      dialogo.close();
+    }
+
     document.getElementById('carta-ampliada').addEventListener('close', () => {
       document.body.style.overflow = '';
       document.getElementById('carta-ampliada-frame').removeAttribute('src');
@@ -1784,6 +1797,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=carta-preparada"></script>
+  <script src="/app.menu-import.js?v=reanudar-fotos"></script>
 </body>
 </html>

@@ -203,6 +203,25 @@ let generandoFotoBorradorMenu = false;
 let completandoFotosMenu = false;
 let lecturaConFotosMenu = null;
 
+function guardarLecturaConFotos(id) {
+  lecturaConFotosMenu = id;
+  try {
+    const clave = `velox-fotos-pendientes:${RESTAURANTE_ID}`;
+    if (id) localStorage.setItem(clave, id);
+    else localStorage.removeItem(clave);
+  } catch {}
+}
+
+function tieneFotosPendientes(id) {
+  if (!id) return false;
+  if (lecturaConFotosMenu === id) return true;
+  try {
+    return localStorage.getItem(`velox-fotos-pendientes:${RESTAURANTE_ID}`) === id;
+  } catch {
+    return false;
+  }
+}
+
 function liberarFotoBorradorMenu(producto) {
   const foto = fotosBorradorMenu.get(producto);
   if (!foto) return;
@@ -343,8 +362,9 @@ async function completarFotosBorrador(automatico = false) {
     }
     mostrarAviso(estado, `${listas} fotos listas. ${pendientes.length - listas} pendientes de revisión.`, 'info');
   } catch (error) {
-    mostrarAviso(estado, `${listas} fotos listas. ${error.message}`, 'error');
-    if (automatico) estadoImportacion(`${listas} fotos listas. ${error.message}`, 'error');
+    const mensaje = `${listas} fotos listas. ${error.message}`;
+    mostrarAviso(estado, mensaje, 'error');
+    if (automatico) return mensaje;
   } finally {
     completandoFotosMenu = false;
     actualizarAccionesBorrador();
@@ -445,10 +465,11 @@ async function mostrarBorradorMenu(resultado, lecturaId, crearFotos = false) {
       }
     } catch {}
   }
+  let errorFotos;
   if (crearFotos) {
     indicarLecturaMenu(true);
     document.getElementById('btn-procesar-ia').textContent = 'Preparando imágenes…';
-    await completarFotosBorrador(true);
+    errorFotos = await completarFotosBorrador(true);
     indicarLecturaMenu(false);
   }
   document.getElementById('cargar-carta-ayuda').textContent = 'Borrador listo para revisar';
@@ -461,6 +482,7 @@ async function mostrarBorradorMenu(resultado, lecturaId, crearFotos = false) {
       && !document.getElementById('importar-menu-fotos').classList.contains('hidden')) {
     abrirCartaBorrador();
   }
+  if (errorFotos) estadoImportacion(errorFotos, 'error');
 }
 
 function programarConsultaLecturaMenu() {
@@ -480,8 +502,8 @@ function aplicarEstadoLecturaMenu(lectura) {
   clearTimeout(consultaLecturaMenu);
   indicarLecturaMenu(false);
   if (lectura.estado === 'listo') {
-    const crearFotos = lecturaConFotosMenu === lectura.id;
-    lecturaConFotosMenu = null;
+    const crearFotos = tieneFotosPendientes(lectura.id);
+    if (crearFotos) guardarLecturaConFotos(null);
     return mostrarBorradorMenu(lectura.resultado, lectura.id, crearFotos);
   } else {
     document.getElementById('cargar-carta-ayuda').textContent = 'Revisar lectura';
@@ -570,7 +592,7 @@ async function enviarMenuConIA(event) {
       return { respuesta, resultado: await respuesta.json().catch(() => ({})) };
     }, 120000, 'No pudimos confirmar la recepción de los archivos. Comprobaremos si empezó la lectura.');
     if (resultado.lectura && (respuesta.ok || respuesta.status === 409)) {
-      if (crearFotos && respuesta.ok) lecturaConFotosMenu = resultado.lectura.id;
+      if (respuesta.ok) guardarLecturaConFotos(crearFotos ? resultado.lectura.id : null);
       await aplicarEstadoLecturaMenu(resultado.lectura);
       return;
     }
@@ -765,6 +787,7 @@ async function publicarMenuRevisado(event) {
     olvidarBorradorMenu();
     document.getElementById('form-importar-ia').reset();actualizarResumenFotosMenu();
     mostrarProgresoImportacion(-1);
+    if (typeof actualizarVistaPreviaCarta === 'function') actualizarVistaPreviaCarta();
     await cargarProductos();estadoImportacion(`Carta publicada: ${resultado.count} productos.`,'exito');
   } catch(error) {estadoImportacion(mensajeErrorImportacion(error,'publicacion'),'error');}
   finally {publicandoMenu=false;document.getElementById('revision-menu').removeAttribute('inert');actualizarAccionesBorrador();}
