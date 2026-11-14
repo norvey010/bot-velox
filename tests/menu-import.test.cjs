@@ -196,8 +196,8 @@ test('el panel muestra los dos accesos a archivos sin un selector intermedio',()
  const opciones=selector.innerHTML;
  const input=html.match(/<input[^>]*id="menuFile"[^>]*>/)[0];
  assert.doesNotMatch(opciones,/<summary|Seleccionar archivos/);
- assert.match(opciones,/abrirSelectorArchivosMenu\(true\)[^>]*>Elegir fotos/);
- assert.match(opciones,/abrirSelectorArchivosMenu\(false\)[^>]*>Buscar en archivos/);
+ assert.match(opciones,/abrirSelectorArchivosMenu\(true\)[^>]*>Subir fotos/);
+ assert.match(opciones,/abrirSelectorArchivosMenu\(false\)[^>]*>Subir archivos/);
  assert.match(input,/\bmultiple\b/);
  assert.doesNotMatch(input,/\b(?:accept|capture)=/);
 });
