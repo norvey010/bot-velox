@@ -73,7 +73,7 @@ test('una carga confirmada sigue sin conexión y otro intento recupera la misma 
  const procesar = s.routes.get('/api/importar-menu');
  const consultar = s.routes.get('GET /api/lectura-menu/:restaurante');
  const solicitud = () => ({
-   body: { restaurante_id: 'rest-1' }, params: { restaurante: 'rest-1' },
+   body: { restaurante_id: 'rest-1', crear_fotos: '0' }, params: { restaurante: 'rest-1' },
    files: [{ mimetype: 'image/png', buffer: png }],
    supabaseUsuario: s.user, usuarioImportacion: { id: 'user' },
    liberarCupoLectura: liberar
@@ -445,7 +445,7 @@ test('una lectura sin respuesta vence, aborta el trabajo y libera el cupo sin ge
  const liberada = new Promise(resolve => { liberar = resolve; });
  const respuesta = s.response();
  await s.routes.get('/api/importar-menu')({
-   body: { restaurante_id: 'rest-1' },
+   body: { restaurante_id: 'rest-1', crear_fotos: '0' },
    files: [{ mimetype: 'image/png', buffer: png }],
    supabaseUsuario: s.user, usuarioImportacion: { id: 'user' }, liberarCupoLectura: liberar
  }, respuesta);
@@ -544,29 +544,14 @@ test('completar fotos omite platos con foto o sin datos suficientes', async () =
  await n.context.descartarRevisionMenu();
 });
 
-test('la carga espera las fotos y admite nombres claros sin ingredientes', async () => {
+test('la carga envía la preferencia de fotos al servidor', async () => {
  const n = navegador();
- n.context.URL = URL;
- n.context.File = require('node:buffer').File;
  n.el('menu-fotos-automaticas').checked = true;
- const productos = [
-   {...producto('Limonada natural'), categoria:'Bebidas', descripcion:''},
-   {...producto('Especial de la casa'), descripcion:''}
- ];
- let terminar;
- const imagen = new Promise(resolve => { terminar = resolve; });
- n.context.fetch = async url => {
-   if (url === '/api/importar-menu') return {ok:true,json:async()=>({success:true,borrador:true,productos,version:'a'.repeat(32)})};
-   assert.equal(url, '/api/productos/generar-imagen-borrador');
-   assert.equal(n.el('revision-carta-ampliada').open, undefined);
-   return {ok:true, headers:{get:()=> 'image/webp'}, blob:()=>imagen};
+ n.context.FormData = class {
+   append() {}
+   set(clave, valor) { this[clave] = valor; }
  };
- const carga = n.context.enviarMenuConIA({preventDefault() {}});
- await new Promise(resolve => setImmediate(resolve));
- assert.match(n.el('importacion-menu-status').textContent, /Preparando imágenes, 1 de 1/);
- terminar(new Blob(['foto']));
- await carga;
- assert.equal(n.el('revision-carta-ampliada').open, true);
- assert.equal(n.run('fotosBorradorMenu.size'), 1);
- await n.context.descartarRevisionMenu();
+ await n.context.enviarMenuConIA({preventDefault() {}});
+ assert.equal(n.requests[0].req.body.crear_fotos, '1');
+ assert.equal(n.requests.length, 1);
 });

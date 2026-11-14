@@ -201,27 +201,6 @@ const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=carta-preparada';
 const fotosBorradorMenu = new Map();
 let generandoFotoBorradorMenu = false;
 let completandoFotosMenu = false;
-let lecturaConFotosMenu = null;
-
-function guardarLecturaConFotos(id) {
-  lecturaConFotosMenu = id;
-  try {
-    const clave = `velox-fotos-pendientes:${RESTAURANTE_ID}`;
-    if (id) localStorage.setItem(clave, id);
-    else localStorage.removeItem(clave);
-  } catch {}
-}
-
-function tieneFotosPendientes(id) {
-  if (!id) return false;
-  if (lecturaConFotosMenu === id) return true;
-  try {
-    return localStorage.getItem(`velox-fotos-pendientes:${RESTAURANTE_ID}`) === id;
-  } catch {
-    return false;
-  }
-}
-
 function liberarFotoBorradorMenu(producto) {
   const foto = fotosBorradorMenu.get(producto);
   if (!foto) return;
@@ -454,7 +433,7 @@ function olvidarBorradorMenu() {
   document.getElementById('revision-carta-frame').removeAttribute('src');
 }
 
-async function mostrarBorradorMenu(resultado, lecturaId, crearFotos = false) {
+function mostrarBorradorMenu(resultado, lecturaId) {
   borradorMenu = { restaurante_id: RESTAURANTE_ID, version: resultado.version, productos: resultado.productos };
   if (lecturaId) {
     borradorMenu.lectura_id = lecturaId;
@@ -464,13 +443,6 @@ async function mostrarBorradorMenu(resultado, lecturaId, crearFotos = false) {
         borradorMenu.productos = guardado.productos;
       }
     } catch {}
-  }
-  let errorFotos;
-  if (crearFotos) {
-    indicarLecturaMenu(true);
-    document.getElementById('btn-procesar-ia').textContent = 'Preparando imágenes…';
-    errorFotos = await completarFotosBorrador(true);
-    indicarLecturaMenu(false);
   }
   document.getElementById('cargar-carta-ayuda').textContent = 'Borrador listo para revisar';
   document.getElementById('revision-menu').hidden = false;
@@ -482,7 +454,6 @@ async function mostrarBorradorMenu(resultado, lecturaId, crearFotos = false) {
       && !document.getElementById('importar-menu-fotos').classList.contains('hidden')) {
     abrirCartaBorrador();
   }
-  if (errorFotos) estadoImportacion(errorFotos, 'error');
 }
 
 function programarConsultaLecturaMenu() {
@@ -502,9 +473,7 @@ function aplicarEstadoLecturaMenu(lectura) {
   clearTimeout(consultaLecturaMenu);
   indicarLecturaMenu(false);
   if (lectura.estado === 'listo') {
-    const crearFotos = tieneFotosPendientes(lectura.id);
-    if (crearFotos) guardarLecturaConFotos(null);
-    return mostrarBorradorMenu(lectura.resultado, lectura.id, crearFotos);
+    return mostrarBorradorMenu(lectura.resultado, lectura.id);
   } else {
     document.getElementById('cargar-carta-ayuda').textContent = 'Revisar lectura';
     mostrarProgresoImportacion(1, true);
@@ -582,6 +551,7 @@ async function enviarMenuConIA(event) {
     const formData=new FormData();
     for(const archivo of archivos) formData.append('menuFile',archivo.blob,archivo.nombre);
     formData.set('restaurante_id',RESTAURANTE_ID);
+    formData.set('crear_fotos', crearFotos ? '1' : '0');
     estadoImportacion('Subiendo archivos… Mantén el panel abierto hasta confirmar la recepción.');
     const referencia=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : '';
     const { respuesta, resultado } = await conPlazoLecturaMenu(async signal => {
@@ -592,7 +562,6 @@ async function enviarMenuConIA(event) {
       return { respuesta, resultado: await respuesta.json().catch(() => ({})) };
     }, 120000, 'No pudimos confirmar la recepción de los archivos. Comprobaremos si empezó la lectura.');
     if (resultado.lectura && (respuesta.ok || respuesta.status === 409)) {
-      if (respuesta.ok) guardarLecturaConFotos(crearFotos ? resultado.lectura.id : null);
       await aplicarEstadoLecturaMenu(resultado.lectura);
       return;
     }
@@ -601,7 +570,7 @@ async function enviarMenuConIA(event) {
     }
     // Permite que el panel anterior y el nuevo servidor convivan durante el despliegue.
     indicarLecturaMenu(false);
-    await mostrarBorradorMenu(resultado, null, crearFotos);
+    mostrarBorradorMenu(resultado, null);
   } catch (error) {
     mostrarProgresoImportacion(0, true);
     estadoImportacion(mensajeErrorImportacion(error), 'error');
