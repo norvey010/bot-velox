@@ -24,7 +24,7 @@ function servidor({incompleto=false,transcripcion,esperarModelo,supabaseAdmin}={
  const routes=new Map(),calls=[],rpcCalls=[];let writes=0;
  const user={from(){return{select(){return this},eq(){return this},maybeSingle:async()=>({data:{id:'rest-1'}}),delete(){writes++;throw Error('No debe escribir')},insert(){writes++;throw Error('No debe escribir')}}},rpc:async(name,args)=>{rpcCalls.push({name,args});return{data:'a'.repeat(32)}}};
  const context={console:{info(){},error(){}},Buffer,crypto:require('node:crypto'),supabaseAdmin,AbortController,setTimeout,clearTimeout,supabaseUrl:"https://proyecto.supabase.co",process:{env:{}},prepararFuentesMenu,validarProductosMenu,errorMenu,upload:{array:()=>()=>{}},autenticarImportacionMenu(){},multer:{MulterError:class{}},app:{use(){},post:(route,...handlers)=>routes.set(route,handlers.at(-1)),get:(route,...handlers)=>routes.set('GET '+route,handlers.at(-1)),delete:(route,...handlers)=>routes.set('DELETE '+route,handlers.at(-1))},openai:{chat:{completions:{create:async input=>{calls.push(input);if(esperarModelo) await esperarModelo;return{choices:[{finish_reason:incompleto&&calls.length===2?'length':'stop',message:{content:JSON.stringify(transcripcion || {productos:[{...producto('Producto '+calls.length,500),familia:'',es_combo:false,familia_combo:''}],variantes:[]})}}],usage:{},model:'modelo-prueba'}}}}}};
- vm.createContext(context);const source=read('index.js');vm.runInContext(source.slice(source.indexOf('const uploadMenuFiles ='),source.indexOf('function normalizarTextoImagen')),context);
+ vm.createContext(context);const source=read('index.js');vm.runInContext(source.slice(source.indexOf('const uploadMenuFiles ='),source.indexOf("const { revisarDatosFotoMenu } = require")),context);
  const response=()=>({statusCode:200,status(n){this.statusCode=n;return this},json(data){this.data=data;return this}});
  return{context,routes,calls,rpcCalls,user,response,get writes(){return writes}};
 }
@@ -521,11 +521,11 @@ test('reutiliza solo fotos propias para la misma receta aunque cambie el precio'
  assert.equal(vm.runInContext('fotos.get(claveFotoMenu({...clasica, descripcion:"Nueva receta"}))', s.context), undefined);
 });
 
-test('completar fotos omite platos con foto o sin ingredientes y limita el lote', async () => {
+test('completar fotos omite platos con foto o sin datos suficientes', async () => {
  const n = navegador();
  n.context.URL = URL;
  n.context.File = require('node:buffer').File;
- n.context.confirm = mensaje => /Crear 3 fotos/.test(mensaje);
+ n.context.confirm = mensaje => /Crear 4 fotos/.test(mensaje);
  await n.context.enviarMenuConIA({preventDefault() {}});
  n.run(`borradorMenu.productos = [
    { nombre:'Con foto', categoria:'Pizzas', descripcion:'Queso', imagen_url:'https://velox.test/pizza.webp' },
@@ -539,7 +539,34 @@ test('completar fotos omite platos con foto o sin ingredientes y limita el lote'
    return { ok:true, headers:{get:()=> 'image/webp'}, blob:async()=> new Blob(['foto']) };
  };
  await n.context.completarFotosBorrador();
- assert.deepEqual(pedidos, ['Plato 0', 'Plato 1', 'Plato 2']);
- assert.equal(n.run('fotosBorradorMenu.size'), 3);
+ assert.deepEqual(pedidos, ['Plato 0', 'Plato 1', 'Plato 2', 'Plato 3']);
+ assert.equal(n.run('fotosBorradorMenu.size'), 4);
+ await n.context.descartarRevisionMenu();
+});
+
+test('la carga espera las fotos y admite nombres claros sin ingredientes', async () => {
+ const n = navegador();
+ n.context.URL = URL;
+ n.context.File = require('node:buffer').File;
+ n.el('menu-fotos-automaticas').checked = true;
+ const productos = [
+   {...producto('Limonada natural'), categoria:'Bebidas', descripcion:''},
+   {...producto('Especial de la casa'), descripcion:''}
+ ];
+ let terminar;
+ const imagen = new Promise(resolve => { terminar = resolve; });
+ n.context.fetch = async url => {
+   if (url === '/api/importar-menu') return {ok:true,json:async()=>({success:true,borrador:true,productos,version:'a'.repeat(32)})};
+   assert.equal(url, '/api/productos/generar-imagen-borrador');
+   assert.equal(n.el('revision-carta-ampliada').open, undefined);
+   return {ok:true, headers:{get:()=> 'image/webp'}, blob:()=>imagen};
+ };
+ const carga = n.context.enviarMenuConIA({preventDefault() {}});
+ await new Promise(resolve => setImmediate(resolve));
+ assert.match(n.el('importacion-menu-status').textContent, /Preparando imágenes, 1 de 1/);
+ terminar(new Blob(['foto']));
+ await carga;
+ assert.equal(n.el('revision-carta-ampliada').open, true);
+ assert.equal(n.run('fotosBorradorMenu.size'), 1);
  await n.context.descartarRevisionMenu();
 });

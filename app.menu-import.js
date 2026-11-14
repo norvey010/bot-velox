@@ -197,7 +197,7 @@ function guardarEdicionBorradorMenu() {
   } catch { /* La lectura original sigue disponible en el servidor. */ }
 }
 
-const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=fotos-por-plato';
+const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=carta-preparada';
 const fotosBorradorMenu = new Map();
 let generandoFotoBorradorMenu = false;
 let completandoFotosMenu = false;
@@ -287,7 +287,9 @@ async function solicitarFotoBorrador(producto) {
     });
     if (!respuesta.ok || !respuesta.headers.get('content-type')?.startsWith('image/webp')) {
       const resultado = await respuesta.json().catch(() => ({}));
-      throw new Error(resultado.error || 'No se pudo crear la foto. Inténtalo de nuevo.');
+      const error = new Error(resultado.error || 'No se pudo crear la foto. Inténtalo de nuevo.');
+      error.status = respuesta.status;
+      throw error;
     }
     const imagen = await respuesta.blob();
     if (!imagen.size || imagen.size > 5 * 1024 * 1024) throw new Error('La imagen devuelta no se puede guardar.');
@@ -300,7 +302,7 @@ async function completarFotosBorrador(automatico = false) {
   const pendientes = borradorMenu.productos.filter(producto =>
     !producto.imagen_url && !fotosBorradorMenu.has(producto));
   const lote = pendientes.filter(producto =>
-    producto.nombre.trim() && producto.categoria.trim() && producto.descripcion?.trim()).slice(0, 3);
+    !revisarDatosFotoMenu(producto));
   const estado = document.getElementById('revision-accion-status');
   if (!lote.length) {
     if (automatico && !pendientes.length) return;
@@ -314,12 +316,24 @@ async function completarFotosBorrador(automatico = false) {
   completandoFotosMenu = true;
   actualizarAccionesBorrador();
   let listas = 0;
+  let intentadas = 0;
+  let fallidas = 0;
   try {
     for (const producto of lote) {
-      boton.textContent = `Creando foto ${listas + 1} de ${lote.length}…`;
+      const avance = `Preparando imágenes, ${++intentadas} de ${lote.length}…`;
+      boton.textContent = avance;
+      if (automatico) estadoImportacion(avance);
       if (!borradorMenu.productos.includes(producto) || producto.imagen_url || fotosBorradorMenu.has(producto)) continue;
       const datos = JSON.stringify([producto.nombre, producto.categoria, producto.descripcion]);
-      const imagen = await solicitarFotoBorrador(producto);
+      let imagen;
+      try {
+        imagen = await solicitarFotoBorrador(producto);
+      } catch (error) {
+        if (error.status === 429 || error.status === 401 || error.status === 503) throw error;
+        fallidas++;
+        if (fallidas >= 3 && listas === 0) throw error;
+        continue;
+      }
       if (!borradorMenu.productos.includes(producto) || producto.imagen_url || fotosBorradorMenu.has(producto)
           || datos !== JSON.stringify([producto.nombre, producto.categoria, producto.descripcion])) continue;
       const archivo = new File([imagen], 'foto-ia.webp', { type: 'image/webp' });
@@ -327,9 +341,10 @@ async function completarFotosBorrador(automatico = false) {
       listas++;
       enviarVistaClientesBorrador(document.getElementById('revision-carta-frame'));
     }
-    mostrarAviso(estado, `${listas} fotos listas para revisar.`, 'exito');
+    mostrarAviso(estado, `${listas} fotos listas. ${pendientes.length - listas} pendientes de revisión.`, 'info');
   } catch (error) {
     mostrarAviso(estado, `${listas} fotos listas. ${error.message}`, 'error');
+    if (automatico) estadoImportacion(`${listas} fotos listas. ${error.message}`, 'error');
   } finally {
     completandoFotosMenu = false;
     actualizarAccionesBorrador();
@@ -361,7 +376,9 @@ function enviarVistaClientesBorrador(marco) {
     restaurante: document.getElementById('nombre-restaurante-header').innerText || 'Tu restaurante',
     productos: borradorMenu.productos.map(producto => {
       const foto = fotosBorradorMenu.get(producto);
-      return foto ? { ...producto, imagen_url: foto.previa } : producto;
+      const imagen_url = foto?.previa || producto.imagen_url;
+      const revisionFoto = !imagen_url && (revisarDatosFotoMenu(producto) || 'Foto pendiente');
+      return { ...producto, imagen_url, revisionFoto };
     }),
     editable: marco.id === 'revision-carta-frame'
   }, window.location.origin);
@@ -417,7 +434,7 @@ function olvidarBorradorMenu() {
   document.getElementById('revision-carta-frame').removeAttribute('src');
 }
 
-function mostrarBorradorMenu(resultado, lecturaId) {
+async function mostrarBorradorMenu(resultado, lecturaId, crearFotos = false) {
   borradorMenu = { restaurante_id: RESTAURANTE_ID, version: resultado.version, productos: resultado.productos };
   if (lecturaId) {
     borradorMenu.lectura_id = lecturaId;
@@ -427,6 +444,12 @@ function mostrarBorradorMenu(resultado, lecturaId) {
         borradorMenu.productos = guardado.productos;
       }
     } catch {}
+  }
+  if (crearFotos) {
+    indicarLecturaMenu(true);
+    document.getElementById('btn-procesar-ia').textContent = 'Preparando imágenes…';
+    await completarFotosBorrador(true);
+    indicarLecturaMenu(false);
   }
   document.getElementById('cargar-carta-ayuda').textContent = 'Borrador listo para revisar';
   document.getElementById('revision-menu').hidden = false;
@@ -457,11 +480,9 @@ function aplicarEstadoLecturaMenu(lectura) {
   clearTimeout(consultaLecturaMenu);
   indicarLecturaMenu(false);
   if (lectura.estado === 'listo') {
-    mostrarBorradorMenu(lectura.resultado, lectura.id);
-    if (lecturaConFotosMenu === lectura.id) {
-      lecturaConFotosMenu = null;
-      void completarFotosBorrador(true);
-    }
+    const crearFotos = lecturaConFotosMenu === lectura.id;
+    lecturaConFotosMenu = null;
+    return mostrarBorradorMenu(lectura.resultado, lectura.id, crearFotos);
   } else {
     document.getElementById('cargar-carta-ayuda').textContent = 'Revisar lectura';
     mostrarProgresoImportacion(1, true);
@@ -495,7 +516,7 @@ async function recuperarLecturaMenu() {
       }
       return false;
     }
-    aplicarEstadoLecturaMenu(lectura);
+    await aplicarEstadoLecturaMenu(lectura);
     return true;
   } catch (error) {
     if (error.sesionVencida) {
@@ -550,7 +571,7 @@ async function enviarMenuConIA(event) {
     }, 120000, 'No pudimos confirmar la recepción de los archivos. Comprobaremos si empezó la lectura.');
     if (resultado.lectura && (respuesta.ok || respuesta.status === 409)) {
       if (crearFotos && respuesta.ok) lecturaConFotosMenu = resultado.lectura.id;
-      aplicarEstadoLecturaMenu(resultado.lectura);
+      await aplicarEstadoLecturaMenu(resultado.lectura);
       return;
     }
     if (!respuesta.ok || !resultado.success || !resultado.borrador || !Array.isArray(resultado.productos)) {
@@ -558,8 +579,7 @@ async function enviarMenuConIA(event) {
     }
     // Permite que el panel anterior y el nuevo servidor convivan durante el despliegue.
     indicarLecturaMenu(false);
-    mostrarBorradorMenu(resultado, null);
-    if (crearFotos) void completarFotosBorrador(true);
+    await mostrarBorradorMenu(resultado, null, crearFotos);
   } catch (error) {
     mostrarProgresoImportacion(0, true);
     estadoImportacion(mensajeErrorImportacion(error), 'error');

@@ -128,3 +128,20 @@ function habilitarDeslizamientoCategorias(contenedor, cambiarCategoria) {
 
     contenedor.addEventListener('touchcancel', () => { inicioGesto = null; }, { passive: true });
 }
+
+function revisarDatosFotoMenu(producto) {
+    const nombre = normalizarTexto(producto.nombre).trim();
+    const categoria = normalizarTexto(producto.categoria).trim();
+    const tipo = texto => /\bhamburguesas?\b/.test(texto) ? 'hamburguesa'
+        : /\bpizzas?\b/.test(texto) ? 'pizza' : '';
+    if (!nombre || !categoria) return 'Completa el nombre y la categoría.';
+    if (tipo(nombre) && tipo(categoria) && tipo(nombre) !== tipo(categoria)) {
+        return 'Revisa si el nombre coincide con la categoría.';
+    }
+    if (String(producto.descripcion || '').trim()) return '';
+    if (/\b(limonadas?|jugos?|cervezas?|gaseosas?|avenas?|granizados?|cafes?|agua)\b/.test(nombre)
+        || /\b(cervezas|gaseosas)\b/.test(categoria) && !/\b(especial|casa|varios)\b/.test(nombre)) return '';
+    return 'Añade ingredientes para preparar una foto fiel al plato.';
+}
+
+if (typeof module !== 'undefined') module.exports = { revisarDatosFotoMenu };
