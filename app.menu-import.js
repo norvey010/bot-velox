@@ -197,7 +197,7 @@ function guardarEdicionBorradorMenu() {
   } catch { /* La lectura original sigue disponible en el servidor. */ }
 }
 
-const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=tarjeta-borrador';
+const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=fotos-por-plato';
 const fotosBorradorMenu = new Map();
 let generandoFotoBorradorMenu = false;
 
@@ -259,19 +259,7 @@ async function generarFotoBorradorMenu(i, boton) {
   boton.textContent = 'Generando imagen…';
   document.getElementById('revision-producto-status').classList.add('hidden');
   try {
-    const token = await sesionImportacion();
-    const respuesta = await fetch('/api/productos/generar-imagen-borrador', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ restaurante_id: RESTAURANTE_ID, producto: {
-        nombre, categoria: producto.categoria.trim(), descripcion: (producto.descripcion || '').trim()
-      } })
-    });
-    if (!respuesta.ok || !respuesta.headers.get('content-type')?.startsWith('image/webp')) {
-      const resultado = await respuesta.json().catch(() => ({}));
-      throw new Error(resultado.error || 'No se pudo crear la foto. Inténtalo de nuevo.');
-    }
-    const imagen = await respuesta.blob();
+    const imagen = await solicitarFotoBorrador(producto);
     seleccionarFotoBorradorMenu(i, new File([imagen], 'foto-ia.webp', { type: 'image/webp' }));
     selector.value = '';
   } catch (error) {
@@ -281,6 +269,64 @@ async function generarFotoBorradorMenu(i, boton) {
     actualizarAccionesBorrador();
     selector.disabled = cambiar.disabled = quitar.disabled = boton.disabled = false;
     boton.textContent = 'Crear foto con IA';
+  }
+}
+
+async function solicitarFotoBorrador(producto) {
+  return conPlazoLecturaMenu(async signal => {
+    const token = await sesionImportacion();
+    const respuesta = await fetch('/api/productos/generar-imagen-borrador', {
+      method: 'POST', signal,
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restaurante_id: RESTAURANTE_ID, producto: {
+        nombre: producto.nombre.trim(), categoria: producto.categoria.trim(),
+        descripcion: (producto.descripcion || '').trim()
+      } })
+    });
+    if (!respuesta.ok || !respuesta.headers.get('content-type')?.startsWith('image/webp')) {
+      const resultado = await respuesta.json().catch(() => ({}));
+      throw new Error(resultado.error || 'No se pudo crear la foto. Inténtalo de nuevo.');
+    }
+    const imagen = await respuesta.blob();
+    if (!imagen.size || imagen.size > 5 * 1024 * 1024) throw new Error('La imagen devuelta no se puede guardar.');
+    return imagen;
+  }, 120000, 'La foto tardó demasiado. Inténtalo más tarde.');
+}
+
+async function completarFotosBorrador() {
+  if (!borradorMenu || publicandoMenu || generandoFotoBorradorMenu) return;
+  const pendientes = borradorMenu.productos.filter(producto =>
+    !producto.imagen_url && !fotosBorradorMenu.has(producto));
+  const lote = pendientes.filter(producto =>
+    producto.nombre.trim() && producto.categoria.trim() && producto.descripcion?.trim()).slice(0, 3);
+  const estado = document.getElementById('revision-accion-status');
+  if (!lote.length) {
+    mostrarAviso(estado, pendientes.length
+      ? 'Completa el nombre, la categoría y los ingredientes de los platos pendientes.'
+      : 'Todos los platos ya tienen foto.', 'info');
+    return;
+  }
+  if (!confirm(`Crear ${lote.length} fotos ilustrativas con IA tiene costo. ¿Continuar?`)) return;
+  const boton = document.getElementById('btn-completar-fotos');
+  generandoFotoBorradorMenu = true;
+  actualizarAccionesBorrador();
+  let listas = 0;
+  try {
+    for (const producto of lote) {
+      boton.textContent = `Creando foto ${listas + 1} de ${lote.length}…`;
+      const imagen = await solicitarFotoBorrador(producto);
+      const archivo = new File([imagen], 'foto-ia.webp', { type: 'image/webp' });
+      fotosBorradorMenu.set(producto, { archivo, previa: URL.createObjectURL(archivo) });
+      listas++;
+    }
+    mostrarAviso(estado, `${listas} fotos listas para revisar.`, 'exito');
+  } catch (error) {
+    mostrarAviso(estado, `${listas} fotos listas. ${error.message}`, 'error');
+  } finally {
+    generandoFotoBorradorMenu = false;
+    actualizarAccionesBorrador();
+    boton.textContent = 'Completar fotos con IA';
+    abrirCartaBorrador();
   }
 }
 
@@ -325,6 +371,7 @@ function abrirCartaBorrador(indice = null) {
   const editar = indice !== null;
   marco.hidden = editar;
   document.getElementById('revision-edicion').hidden = !editar;
+  document.getElementById('btn-completar-fotos').hidden = editar;
   document.getElementById('revision-carta-ayuda').hidden = editar;
   document.getElementById('revision-volver-carta').hidden = !editar;
   document.getElementById('revision-carta-ampliada-titulo').textContent = editar ? 'Editar producto' : 'Carta del borrador';
@@ -614,6 +661,7 @@ function actualizarAccionesBorrador(accion) {
   const ocupado = publicandoMenu || generandoFotoBorradorMenu;
   const publicar = document.getElementById('btn-publicar-menu');
   const descartar = document.getElementById('btn-descartar-menu');
+  document.getElementById('btn-completar-fotos').disabled = ocupado || !borradorMenu?.productos.length;
   publicar.disabled = ocupado || !borradorMenu?.productos.length;
   descartar.disabled = ocupado || !borradorMenu;
   publicar.textContent = accion === 'publicar' ? 'Publicando…' : 'Publicar carta';

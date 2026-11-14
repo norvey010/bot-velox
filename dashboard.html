@@ -450,6 +450,7 @@
     </section>
     <footer class="shrink-0 border-t border-slate-700 bg-slate-900 p-3">
       <p id="revision-accion-status" class="mb-2 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
+      <button id="btn-completar-fotos" type="button" onclick="completarFotosBorrador()" class="mb-2 min-h-11 w-full rounded-lg border border-slate-600 px-2 py-2 text-sm text-white disabled:opacity-50">Completar fotos con IA</button>
       <form id="form-revision-menu" onsubmit="publicarMenuRevisado(event)" class="grid grid-cols-2 gap-2">
         <button id="btn-descartar-menu" type="button" onclick="descartarRevisionMenu()" class="min-h-11 rounded-lg border border-slate-600 px-2 py-2 text-sm text-white disabled:opacity-50">Descartar borrador</button>
         <button id="btn-publicar-menu" type="submit" class="min-h-11 rounded-lg bg-red-600 px-2 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50">Publicar carta</button>
@@ -1226,7 +1227,7 @@
       const accion = tieneImagen ? 'reemplazará la imagen actual' : 'creará una imagen nueva';
       const continuar = borrador
         ? confirm('La IA creará una foto ilustrativa con el nombre, la categoría y la descripción. La generación tiene un costo aunque decidas no guardarla. ¿Deseas continuar?')
-        : confirm(`La IA ${accion} a partir del nombre y la descripción del producto. La imagen será ilustrativa, se guardará en tu menú y cada generación tiene un costo en tu cuenta de OpenAI. Si es un tamaño de pizza, la imagen se aplicará a todos los tamaños. ¿Deseas continuar?`);
+        : confirm(`La IA ${accion} a partir del nombre y la descripción del producto. La imagen será ilustrativa, se guardará en tu menú y cada generación tiene un costo en tu cuenta de OpenAI. ¿Deseas continuar?`);
       if (!continuar) return;
 
       generandoImagenIA = true;
@@ -1779,6 +1780,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=borrador-abierto"></script>
+  <script src="/app.menu-import.js?v=fotos-por-plato"></script>
 </body>
 </html>
