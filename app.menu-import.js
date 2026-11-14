@@ -490,7 +490,7 @@ function mostrarBorradorMenu(resultado, lecturaId) {
   actualizarAccionesBorrador();
   cargarVistaClientesBorrador(document.getElementById('revision-miniatura-frame'));
   mostrarProgresoImportacion(2);
-  estadoImportacion(`${borradorMenu.productos.length} productos en el borrador. Revisa y publica.`, 'exito');
+  estadoImportacion(`${borradorMenu.productos.length} productos en el borrador. ${resultado.reutilizada ? 'Lectura y fotos reutilizadas.' : 'Revisa y publica.'}`, 'exito');
   if (!document.hidden && !document.getElementById('sec-menu-ia').classList.contains('hidden')
       && !document.getElementById('importar-menu-fotos').classList.contains('hidden')) {
     abrirCartaBorrador();

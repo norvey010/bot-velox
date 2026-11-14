@@ -54,7 +54,7 @@ test('la importación conserva alternativas y señala solo las elecciones sin re
 
 test('una carga confirmada sigue sin conexión y otro intento recupera la misma lectura', async () => {
  let lectura;
- const admin = { from() { return {
+ const admin = { from(tabla) { if (tabla === 'velox_cache_carta') return {select(){return this},eq(){return this},maybeSingle(){return {}},upsert(){return {}}}; return {
    delete() { return this; }, eq() { return this; }, gt() { return this; },
    or() { return {}; },
    insert(fila) {
@@ -426,7 +426,7 @@ test('quitar la foto antes de publicar limpia la vista previa y omite la subida'
 
 test('una lectura sin respuesta vence, aborta el trabajo y libera el cupo sin generar borrador', async () => {
  let lectura;
- const admin = { from() { return {
+ const admin = { from(tabla) { if (tabla === 'velox_cache_carta') return {select(){return this},eq(){return this},maybeSingle(){return {}},upsert(){return {}}}; return {
    delete() { return this; }, eq() { return this; }, gt() { return this; },
    or() { return {}; },
    insert(fila) { lectura = fila; return {}; },
