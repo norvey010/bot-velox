@@ -399,6 +399,8 @@ function renderizarProductos(listaProds) {
                         </div>
                         <div class="mt-2 sm:mt-5 flex flex-col gap-2 sm:gap-3">
                             <span class="font-extrabold text-white text-base sm:text-xl">${precio}</span>
+                            ${editar && (producto.revisionFoto || producto.revision_opciones || !(Number(producto.precio) > 0))
+                                ? `<span class="text-xs font-semibold text-amber-300">Revisar${producto.revisionFoto ? ' · ' + escaparHtml(producto.revisionFoto) : ''}</span>` : ''}
                             ${accionHtml}
                         </div>
                     </div>

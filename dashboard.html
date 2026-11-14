@@ -269,7 +269,7 @@
               <details class="text-xs text-slate-400"><summary class="cursor-pointer py-2">Formatos y límites</summary><p id="menu-limites" class="pb-2 leading-relaxed">JPG, PNG, WEBP, GIF o PDF. Hasta 10 archivos, 8 MB cada uno, 25 MB en total y 20 páginas.</p></details>
               <label class="flex items-start gap-2 text-sm text-slate-200">
                 <input id="menu-fotos-automaticas" type="checkbox" checked class="mt-1">
-                Crear hasta 3 fotos faltantes al leer la carta (genera costo)
+                Crear fotos faltantes antes de mostrar el borrador (cada foto genera costo)
               </label>
               <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700">Leer con IA</button>
             </form>
@@ -462,7 +462,7 @@
     </footer>
   </dialog>
 
-  <script src="/app.menu-categorias.js?v=editar-carta-publicada"></script>
+  <script src="/app.menu-categorias.js?v=carta-preparada"></script>
   <script>
     let RESTAURANTE_ID = null;
     let ANCHO_PAPEL_IMPRESORA = 80;
@@ -1784,6 +1784,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=fotos-al-leer"></script>
+  <script src="/app.menu-import.js?v=carta-preparada"></script>
 </body>
 </html>
