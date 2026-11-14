@@ -225,6 +225,7 @@ function seleccionarFotoBorradorMenu(i, archivo) {
   const miniatura = document.getElementById('revision-foto-previa');
   miniatura.src = previa;
   document.getElementById('revision-foto-controles').hidden = false;
+  actualizarResumenRevision();
   document.getElementById('revision-producto-status').classList.add('hidden');
 }
 
@@ -233,6 +234,7 @@ function quitarFotoBorradorMenu(i) {
   if (!producto || publicandoMenu || generandoFotoBorradorMenu) return;
   liberarFotoBorradorMenu(producto);
   delete producto.imagen_url;
+  actualizarResumenRevision();
   guardarEdicionBorradorMenu();
   document.getElementById('revision-foto-previa').removeAttribute('src');
   document.getElementById('revision-foto-controles').hidden = true;
@@ -388,10 +390,49 @@ function cargarVistaClientesBorrador(marco) {
   else enviarVistaClientesBorrador(marco);
 }
 
+function productoBloqueaPublicacion(p) {
+  const precio = Number(p.precio);
+  return p.revision_opciones || opcionesBorradorIncompletas(p)
+    || !p.nombre.trim() || !p.categoria.trim()
+    || !Number.isSafeInteger(precio) || precio <= 0 || precio > 100000000;
+}
+
+function pendientesRevisionBorrador() {
+  return borradorMenu.productos.flatMap((producto, indice) => {
+    const obligatorio = productoBloqueaPublicacion(producto);
+    return obligatorio || (!producto.imagen_url && !fotosBorradorMenu.has(producto))
+      ? [{ indice, obligatorio }] : [];
+  });
+}
+
+function actualizarResumenRevision() {
+  const pendientes = pendientesRevisionBorrador();
+  const obligatorios = pendientes.filter(p => p.obligatorio).length;
+  document.getElementById('revision-resumen').textContent =
+    `${borradorMenu.productos.length - pendientes.length} listos · ${pendientes.length} por revisar`;
+  const aviso = document.getElementById('revision-bloqueos');
+  aviso.hidden = !pendientes.length;
+  aviso.textContent = obligatorios
+    ? `${obligatorios} por corregir antes de publicar.`
+    : 'Puedes publicar y completar las fotos después.';
+  document.getElementById('revision-siguiente').hidden = !pendientes.length;
+}
+
+let indiceRevisionActual = null;
+function revisarSiguienteProducto() {
+  if (!borradorMenu) return;
+  const pendientes = pendientesRevisionBorrador().sort((a, b) => Number(b.obligatorio) - Number(a.obligatorio));
+  const actual = pendientes.findIndex(p => p.indice === indiceRevisionActual);
+  const siguiente = pendientes[(actual + 1) % pendientes.length];
+  if (siguiente) abrirCartaBorrador(siguiente.indice);
+}
+
 function abrirCartaBorrador(indice = null) {
   if (!borradorMenu || publicandoMenu || generandoFotoBorradorMenu || (indice !== null && !borradorMenu.productos[indice])) return;
   const dialogo = document.getElementById('revision-carta-ampliada');
   const marco = document.getElementById('revision-carta-frame');
+  indiceRevisionActual = indice;
+  actualizarResumenRevision();
   const editar = indice !== null;
   marco.hidden = editar;
   document.getElementById('revision-edicion').hidden = !editar;
@@ -684,6 +725,7 @@ function quitarProductoBorrador(i) {
 }
 
 function actualizarAccionesBorrador(accion) {
+  if (borradorMenu) actualizarResumenRevision();
   const ocupado = publicandoMenu || generandoFotoBorradorMenu || completandoFotosMenu;
   const publicar = document.getElementById('btn-publicar-menu');
   const descartar = document.getElementById('btn-descartar-menu');
@@ -731,8 +773,7 @@ async function publicarMenuRevisado(event) {
   event.preventDefault();
   if (!borradorMenu?.productos.length || publicandoMenu || leyendoMenu || generandoFotoBorradorMenu || completandoFotosMenu) return;
   document.getElementById('revision-accion-status').classList.add('hidden');
-  const invalido = borradorMenu.productos.findIndex(p => p.revision_opciones || opcionesBorradorIncompletas(p)
-    || !p.nombre.trim() || !p.categoria.trim() || !Number.isSafeInteger(Number(p.precio)) || Number(p.precio) <= 0 || Number(p.precio) > 100000000);
+  const invalido = borradorMenu.productos.findIndex(productoBloqueaPublicacion);
   if (invalido >= 0) {
     const producto = borradorMenu.productos[invalido];
     abrirCartaBorrador(invalido);
