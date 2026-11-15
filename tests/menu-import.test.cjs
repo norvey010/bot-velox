@@ -274,8 +274,8 @@ test('la vista del borrador usa la carta pública y bloquea el envío de pedidos
  const boton = {};
  const el = id => {
    if (!elementos.has(id)) elementos.set(id, {
-     classList: { add() {}, remove() {} }, querySelector: () => boton,
-     querySelectorAll: () => [], addEventListener() {}
+     value: '', classList: { add() {}, remove() {} }, querySelector: () => boton,
+     querySelectorAll: () => [], addEventListener() {}, toggleAttribute() {}
    });
    return elementos.get(id);
  };
@@ -601,7 +601,7 @@ test('un plato sin descripción ni foto cuenta como listo si se puede vender', a
 test('la búsqueda de la carta recorre categorías y vuelve a la categoría activa al limpiarla', () => {
  const html = read('menu.html');
  const inicio = html.indexOf('function mostrarProductosCarta()');
- const fin = html.indexOf("document.getElementById('buscar-plato-carta').addEventListener", inicio);
+ const fin = html.indexOf('function actualizarDesbordeCategorias()', inicio);
  const campo = {value:'pollo limon'};
  const estado = {textContent:''};
  const pizza = {...producto('Pizza'),categoria:'Pizzas'};
