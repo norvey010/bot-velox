@@ -297,7 +297,7 @@ async function solicitarFotoBorrador(producto) {
   }, 120000, 'La foto tardó demasiado. Inténtalo más tarde.');
 }
 
-async function completarFotosBorrador() {
+async function completarFotosBorrador(automatico = false) {
   if (!borradorMenu || publicandoMenu || generandoFotoBorradorMenu || completandoFotosMenu) return;
   const pendientes = borradorMenu.productos.filter(producto =>
     !producto.imagen_url && !fotosBorradorMenu.has(producto));
@@ -305,12 +305,13 @@ async function completarFotosBorrador() {
     !revisarDatosFotoMenu(producto));
   const estado = document.getElementById('revision-accion-status');
   if (!lote.length) {
+    if (automatico && !pendientes.length) return;
     mostrarAviso(estado, pendientes.length
       ? 'Completa el nombre, la categoría y los ingredientes de los platos pendientes.'
       : 'Todos los platos ya tienen foto.', 'info');
     return;
   }
-  if (!confirm(`Crear ${lote.length} fotos ilustrativas con IA tiene costo. ¿Continuar?`)) return;
+  if (!automatico && !confirm(`Crear ${lote.length} fotos ilustrativas con IA tiene costo. ¿Continuar?`)) return;
   const boton = document.getElementById('btn-completar-fotos');
   completandoFotosMenu = true;
   actualizarAccionesBorrador();
@@ -319,7 +320,9 @@ async function completarFotosBorrador() {
   let fallidas = 0;
   try {
     for (const producto of lote) {
-      boton.textContent = `Preparando imágenes, ${++intentadas} de ${lote.length}…`;
+      const avance = `Preparando imágenes, ${++intentadas} de ${lote.length}…`;
+      boton.textContent = avance;
+      if (automatico) estadoImportacion(avance);
       if (!borradorMenu.productos.includes(producto) || producto.imagen_url || fotosBorradorMenu.has(producto)) continue;
       const datos = JSON.stringify([producto.nombre, producto.categoria, producto.descripcion]);
       let imagen;
@@ -340,11 +343,14 @@ async function completarFotosBorrador() {
     }
     mostrarAviso(estado, `${listas} fotos listas. ${pendientes.length - listas} pendientes de revisión.`, 'info');
   } catch (error) {
-    mostrarAviso(estado, `${listas} fotos listas. ${error.message}`, 'error');
+    const mensaje = `${listas} fotos listas. ${error.message}`;
+    mostrarAviso(estado, mensaje, 'error');
+    if (automatico) return mensaje;
   } finally {
     completandoFotosMenu = false;
     actualizarAccionesBorrador();
     boton.textContent = 'Completar fotos con IA';
+
   }
 }
 
@@ -585,6 +591,7 @@ async function enviarMenuConIA(event) {
     const formData=new FormData();
     for(const archivo of archivos) formData.append('menuFile',archivo.blob,archivo.nombre);
     formData.set('restaurante_id',RESTAURANTE_ID);
+    formData.set('crear_fotos', '1');
     estadoImportacion('Subiendo archivos… Mantén el panel abierto hasta confirmar la recepción.');
     const referencia=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : '';
     const { respuesta, resultado } = await conPlazoLecturaMenu(async signal => {
