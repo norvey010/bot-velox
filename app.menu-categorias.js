@@ -141,6 +141,9 @@ function revisarDatosFotoMenu(producto) {
     if (String(producto.descripcion || '').trim()) return '';
     if (/\b(limonadas?|jugos?|cervezas?|gaseosas?|avenas?|granizados?|cafes?|agua)\b/.test(nombre)
         || /\b(cervezas|gaseosas)\b/.test(categoria) && !/\b(especial|casa|varios)\b/.test(nombre)) return '';
+    const nombreSimple = nombre.replace(/^(?:una? |1 )?porcion (?:de )?/, '');
+    if (/^(?:papas? (?:a la )?francesas?|arroz blanco|yuca(?: frita| cocida)?|patacon(?:es)?|arepas?(?: asadas?)?)$/.test(nombreSimple)
+        || /^francesas?$/.test(nombreSimple) && /^(?:papas?|papas fritas|papas francesas)$/.test(categoria)) return '';
     return 'Añade ingredientes para preparar una foto fiel al plato.';
 }
 

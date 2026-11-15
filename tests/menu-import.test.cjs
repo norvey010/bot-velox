@@ -555,3 +555,75 @@ test('la carga pide fotos automáticas sin mostrar la casilla', async () => {
  assert.equal(n.requests[0].req.body.crear_fotos, '1');
  assert.equal(n.requests.length, 1);
 });
+
+test('un PDF de dos columnas conserva la disposición visual para vincular precios', async () => {
+ const d = await PDFDocument.create();
+ const font = await d.embedFont(StandardFonts.Helvetica);
+ const pagina = d.addPage();
+ pagina.drawText('PIZZAS TRADICIONALES: Hawaiana, Pepperoni, Champinones', {x:20,y:700,font,size:10});
+ pagina.drawText('PIZZAS ESPECIALES: Cuatro quesos, Vegetariana, Pollo', {x:330,y:700,font,size:10});
+ pagina.drawText('Personal 15000 / Familiar 35000', {x:20,y:680,font,size:10});
+ pagina.drawText('Personal 22000 / Familiar 48000', {x:330,y:680,font,size:10});
+ const fuentes = await prepararFuentesMenu([{mimetype:'application/pdf',buffer:Buffer.from(await d.save())}]);
+ assert.equal(fuentes[0].type, 'file');
+});
+
+test('una opción válida no oculta una bebida a elección sin lista', async () => {
+ const opciones = ['Papa', 'Yuca'].map(nombre => ({grupo:'Acompañamiento', nombre, descripcion:''}));
+ const productos = [
+   {...producto('Combo 1'), descripcion:'Hamburguesa + papa o yuca + gaseosa 250 ml a elección', opciones},
+   {...producto('Combo 2'), descripcion:'Hamburguesa + papa o yuca + gaseosa 250 ml', opciones},
+   {...producto('Combo 3'), descripcion:'Hamburguesa + gaseosa a elección',
+     opciones:[{grupo:'Bebida',nombre:'Colombiana',descripcion:''},{grupo:'Bebida',nombre:'Manzana',descripcion:''}]}
+ ];
+ const s = servidor({transcripcion:{productos,variantes:[]}});
+ const res = s.response();
+ await s.routes.get('/api/importar-menu')({body:{restaurante_id:'rest-1'},files:[{mimetype:'image/png',buffer:png}],supabaseUsuario:s.user,usuarioImportacion:{id:'user'}},res);
+ assert.equal(res.statusCode, 200);
+ assert.deepEqual(Array.from(res.data.productos, p => p.revision_opciones), [true,false,false]);
+ assert.equal(res.data.productos[0].opciones.filter(o => o.grupo === 'Acompañamiento').length, 2);
+});
+
+test('un plato sin descripción ni foto cuenta como listo si se puede vender', async () => {
+ const n = navegador();
+ await n.context.enviarMenuConIA({preventDefault() {}});
+ n.run(`borradorMenu.productos = [
+   {nombre:'Porción francesa',categoria:'Papas',precio:6000,descripcion:'',opciones:[]},
+   {nombre:'Especial',categoria:'Otros',precio:0,descripcion:'',opciones:[]}
+ ]; actualizarResumenRevision();`);
+ assert.equal(n.el('revision-resumen').textContent, '1 listo para publicar · 1 por corregir · 2 sin foto (opcional)');
+ assert.equal(n.el('revision-siguiente').textContent, 'Revisar correcciones');
+ const {revisarDatosFotoMenu} = require('../app.menu-categorias');
+ assert.equal(revisarDatosFotoMenu({nombre:'Porción francesa',categoria:'Papas'}),'');
+ assert.ok(revisarDatosFotoMenu({nombre:'Porción francesa',categoria:'Otros'}));
+});
+
+test('la búsqueda de la carta recorre categorías y vuelve a la categoría activa al limpiarla', () => {
+ const html = read('menu.html');
+ const inicio = html.indexOf('function mostrarProductosCarta()');
+ const fin = html.indexOf("document.getElementById('buscar-plato-carta').addEventListener", inicio);
+ const campo = {value:'pollo limon'};
+ const estado = {textContent:''};
+ const pizza = {...producto('Pizza'),categoria:'Pizzas'};
+ const combo = {...producto('Combo de pollo'),categoria:'Combos',descripcion:'Con jugo de limón'};
+ const vistas = [];
+ const contexto = {
+   todosLosProductos:[pizza,combo],
+   categoriasMenu:['Pizzas','Combos'],
+   indiceCategoriaActiva:0,
+   document:{getElementById:id=>id==='buscar-plato-carta'?campo:estado},
+   renderizarProductos:(productos,mensaje)=>vistas.push({productos,mensaje})
+ };
+ vm.createContext(contexto);
+ vm.runInContext(read('app.menu-categorias.js'), contexto);
+ vm.runInContext(html.slice(inicio,fin), contexto);
+ contexto.mostrarProductosCarta();
+ assert.equal(vistas.at(-1).productos[0], combo);
+ campo.value = 'sin coincidencias';
+ contexto.mostrarProductosCarta();
+ assert.equal(vistas.at(-1).productos.length, 0);
+ assert.match(vistas.at(-1).mensaje,/No encontramos platos/);
+ campo.value = '';
+ contexto.mostrarProductosCarta();
+ assert.equal(vistas.at(-1).productos[0], pizza);
+});

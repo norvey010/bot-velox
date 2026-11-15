@@ -197,7 +197,7 @@ function guardarEdicionBorradorMenu() {
   } catch { /* La lectura original sigue disponible en el servidor. */ }
 }
 
-const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=fotos-completas';
+const RUTA_PREVIA_BORRADOR = '/menu.html?vista=borrador&v=carta-organizada';
 const fotosBorradorMenu = new Map();
 let generandoFotoBorradorMenu = false;
 let completandoFotosMenu = false;
@@ -378,7 +378,7 @@ function enviarVistaClientesBorrador(marco) {
     productos: borradorMenu.productos.map(producto => {
       const foto = fotosBorradorMenu.get(producto);
       const imagen_url = foto?.previa || producto.imagen_url;
-      const revisionFoto = revisarDatosFotoMenu(producto) || (!imagen_url ? 'Foto pendiente' : '');
+      const revisionFoto = imagen_url ? '' : 'Foto opcional';
       return { ...producto, imagen_url, revisionFoto };
     }),
     editable: marco.id === 'revision-carta-frame'
@@ -408,20 +408,28 @@ function pendientesRevisionBorrador() {
 function actualizarResumenRevision() {
   const pendientes = pendientesRevisionBorrador();
   const obligatorios = pendientes.filter(p => p.obligatorio).length;
-  document.getElementById('revision-resumen').textContent =
-    `${borradorMenu.productos.length - pendientes.length} listos · ${pendientes.length} por revisar`;
+  const fotosPendientes = borradorMenu.productos.filter(p => !p.imagen_url && !fotosBorradorMenu.has(p)).length;
+  const listos = borradorMenu.productos.length - obligatorios;
+  const resumen = [`${listos} ${listos === 1 ? 'listo' : 'listos'} para publicar`];
+  if (obligatorios) resumen.push(`${obligatorios} por corregir`);
+  if (fotosPendientes) resumen.push(`${fotosPendientes} sin foto (opcional)`);
+  document.getElementById('revision-resumen').textContent = resumen.join(' · ');
   const aviso = document.getElementById('revision-bloqueos');
   aviso.hidden = !pendientes.length;
   aviso.textContent = obligatorios
     ? `${obligatorios} por corregir antes de publicar.`
     : 'Puedes publicar y completar las fotos después.';
-  document.getElementById('revision-siguiente').hidden = !pendientes.length;
+  const siguiente = document.getElementById('revision-siguiente');
+  siguiente.hidden = !pendientes.length;
+  siguiente.textContent = obligatorios ? 'Revisar correcciones' : 'Revisar fotos opcionales';
 }
 
 let indiceRevisionActual = null;
 function revisarSiguienteProducto() {
   if (!borradorMenu) return;
-  const pendientes = pendientesRevisionBorrador().sort((a, b) => Number(b.obligatorio) - Number(a.obligatorio));
+  const todos = pendientesRevisionBorrador();
+  const correcciones = todos.filter(p => p.obligatorio);
+  const pendientes = correcciones.length ? correcciones : todos;
   const actual = pendientes.findIndex(p => p.indice === indiceRevisionActual);
   const siguiente = pendientes[(actual + 1) % pendientes.length];
   if (siguiente) abrirCartaBorrador(siguiente.indice);
