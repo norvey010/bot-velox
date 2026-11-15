@@ -643,16 +643,31 @@ body:has(#contenedor-menu) > header {
   color: #A53D24;
 }
 
-/* Las fotos conservan el encuadre original dentro de cada tarjeta. */
+/* Fotos de la carta pública y del borrador, con su encuadre original. */
 #contenedor-menu .menu-product-reveal > div:first-child:has(> img) {
   height: auto;
   min-height: 0;
   aspect-ratio: 1;
-  align-self: center;
+  align-self: flex-start;
+  margin-block-start: .7rem;
+  margin-inline-start: .7rem;
+  border: 0;
+  border-radius: .55rem;
+  background: var(--velox-inset);
 }
 @media (max-width: 639px) {
   #contenedor-menu .menu-product-reveal > div:first-child:has(> img) {
-    width: 39%;
+    width: 36%;
+  }
+  #contenedor-menu .menu-product-reveal:has(> div:first-child > img) > div:nth-child(2) {
+    padding-inline-start: .65rem;
+  }
+}
+@media (min-width: 640px) {
+  #contenedor-menu .menu-product-reveal > div:first-child:has(> img) {
+    align-self: stretch;
+    width: auto;
+    margin: .75rem .75rem 0;
   }
 }
 
