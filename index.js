@@ -1044,29 +1044,6 @@ async function guardarResultadoLecturaMenu(id, valores) {
     if (!data) throw errorMenu(MENSAJE_LECTURA_VENCIDA);
 }
 
-async function completarFotosEnServidor(resultado, entrada, informar, signal) {
-    const pendientes = resultado.productos.filter(producto => !producto.imagen_url && !revisarDatosFotoMenu(producto));
-    const bucket = supabaseAdmin.storage.from('productos');
-    let fallosSeguidos = 0;
-    for (const [indice, producto] of pendientes.entries()) {
-        if (signal.aborted || !limitarAccion(`imagen:${entrada.usuarioId}`, 60, 10 * 60 * 1000)) break;
-        await informar(`Preparando imágenes, ${indice + 1} de ${pendientes.length}…`);
-        try {
-            if (signal.aborted) break;
-            const { archivoImagen } = await generarFotoMenu(producto, entrada.restaurante_id, entrada.usuarioId, signal);
-            if (signal.aborted) break;
-            const ruta = `restaurante_${entrada.restaurante_id}/borrador-${crypto.randomUUID()}.webp`;
-            const { error } = await bucket.upload(ruta, archivoImagen, { contentType: 'image/webp', upsert: false });
-            if (error) throw error;
-            producto.imagen_url = bucket.getPublicUrl(ruta).data.publicUrl;
-            fallosSeguidos = 0;
-        } catch (error) {
-            console.error('Foto automática del menú pendiente:', error.status || error.code || error.name);
-            if ([401, 403, 429].includes(error.status) || ++fallosSeguidos >= 3) break;
-        }
-    }
-}
-
 const TABLA_CACHE_CARTA = 'velox_cache_carta';
 
 function huellaArchivosCarta(archivos) {
@@ -1122,8 +1099,6 @@ async function ejecutarLecturaEnFondo(id, entrada, liberar) {
             const guardada = await reutilizarLecturaCarta(entrada);
             const resultado = guardada || await procesarFuentesLecturaMenu(
                 entrada, () => controlador.signal.aborted, avance, controlador.signal);
-            if (controlador.signal.aborted) throw errorMenu(MENSAJE_LECTURA_VENCIDA);
-            if (!guardada && entrada.crearFotos) await completarFotosEnServidor(resultado, entrada, informar, controlador.signal);
             if (controlador.signal.aborted) throw errorMenu(MENSAJE_LECTURA_VENCIDA);
             if (!guardada) {
                 const { error } = await supabaseAdmin.from(TABLA_CACHE_CARTA).upsert({
@@ -1196,8 +1171,7 @@ app.post('/api/importar-menu', autenticarImportacionMenu, (req, res, next) => {
         if (errorFotos) throw errorFotos;
         const entrada = { fuentesMenu, versionMenu, restaurante_id, idLectura: req.idLectura,
             fotosActuales: fotosReutilizablesMenu(productosActuales || []),
-            huella: huellaArchivosCarta(files),
-            crearFotos: req.body.crear_fotos !== '0', usuarioId: req.usuarioImportacion.id };
+            huella: huellaArchivosCarta(files) };
         if (!req.liberarCupoLectura) {
             const resultado = await procesarFuentesLecturaMenu(entrada, () => res.destroyed);
             return res.json(resultado);

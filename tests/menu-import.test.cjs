@@ -73,7 +73,7 @@ test('una carga confirmada sigue sin conexión y otro intento recupera la misma 
  const procesar = s.routes.get('/api/importar-menu');
  const consultar = s.routes.get('GET /api/lectura-menu/:restaurante');
  const solicitud = () => ({
-   body: { restaurante_id: 'rest-1', crear_fotos: '0' }, params: { restaurante: 'rest-1' },
+   body: { restaurante_id: 'rest-1', crear_fotos: '1' }, params: { restaurante: 'rest-1' },
    files: [{ mimetype: 'image/png', buffer: png }],
    supabaseUsuario: s.user, usuarioImportacion: { id: 'user' },
    liberarCupoLectura: liberar
@@ -445,7 +445,7 @@ test('una lectura sin respuesta vence, aborta el trabajo y libera el cupo sin ge
  const liberada = new Promise(resolve => { liberar = resolve; });
  const respuesta = s.response();
  await s.routes.get('/api/importar-menu')({
-   body: { restaurante_id: 'rest-1', crear_fotos: '0' },
+   body: { restaurante_id: 'rest-1' },
    files: [{ mimetype: 'image/png', buffer: png }],
    supabaseUsuario: s.user, usuarioImportacion: { id: 'user' }, liberarCupoLectura: liberar
  }, respuesta);
@@ -544,14 +544,15 @@ test('completar fotos omite platos con foto o sin datos suficientes', async () =
  await n.context.descartarRevisionMenu();
 });
 
-test('la carga envía la preferencia de fotos al servidor', async () => {
+test('la carga muestra el borrador sin pedir fotos automáticas', async () => {
  const n = navegador();
- n.el('menu-fotos-automaticas').checked = true;
+ assert.doesNotMatch(read('dashboard.html'), /menu-fotos-automaticas/);
  n.context.FormData = class {
    append() {}
    set(clave, valor) { this[clave] = valor; }
  };
  await n.context.enviarMenuConIA({preventDefault() {}});
- assert.equal(n.requests[0].req.body.crear_fotos, '1');
+ assert.equal(n.requests[0].req.body.crear_fotos, undefined);
+ assert.equal(n.el('revision-menu').hidden, false);
  assert.equal(n.requests.length, 1);
 });
