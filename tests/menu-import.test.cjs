@@ -544,9 +544,9 @@ test('completar fotos omite platos con foto o sin datos suficientes', async () =
  await n.context.descartarRevisionMenu();
 });
 
-test('la carga envía la preferencia de fotos al servidor', async () => {
+test('la carga pide fotos automáticas sin mostrar la casilla', async () => {
  const n = navegador();
- n.el('menu-fotos-automaticas').checked = true;
+ assert.doesNotMatch(read('dashboard.html'), /menu-fotos-automaticas/);
  n.context.FormData = class {
    append() {}
    set(clave, valor) { this[clave] = valor; }

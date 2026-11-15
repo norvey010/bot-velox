@@ -267,10 +267,6 @@
                 <ul id="menu-file-preview-list" class="space-y-2 pb-2" aria-label="Archivos seleccionados"></ul>
               </details>
               <details class="text-xs text-slate-400"><summary class="cursor-pointer py-2">Formatos y límites</summary><p id="menu-limites" class="pb-2 leading-relaxed">JPG, PNG, WEBP, GIF o PDF. Hasta 10 archivos, 8 MB cada uno, 25 MB en total y 20 páginas.</p></details>
-              <label class="flex items-start gap-2 text-sm text-slate-200">
-                <input id="menu-fotos-automaticas" type="checkbox" checked class="mt-1">
-                Crear fotos faltantes antes de mostrar el borrador (cada foto genera costo)
-              </label>
               <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700">Leer con IA</button>
             </form>
             <p id="importacion-menu-status" class="mt-3 hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
@@ -1802,6 +1798,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=sin-subtitulo"></script>
+  <script src="/app.menu-import.js?v=fotos-sin-casilla"></script>
 </body>
 </html>

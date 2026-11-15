@@ -580,7 +580,6 @@ async function enviarMenuConIA(event) {
   if(files.some(f=>f.size>8*1024*1024 || !tipos.includes(f.type))) { estadoImportacion('Usa JPG, PNG, WEBP, GIF o PDF, de máximo 8 MB cada uno.','error');return; }
   if(files.reduce((n,f)=>n+f.size,0)>25*1024*1024) { estadoImportacion('Los archivos juntos deben pesar máximo 25 MB.','error');return; }
   if(!RESTAURANTE_ID) { estadoImportacion('Espera a que termine de cargar tu restaurante.','error');return; }
-  const crearFotos = document.getElementById('menu-fotos-automaticas').checked;
   subiendoArchivosMenu = true;
   indicarLecturaMenu(true);
   document.getElementById('btn-procesar-ia').textContent = 'Subiendo archivos…';
@@ -592,7 +591,7 @@ async function enviarMenuConIA(event) {
     const formData=new FormData();
     for(const archivo of archivos) formData.append('menuFile',archivo.blob,archivo.nombre);
     formData.set('restaurante_id',RESTAURANTE_ID);
-    formData.set('crear_fotos', crearFotos ? '1' : '0');
+    formData.set('crear_fotos', '1');
     estadoImportacion('Subiendo archivos… Mantén el panel abierto hasta confirmar la recepción.');
     const referencia=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : '';
     const { respuesta, resultado } = await conPlazoLecturaMenu(async signal => {
