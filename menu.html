@@ -118,6 +118,11 @@
                 <p id="estado-servicio" class="hidden mt-2 max-w-xl rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-200" role="status" aria-live="polite"></p>
             </div>
         </div>
+        <div id="busqueda-carta" class="mx-auto mt-2 max-w-7xl" hidden>
+            <label class="sr-only" for="buscar-plato-carta">Buscar un plato en toda la carta</label>
+            <input id="buscar-plato-carta" type="search" placeholder="Buscar un plato" class="min-h-11 w-full rounded-lg border border-slate-700 bg-[#FFF8EF] px-3 text-sm text-slate-100 sm:max-w-sm">
+            <span id="resultados-busqueda-carta" role="status" class="sr-only"></span>
+        </div>
         <!-- Las categorías permanecen visibles porque forman parte del encabezado fijo. -->
         <div class="max-w-7xl mx-auto pt-3">
             <div id="contenedor-categorias" class="flex gap-2 overflow-x-auto whitespace-nowrap pb-1 scrollbar-none touch-pan-x">
@@ -205,7 +210,7 @@
     </div>
 </div>
 
-    <script src="/app.menu-categorias.js"></script>
+    <script src="/app.menu-categorias.js?v=carta-organizada"></script>
     <script>
         var cart = [];
         var numeroWhatsAppRestaurante = '';
@@ -271,6 +276,8 @@ function mostrarCartaMenu(restData, productos) {
         categoria: resolverCategoriaCombo(producto)
     }));
 
+    document.getElementById('busqueda-carta').hidden = !todosLosProductos.length;
+
     // Extraer categorías únicas para los botones superiores
     const categoriasSet = new Set();
     todosLosProductos.forEach(p => categoriasSet.add(p.categoria || 'General'));
@@ -283,7 +290,9 @@ function mostrarCartaMenu(restData, productos) {
     });
     if (contenedorCategorias) contenedorCategorias.innerHTML = botonesHtml;
 
-    if (categoriasMenu.length) filtrarCategoria(categoriasMenu.includes(categoriaAnterior) ? categoriaAnterior : categoriasMenu[0]);
+    if (categoriasMenu.length) {
+        filtrarCategoria(categoriasMenu.includes(categoriaAnterior) ? categoriaAnterior : categoriasMenu[0]);
+    }
     else renderizarProductos(todosLosProductos);
 }
 
@@ -335,7 +344,7 @@ function obtenerVisualProducto(producto) {
     </div>`;
 }
 
-function renderizarProductos(listaProds) {
+function renderizarProductos(listaProds, mensajeVacio = 'Aún no hay productos en esta carta.') {
     var contenedor = document.getElementById('contenedor-menu');
     if (observadorTarjetasMenu) {
         observadorTarjetasMenu.disconnect();
@@ -343,21 +352,18 @@ function renderizarProductos(listaProds) {
     }
     
     if (!listaProds || listaProds.length === 0) {
-        contenedor.innerHTML = `<p class="text-center text-slate-400 p-6">Aún no hay productos en esta carta.</p>`;
+        contenedor.innerHTML = `<p class="text-center text-slate-400 p-6">${escaparHtml(mensajeVacio)}</p>`;
         return;
     }
 
-    const productosPorCategoria = {};
-    listaProds.forEach(prod => {
-        const cat = resolverCategoriaCombo(prod);
-        if (!productosPorCategoria[cat]) {
-            productosPorCategoria[cat] = [];
-        }
-        productosPorCategoria[cat].push(prod);
-    });
+    const productosPorCategoria = new Map();
+    for (const producto of listaProds) {
+        if (!productosPorCategoria.has(producto.categoria)) productosPorCategoria.set(producto.categoria, []);
+        productosPorCategoria.get(producto.categoria).push(producto);
+    }
 
     var html = '';
-    for (const [categoria, lista] of Object.entries(productosPorCategoria)) {
+    for (const [categoria, lista] of productosPorCategoria) {
         lista.sort(compararPreciosMenu);
         const claseAnimacion = direccionAnimacionMenu === 'previous' ? 'menu-category-enter-previous' : 'menu-category-enter-next';
         html += `<div class="mb-8 ${claseAnimacion}"><h2 class="text-2xl md:text-3xl font-extrabold text-white border-b border-slate-800 pb-3 mb-5 tracking-tight"><span class="text-white">✦</span> ${escaparHtml(categoria)}</h2>`;
@@ -400,7 +406,7 @@ function renderizarProductos(listaProds) {
                         <div class="mt-2 sm:mt-5 flex flex-col gap-2 sm:gap-3">
                             <span class="font-extrabold text-white text-base sm:text-xl">${precio}</span>
                             ${editar && (producto.revisionFoto || producto.revision_opciones || !(Number(producto.precio) > 0))
-                                ? `<button type="button" data-editar-borrador="${escaparHtml(producto.id)}" class="relative z-10 min-h-11 self-start rounded-lg border border-amber-400/50 px-2 text-left text-xs font-semibold text-amber-300">Revisar${producto.revisionFoto ? ' · ' + escaparHtml(producto.revisionFoto) : producto.revision_opciones ? ' opciones' : ' precio'}</button>` : ''}
+                                ? `<button type="button" data-editar-borrador="${escaparHtml(producto.id)}" class="relative z-10 min-h-11 self-start rounded-lg border border-amber-400/50 px-2 text-left text-xs font-semibold text-amber-300">Revisar${!(Number(producto.precio) > 0) ? ' precio' : producto.revision_opciones ? ' opciones' : ' · ' + escaparHtml(producto.revisionFoto)}</button>` : ''}
                             ${accionHtml}
                         </div>
                     </div>
@@ -435,7 +441,9 @@ function filtrarCategoria(categoriaElegida) {
     }
     indiceCategoriaActiva = nuevoIndice;
     document.querySelectorAll('#contenedor-categorias [data-categoria]').forEach(boton => {
-        const activa = boton.dataset.categoria === categoriaElegida;
+        const activa = boton.dataset.categoria === categoriaElegida
+            && !document.getElementById('buscar-plato-carta').value.trim();
+        boton.setAttribute('aria-pressed', String(activa));
         boton.className = activa
             ? 'shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-red-600 text-white transition shadow whitespace-nowrap'
             : 'shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#FFF8EF] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap';
@@ -451,12 +459,33 @@ function filtrarCategoria(categoriaElegida) {
         const limite = barraCategorias.scrollWidth - barraCategorias.clientWidth;
         barraCategorias.scrollTo({ left: Math.max(0, Math.min(limite, posicion)), behavior: 'smooth' });
     }
-    const filtrados = todosLosProductos.filter(p => resolverCategoriaCombo(p) === categoriaElegida);
-    renderizarProductos(filtrados);
+    mostrarProductosCarta();
 }
 
+function mostrarProductosCarta() {
+    const criterio = normalizarTexto(document.getElementById('buscar-plato-carta').value).trim();
+    const estado = document.getElementById('resultados-busqueda-carta');
+    if (!criterio) {
+        estado.textContent = '';
+        renderizarProductos(todosLosProductos.filter(p => p.categoria === categoriasMenu[indiceCategoriaActiva]));
+        return;
+    }
+
+    const palabras = criterio.split(/\s+/);
+    const coincidencias = todosLosProductos.filter(producto => {
+        const texto = normalizarTexto([producto.nombre, producto.categoria, producto.descripcion].join(' '));
+        return palabras.every(palabra => texto.includes(palabra));
+    });
+    estado.textContent = `${coincidencias.length} resultados en la carta`;
+    renderizarProductos(coincidencias, 'No encontramos platos. Prueba otro nombre o ingrediente.');
+}
+
+document.getElementById('buscar-plato-carta').addEventListener('input', () => {
+    if (indiceCategoriaActiva >= 0) filtrarCategoria(categoriasMenu[indiceCategoriaActiva]);
+});
+
 function cambiarCategoriaPorDeslizamiento(direccion) {
-    if (!categoriasMenu.length || indiceCategoriaActiva < 0) return;
+    if (!categoriasMenu.length || indiceCategoriaActiva < 0 || document.getElementById('buscar-plato-carta').value.trim()) return;
     const siguiente = Math.max(0, Math.min(categoriasMenu.length - 1, indiceCategoriaActiva + direccion));
     if (siguiente === indiceCategoriaActiva) return;
     filtrarCategoria(categoriasMenu[siguiente]);
@@ -647,6 +676,7 @@ document.addEventListener('click', event => {
     const botonCategoria = elemento?.closest('#contenedor-categorias [data-categoria]');
     if (botonCategoria) {
         event.preventDefault();
+        document.getElementById('buscar-plato-carta').value = '';
         filtrarCategoria(botonCategoria.dataset.categoria);
     }
 });
