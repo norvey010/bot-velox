@@ -45,13 +45,41 @@
     }
     #nombre-restaurante:empty { display: none; }
     /* Ocultar barra de desplazamiento en la barra de categorías */
-    .scrollbar-none::-webkit-scrollbar {
-        display: none;
+    .carta-categorias-marco {
+        position: relative;
+        min-width: 0;
+        flex: 1;
     }
-    .scrollbar-none {
-        -ms-overflow-style: none;
+    #navegacion-carta #contenedor-categorias {
+        gap: .375rem;
+        padding: .15rem .2rem;
         scrollbar-width: none;
     }
+    #contenedor-categorias::-webkit-scrollbar { display: none; }
+    #navegacion-carta #contenedor-categorias button {
+        flex: 0 0 auto;
+        max-width: 100%;
+        min-height: 2.75rem;
+        padding: .35rem .65rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        line-height: 1.15;
+    }
+    .carta-categorias-marco[data-mas]::after {
+        content: "";
+        position: absolute;
+        inset: 0 0 0 auto;
+        width: .85rem;
+        pointer-events: none;
+        background: linear-gradient(to right, transparent, var(--velox-surface));
+    }
+    #alternar-busqueda-carta {
+        width: 2.75rem;
+        height: 2.75rem;
+        flex: none;
+    }
+    #alternar-busqueda-carta[aria-expanded="false"] .icono-cerrar-busqueda,
+    #alternar-busqueda-carta[aria-expanded="true"] .icono-abrir-busqueda { display: none; }
     .velox-option-list {
         scrollbar-width: thin;
         scrollbar-color: rgba(165, 61, 36, .55) rgba(215, 194, 173, .7);
@@ -118,14 +146,20 @@
                 <p id="estado-servicio" class="hidden mt-2 max-w-xl rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-200" role="status" aria-live="polite"></p>
             </div>
         </div>
-        <div id="busqueda-carta" class="mx-auto mt-2 max-w-7xl" hidden>
-            <label class="sr-only" for="buscar-plato-carta">Buscar un plato en toda la carta</label>
-            <input id="buscar-plato-carta" type="search" placeholder="Buscar un plato" class="min-h-11 w-full rounded-lg border border-slate-700 bg-[#FFF8EF] px-3 text-sm text-slate-100 sm:max-w-sm">
-            <span id="resultados-busqueda-carta" role="status" class="sr-only"></span>
-        </div>
-        <!-- Las categorías permanecen visibles porque forman parte del encabezado fijo. -->
-        <div class="max-w-7xl mx-auto pt-3">
-            <div id="contenedor-categorias" class="flex gap-2 overflow-x-auto whitespace-nowrap pb-1 scrollbar-none touch-pan-x">
+        <div id="navegacion-carta" class="mx-auto mt-2 max-w-7xl" hidden>
+            <div class="flex items-center gap-2">
+                <div id="marco-categorias-carta" class="carta-categorias-marco">
+                    <nav id="contenedor-categorias" aria-label="Categorías de la carta" class="flex overflow-x-auto touch-pan-x"></nav>
+                </div>
+                <button type="button" id="alternar-busqueda-carta" aria-label="Buscar en la carta" aria-expanded="false" aria-controls="busqueda-carta" class="grid place-items-center rounded-lg border border-slate-700 bg-[#FFF8EF]">
+                    <svg class="icono-abrir-busqueda" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+                    <svg class="icono-cerrar-busqueda" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                </button>
+            </div>
+            <div id="busqueda-carta" class="mt-2" hidden>
+                <label class="sr-only" for="buscar-plato-carta">Buscar un plato en toda la carta</label>
+                <input id="buscar-plato-carta" type="search" placeholder="Buscar por plato o ingrediente" class="min-h-11 w-full rounded-lg border border-slate-700 bg-[#FFF8EF] px-3 text-sm text-slate-100 sm:max-w-sm">
+                <span id="resultados-busqueda-carta" role="status" class="sr-only"></span>
             </div>
         </div>
     </header>
@@ -276,7 +310,7 @@ function mostrarCartaMenu(restData, productos) {
         categoria: resolverCategoriaCombo(producto)
     }));
 
-    document.getElementById('busqueda-carta').hidden = !todosLosProductos.length;
+    document.getElementById('navegacion-carta').hidden = !todosLosProductos.length;
 
     // Extraer categorías únicas para los botones superiores
     const categoriasSet = new Set();
@@ -286,9 +320,11 @@ function mostrarCartaMenu(restData, productos) {
     
     let botonesHtml = '';
     categoriasMenu.forEach(cat => {
-        botonesHtml += `<button type="button" data-categoria="${escaparHtml(cat)}" class="shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#FFF8EF] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap">${escaparHtml(cat)}</button>`;
+        botonesHtml += `<button type="button" data-categoria="${escaparHtml(cat)}" class="rounded-lg text-xs sm:text-sm font-semibold bg-[#FFF8EF] border border-slate-800 text-slate-200 hover:border-red-500 transition">${escaparHtml(cat)}</button>`;
     });
-    if (contenedorCategorias) contenedorCategorias.innerHTML = botonesHtml;
+    contenedorCategorias.innerHTML = botonesHtml;
+    if (!categoriaAnterior) contenedorCategorias.scrollLeft = 0;
+    actualizarDesbordeCategorias();
 
     if (categoriasMenu.length) {
         filtrarCategoria(categoriasMenu.includes(categoriaAnterior) ? categoriaAnterior : categoriasMenu[0]);
@@ -440,24 +476,23 @@ function filtrarCategoria(categoriaElegida) {
         direccionAnimacionMenu = nuevoIndice > indiceAnterior ? 'next' : 'previous';
     }
     indiceCategoriaActiva = nuevoIndice;
-    document.querySelectorAll('#contenedor-categorias [data-categoria]').forEach(boton => {
-        const activa = boton.dataset.categoria === categoriaElegida
-            && !document.getElementById('buscar-plato-carta').value.trim();
-        boton.setAttribute('aria-pressed', String(activa));
-        boton.className = activa
-            ? 'shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-red-600 text-white transition shadow whitespace-nowrap'
-            : 'shrink-0 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#FFF8EF] border border-slate-800 text-slate-200 hover:border-red-500 hover:text-white transition shadow whitespace-nowrap';
-    });
-    const barraCategorias = document.getElementById('contenedor-categorias');
-    const botonActivo = Array.from(document.querySelectorAll('#contenedor-categorias [data-categoria]'))
-        .find(boton => boton.dataset.categoria === categoriaElegida);
-    if (barraCategorias && botonActivo) {
-        const posicion = botonActivo.getBoundingClientRect().left
-            - barraCategorias.getBoundingClientRect().left
-            + barraCategorias.scrollLeft
-            - (barraCategorias.clientWidth - botonActivo.clientWidth) / 2;
-        const limite = barraCategorias.scrollWidth - barraCategorias.clientWidth;
-        barraCategorias.scrollTo({ left: Math.max(0, Math.min(limite, posicion)), behavior: 'smooth' });
+    const barra = document.getElementById('contenedor-categorias');
+    const buscando = document.getElementById('buscar-plato-carta').value.trim();
+    let seleccionado;
+    for (const boton of barra.querySelectorAll('[data-categoria]')) {
+        const coincide = boton.dataset.categoria === categoriaElegida;
+        const activo = coincide && !buscando;
+        boton.setAttribute('aria-pressed', String(Boolean(activo)));
+        boton.classList.toggle('bg-red-600', Boolean(activo));
+        if (coincide) seleccionado = boton;
+    }
+    if (seleccionado && !buscando && nuevoIndice !== indiceAnterior) {
+        const visible = barra.getBoundingClientRect();
+        const etiqueta = seleccionado.getBoundingClientRect();
+        if (nuevoIndice === 0) barra.scrollLeft = 0;
+        else if (etiqueta.left < visible.left) barra.scrollLeft += etiqueta.left - visible.left - 3;
+        else if (etiqueta.right > visible.right - 10) barra.scrollLeft += etiqueta.right - visible.right + 10;
+        actualizarDesbordeCategorias();
     }
     mostrarProductosCarta();
 }
@@ -479,6 +514,44 @@ function mostrarProductosCarta() {
     estado.textContent = `${coincidencias.length} resultados en la carta`;
     renderizarProductos(coincidencias, 'No encontramos platos. Prueba otro nombre o ingrediente.');
 }
+
+function actualizarDesbordeCategorias() {
+    const barra = document.getElementById('contenedor-categorias');
+    const faltaAncho = barra.scrollWidth - barra.clientWidth - barra.scrollLeft > 3;
+    document.getElementById('marco-categorias-carta').toggleAttribute('data-mas', faltaAncho);
+}
+
+function alternarBusquedaCarta(abrir, devolverFoco = false) {
+    const panel = document.getElementById('busqueda-carta');
+    const boton = document.getElementById('alternar-busqueda-carta');
+    const campo = document.getElementById('buscar-plato-carta');
+    panel.hidden = !abrir;
+    boton.setAttribute('aria-expanded', String(abrir));
+    boton.setAttribute('aria-label', abrir ? 'Cerrar búsqueda' : 'Buscar en la carta');
+    if (abrir) campo.focus();
+    else {
+        campo.value = '';
+        if (devolverFoco) {
+            if (indiceCategoriaActiva >= 0) filtrarCategoria(categoriasMenu[indiceCategoriaActiva]);
+            boton.focus();
+        }
+    }
+}
+
+const barraCategoriasCarta = document.getElementById('contenedor-categorias');
+barraCategoriasCarta.addEventListener('scroll', actualizarDesbordeCategorias, { passive: true });
+window.addEventListener('resize', actualizarDesbordeCategorias);
+document.fonts?.ready.then(actualizarDesbordeCategorias);
+document.getElementById('alternar-busqueda-carta').addEventListener('click', event => {
+    const abrir = event.currentTarget.getAttribute('aria-expanded') === 'false';
+    alternarBusquedaCarta(abrir, !abrir);
+});
+document.getElementById('navegacion-carta').addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !document.getElementById('busqueda-carta').hidden) {
+        event.preventDefault();
+        alternarBusquedaCarta(false, true);
+    }
+});
 
 document.getElementById('buscar-plato-carta').addEventListener('input', () => {
     if (indiceCategoriaActiva >= 0) filtrarCategoria(categoriasMenu[indiceCategoriaActiva]);
@@ -676,7 +749,7 @@ document.addEventListener('click', event => {
     const botonCategoria = elemento?.closest('#contenedor-categorias [data-categoria]');
     if (botonCategoria) {
         event.preventDefault();
-        document.getElementById('buscar-plato-carta').value = '';
+        alternarBusquedaCarta(false);
         filtrarCategoria(botonCategoria.dataset.categoria);
     }
 });
