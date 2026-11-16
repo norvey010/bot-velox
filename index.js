@@ -175,7 +175,7 @@ function idsAdministradoresPlataforma() {
 
 async function autenticarAdminPlataforma(req, res, next) {
     try {
-        const token = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '').trim();
+        const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
         if (!token) return res.status(401).json({ error: 'Inicia sesión para continuar.' });
         if (!supabaseAdmin) return res.status(503).json({ error: 'El panel administrativo no está configurado.' });
         const { data, error } = await supabaseAdmin.auth.getUser(token);
