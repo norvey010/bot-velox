@@ -91,11 +91,13 @@ test('recorrido integrado: carta → servidor → pedido → panel y enlace What
   const api=endpoint();const d=dashboard();d.run('RESTAURANTE_ID="rest-1"');await d.context.iniciarConexionPedidos();const html=read('menu.html');
   const start=html.indexOf('    let enviandoPedido = false;'),end=html.indexOf('        window.cargarMenu',start);
   const fields={'input-direccion':{value:'Calle de prueba'},'select-pago':{value:'Efectivo'},'input-notas':{value:''}};
+  Object.assign(fields, {'pedido-referencia':{},'pedido-whatsapp':{},'pedido-recibido':{showModal(){this.open=true}}});
   const storage=new Map();let outbound;
   const context={console,crypto,sessionStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},cart:[{id:'prod-1',nombre:'Hamburguesa',cantidad:2}],document:{getElementById:id=>fields[id],querySelector:()=>({disabled:false,textContent:''})},window:{MENU_DISPONIBLE:true,RESTAURANTE_ACTUAL:api.restaurant,location:{href:''}},actualizarBarraCarrito(){},cerrarModalPedido(){},alert:message=>{throw Error(message)},fetch:async(url,request)=>{outbound=JSON.parse(request.body);const result=await api.send(outbound);if(result.statusCode===201)d.channels[0].handlers[0].fn({new:api.orders[0]});return {ok:result.statusCode<400,json:async()=>result.data}}};
   vm.createContext(context);vm.runInContext(html.slice(start,end),context);await context.confirmarYEnviarPedido({preventDefault(){}});
   assert(outbound.solicitud_id);assert.equal(api.orders.length,1);assert.equal(api.orders[0].total,30000);assert.equal(d.context.impresionesPrueba[0],api.orders[0].id);assert.equal(context.cart.length,0);
-  const whatsapp=new URL(context.window.location.href);assert.equal(whatsapp.hostname,'wa.me');assert(whatsapp.searchParams.get('text').includes('Referencia Velox Bot:* pedido-1'));assert(whatsapp.searchParams.get('text').includes('30.000'));
+  assert(fields['pedido-recibido'].open);assert.equal(context.window.location.href,'');
+  const whatsapp=new URL(fields["pedido-whatsapp"].href);assert.equal(whatsapp.hostname,'wa.me');assert(whatsapp.searchParams.get('text').includes('Referencia Velox Bot:* pedido-1'));assert(whatsapp.searchParams.get('text').includes('30.000'));
 });
 
 test('el editor conserva el orden de la carta y permite recorrer una categoría larga',()=>{

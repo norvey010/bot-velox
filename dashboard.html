@@ -140,6 +140,10 @@
 
     <!-- SECCIÓN 1: PEDIDOS -->
     <section id="sec-pedidos" class="space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-800 p-3">
+        <p id="estado-recepcion-pedidos" class="text-sm font-semibold" role="status">Cargando disponibilidad…</p>
+        <button id="control-recepcion-pedidos" type="button" onclick="cambiarRecepcionPedidos()" class="min-h-11 rounded-lg bg-slate-700 px-3 text-sm" hidden></button>
+      </div>
       <section id="resumen-pedidos" aria-labelledby="resumen-pedidos-titulo" class="space-y-3 rounded-xl border border-slate-700 bg-slate-800 p-3 sm:p-4">
         <div><h2 id="resumen-pedidos-titulo" class="text-lg font-bold text-white">Resumen de pedidos</h2><p class="mt-1 text-xs text-slate-400">Elige un período o una fecha para ver sus cifras y pedidos.</p></div>
       <div class="flex flex-wrap items-end gap-2">
@@ -267,7 +271,7 @@
                 <ul id="menu-file-preview-list" class="space-y-2 pb-2" aria-label="Archivos seleccionados"></ul>
               </details>
               <details class="text-xs text-slate-400"><summary class="cursor-pointer py-2">Formatos y límites</summary><p id="menu-limites" class="pb-2 leading-relaxed">JPG, PNG, WEBP, GIF o PDF. Hasta 10 archivos, 8 MB cada uno, 25 MB en total y 20 páginas.</p></details>
-              <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700">Leer con IA</button>
+              <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700">Crear borrador</button>
             </form>
             <p id="importacion-menu-status" class="mt-3 hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
             <section id="revision-menu" hidden class="mt-4 space-y-3 rounded-xl border border-slate-600 p-3" aria-labelledby="revision-menu-titulo">
@@ -556,6 +560,7 @@
       // 3. Asignar ID global y en el DOM de forma segura
       RESTAURANTE_ID = restaurante.id;
       configurarVistaPreviaCarta(restaurante.slug);
+      cargarConfiguracion();
       if (!document.getElementById('sec-menu-ia').classList.contains('hidden')) cargarProductos();
       if (typeof recuperarLecturaMenu === 'function' && !document.getElementById('sec-menu-ia').classList.contains('hidden')) recuperarLecturaMenu();
       ANCHO_PAPEL_IMPRESORA = Number(restaurante.printer_paper_width) === 58 ? 58 : 80;
@@ -591,6 +596,7 @@
         cargarProductos();
         recuperarLecturaMenu();
       }
+      if (seccion === 'pedidos') cargarConfiguracion();
       if (seccion === 'configuracion') {
         mostrarInicioAjustes();
         mostrarAviso(document.getElementById('ajustes-inicio-status'), 'Cargando ajustes…', 'info');
@@ -1044,7 +1050,9 @@
             <div class="min-w-0 flex-1"><h3 class="break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre)}</h3><p class="text-sm font-bold text-slate-200">$${Number(p.precio).toLocaleString('es-CO')}</p><p class="truncate text-xs text-slate-400">${escaparHtmlUI(resolverCategoriaCombo(p))}</p></div>
           </div>
           <button type="button" data-editar-tarjeta onclick="prepararEdicionProducto(${id})" aria-label="Editar ${escaparHtmlUI(p.nombre)}" aria-haspopup="dialog"></button>
-          <div class="mt-2 flex justify-end"><button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${p.disponible === false}, this)" aria-label="${p.disponible === false ? 'Volver a ofrecer' : 'Marcar agotado'}: ${escaparHtmlUI(p.nombre)}" aria-pressed="${p.disponible !== false}" class="relative z-10 min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold ${p.disponible === false ? 'text-amber-300' : 'text-emerald-300'}">${p.disponible === false ? 'Agotado · Activar' : 'Disponible ✓'}</button></div>
+          <div class="mt-2 flex justify-between">
+          <button type="button" onclick="prepararEdicionProducto(${id})" class="relative z-10 min-h-11 px-2 font-semibold text-red-400">Editar</button>
+          <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${p.disponible === false}, this)" aria-label="${p.disponible === false ? 'Volver a ofrecer' : 'Marcar agotado'}: ${escaparHtmlUI(p.nombre)}" aria-pressed="${p.disponible !== false}" class="relative z-10 min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold ${p.disponible === false ? 'text-amber-300' : 'text-emerald-300'}">${p.disponible === false ? 'Agotado · Activar' : 'Marcar agotado'}</button></div>
         </article>`;
       }).join('');
     }
@@ -1475,11 +1483,40 @@
       }
       document.getElementById('ajustes-inicio-status').classList.add('hidden');
       CONFIGURACION_ACTUAL = data;
+      mostrarRecepcionPedidos();
       document.getElementById('conf-nombre').value = data.nombre_restaurante || '';
       document.getElementById('conf-phone').value = data.telefono || '';
       document.getElementById('conf-printer-width').value = Number(data.printer_paper_width) === 58 ? '58' : '80';
       document.getElementById('menu-activo').checked = data.menu_activo !== false;
       actualizarVistaPreviaImpresora(false);
+    }
+
+    function mostrarRecepcionPedidos() {
+      const activo = CONFIGURACION_ACTUAL.menu_activo !== false;
+      document.getElementById('estado-recepcion-pedidos').textContent = activo ? 'Pedidos habilitados según horario' : 'Pedidos pausados';
+      const boton = document.getElementById('control-recepcion-pedidos');
+      boton.textContent = activo ? 'Pausar pedidos' : 'Activar pedidos';
+      boton.hidden = false;
+    }
+
+    async function cambiarRecepcionPedidos() {
+      const boton = document.getElementById('control-recepcion-pedidos');
+      if (!RESTAURANTE_ID || boton.disabled) return;
+      boton.disabled = true;
+      try {
+        const { data, error } = await supabaseClient.from('restaurantes')
+          .update({ menu_activo: CONFIGURACION_ACTUAL.menu_activo === false })
+          .eq('id', RESTAURANTE_ID).select('menu_activo').single();
+        if (error || !data) throw error || new Error();
+        CONFIGURACION_ACTUAL.menu_activo = data.menu_activo;
+        document.getElementById('menu-activo').checked = data.menu_activo;
+        mostrarRecepcionPedidos();
+        actualizarVistaPreviaCarta();
+      } catch {
+        document.getElementById('estado-recepcion-pedidos').textContent = 'No se pudo cambiar. Intenta de nuevo.';
+      } finally {
+        boton.disabled = false;
+      }
     }
 
     function renderizarHorarioMenu(horario = {}) {
@@ -1546,6 +1583,7 @@
         if (error) throw error;
         if (!data) throw new Error('No se confirmó el guardado. Revisa tu sesión e inténtalo de nuevo.');
         CONFIGURACION_ACTUAL = { ...CONFIGURACION_ACTUAL, ...data };
+        mostrarRecepcionPedidos();
         abrirCategoriaAjustes('negocio');
         mostrarAviso(document.getElementById('ajustes-status'), data.menu_activo ? 'Horario y disponibilidad guardados.' : 'Cambios guardados. Los pedidos están pausados.', 'exito', 4500);
       } catch (error) {
@@ -1798,6 +1836,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=carta-organizada"></script>
+  <script src="/app.menu-import.js?v=claridad"></script>
 </body>
 </html>
