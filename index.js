@@ -16,6 +16,28 @@ const supabaseAdminKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.S
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 const supabaseAdmin = supabaseAdminKey ? createClient(supabaseUrl, supabaseAdminKey) : null;
+
+async function registrarUsoIA({ restauranteId, operacion, modelo, uso }) {
+    if (!supabaseAdmin || !restauranteId || !uso) return;
+    try {
+        const tarifas = JSON.parse(process.env.OPENAI_COST_RATES_JSON || '{}');
+        const tarifa = tarifas[modelo] || null;
+        const entrada = Number(uso.prompt_tokens ?? uso.input_tokens) || 0;
+        const salida = Number(uso.completion_tokens ?? uso.output_tokens) || 0;
+        const costo = tarifa && Number.isFinite(Number(tarifa.entrada_usd_millon)) && Number.isFinite(Number(tarifa.salida_usd_millon))
+            ? (entrada * Number(tarifa.entrada_usd_millon) + salida * Number(tarifa.salida_usd_millon)) / 1_000_000
+            : null;
+        const { error } = await supabaseAdmin.from('velox_ai_usage').insert({
+            restaurante_id: restauranteId, operacion, modelo: String(modelo || 'desconocido'),
+            input_tokens: entrada, output_tokens: salida,
+            total_tokens: Number(uso.total_tokens) || entrada + salida,
+            costo_estimado_usd: costo, detalle_uso: uso
+        });
+        if (error) console.error('No se pudo guardar consumo IA:', error.message);
+    } catch (error) {
+        console.error('No se pudo registrar consumo IA:', error.message);
+    }
+}
 const app = express();
 app.disable('x-powered-by');
 app.use((req, res, next) => {
@@ -34,7 +56,7 @@ app.use(express.json({
 // Publica solo las páginas y scripts del navegador; no expone index.js, package*.json,
 // migraciones, node_modules ni otros archivos del servidor.
 const archivosPublicos = new Set([
-    '/index.html', '/login.html', '/dashboard.html', '/menu.html', '/ticket.html',
+    '/index.html', '/login.html', '/dashboard.html', '/menu.html', '/ticket.html', '/admin-costos.html', '/admin-costos.js',
     '/app.login.js', '/app.registro.js', '/velox-theme.css', '/app.menu-import.js', '/app.menu-categorias.js'
 ]);
 app.get([...archivosPublicos], (req, res) => {
@@ -141,6 +163,57 @@ En Items separa cada producto con punto y coma. Para cada opción usa el grupo y
 // Ruta principal del servidor
 app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+app.get('/admin-costos', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-costos.html'));
+});
+
+function idsAdministradoresPlataforma() {
+    return new Set(String(process.env.VELOX_ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(Boolean));
+}
+
+async function autenticarAdminPlataforma(req, res, next) {
+    try {
+        const token = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '').trim();
+        if (!token) return res.status(401).json({ error: 'Inicia sesión para continuar.' });
+        if (!supabaseAdmin) return res.status(503).json({ error: 'El panel administrativo no está configurado.' });
+        const { data, error } = await supabaseAdmin.auth.getUser(token);
+        if (error || !data?.user) return res.status(401).json({ error: 'La sesión venció. Vuelve a iniciar sesión.' });
+        if (!idsAdministradoresPlataforma().has(data.user.id)) return res.sendStatus(404);
+        req.adminPlataforma = data.user;
+        next();
+    } catch (error) {
+        console.error('Error autenticando panel de costos:', error.message);
+        return res.status(500).json({ error: 'No se pudo validar el acceso.' });
+    }
+}
+
+app.get('/api/admin/costos', autenticarAdminPlataforma, async (req, res) => {
+    const dias = Math.min(365, Math.max(1, Number(req.query.dias) || 30));
+    const desde = new Date(Date.now() - dias * 86400000).toISOString();
+    const { data, error } = await supabaseAdmin.from('velox_ai_usage')
+        .select('restaurante_id, operacion, modelo, input_tokens, output_tokens, total_tokens, costo_estimado_usd, created_at, restaurantes(nombre_restaurante)')
+        .gte('created_at', desde).order('created_at', { ascending: false }).limit(10000);
+    if (error) {
+        console.error('No se pudo consultar el consumo de IA:', error.message);
+        return res.status(503).json({ error: 'Aún no se puede leer el registro de costos. Verifica la migración de Supabase.' });
+    }
+    const porRestaurante = new Map();
+    for (const fila of data || []) {
+        const id = fila.restaurante_id || 'sin_restaurante';
+        if (!porRestaurante.has(id)) porRestaurante.set(id, {
+            restaurante_id: id, restaurante: fila.restaurantes?.nombre_restaurante || 'Sin restaurante',
+            operaciones: 0, tokens_entrada: 0, tokens_salida: 0, costo_estimado_usd: 0, operaciones_sin_tarifa: 0
+        });
+        const r = porRestaurante.get(id);
+        r.operaciones++;
+        r.tokens_entrada += Number(fila.input_tokens) || 0;
+        r.tokens_salida += Number(fila.output_tokens) || 0;
+        if (fila.costo_estimado_usd == null) r.operaciones_sin_tarifa++;
+        else r.costo_estimado_usd += Number(fila.costo_estimado_usd);
+    }
+    return res.json({ dias, total_operaciones: (data || []).length, operaciones_sin_tarifa: [...porRestaurante.values()].reduce((n, r) => n + r.operaciones_sin_tarifa, 0), restaurantes: [...porRestaurante.values()].sort((a, b) => b.costo_estimado_usd - a.costo_estimado_usd), nota: 'El costo en USD es una estimación por operación; no incluye cargos compartidos de Railway ni Supabase.' });
 });
 
 app.get('/', (req, res) => {
@@ -620,6 +693,7 @@ app.post('/webhook', async (req, res) => {
 
                 const aiResponse = String(completion.choices?.[0]?.message?.content || '').trim();
                 const usoOpenAI = completion.usage || {};
+                void registrarUsoIA({ restauranteId: restauranteIdActual, operacion: 'whatsapp', modelo: completion.model || 'gpt-4o-mini', uso: usoOpenAI });
                 console.info('Uso OpenAI WhatsApp:', JSON.stringify({
                     restaurante_id: restauranteIdActual,
                     prompt_tokens: usoOpenAI.prompt_tokens ?? null,
@@ -1351,6 +1425,7 @@ REGLAS OBLIGATORIAS:
 
         const eleccion = response.choices?.[0];
         const uso = response.usage || {};
+        void registrarUsoIA({ restauranteId: restaurante_id, operacion: 'importar_menu', modelo: response.model || modeloImportacionMenu, uso });
         console.info("Respuesta OpenAI importar-menu:", JSON.stringify({
             id_lectura: idLectura || null,
             restaurante_id,
@@ -1609,7 +1684,8 @@ async function generarFotoMenu(producto, restauranteId, usuarioId, signal) {
         total_tokens: respuestaImagen.usage.total_tokens ?? null,
         input_tokens_details: respuestaImagen.usage.input_tokens_details || null,
         output_tokens_details: respuestaImagen.usage.output_tokens_details || null
-    } : null;
+    } : null
+    void registrarUsoIA({ restauranteId, operacion: 'generar_imagen', modelo: respuestaImagen.model || process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-flare', uso: respuestaImagen.usage });;
     console.info('Uso OpenAI generar-imagen-producto:', JSON.stringify({
         restaurante_id: restauranteId,
         producto_id: producto.id || null,
