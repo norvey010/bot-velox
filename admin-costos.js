@@ -4,6 +4,7 @@ const $ = id => document.getElementById(id);
 const money = value => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'USD', maximumFractionDigits: 4 }).format(value || 0);
 let token = null;
 let recoveryMode = false;
+let autoRefresh = null;
 
 async function cargar() {
   $('data-message').textContent = '';
@@ -28,7 +29,15 @@ function mostrarVista(session) {
   $('recovery-card').classList.add('hidden');
   $('password-card').classList.toggle('hidden', !enRecuperacion);
   $('dashboard').classList.toggle('hidden', !session || enRecuperacion);
-  if (session && !enRecuperacion) cargar().catch(e => $('data-message').textContent=e.message);
+  if (session && !enRecuperacion) {
+    cargar().catch(e => $('data-message').textContent=e.message);
+    if (!autoRefresh) autoRefresh = setInterval(() => {
+      if (document.visibilityState === 'visible') cargar().catch(e => $('data-message').textContent=e.message);
+    }, 15000);
+  } else if (autoRefresh) {
+    clearInterval(autoRefresh);
+    autoRefresh = null;
+  }
 }
 supabase.auth.getSession().then(({data}) => mostrarVista(data.session));
 supabase.auth.onAuthStateChange((event, session) => {
