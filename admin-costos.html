@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#F6EFE5">
-  <title>Control privado | Velox</title>
+  <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module" src="admin-costos.js"></script>
 </head>
 <body class="min-h-screen">
-  <main class="mx-auto max-w-5xl p-4 sm:p-8">
+  <main class="mx-auto max-w-6xl p-4 sm:p-8">
     <header class="mb-6 flex items-center gap-3">
       <div class="grid h-11 w-11 place-items-center rounded-xl bg-red-600 text-xl font-black text-white">V</div>
-      <div><p class="text-xs uppercase tracking-widest text-red-700">Velox · privado</p><h1 class="text-xl font-bold">Costos por restaurante</h1></div>
+      <div><p class="text-xs uppercase tracking-widest text-red-700">Velox · privado</p><h1 class="text-xl font-bold">Finanzas de la plataforma</h1></div>
     </header>
 
     <section id="login-card" class="mx-auto max-w-md rounded-2xl border border-[#D7C2AD] bg-[#FFFBF5] p-5 shadow-lg">
@@ -51,10 +51,81 @@
     </section>
 
     <section id="dashboard" class="hidden space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-3"><p id="period-label" class="text-sm text-[#69544A]">Consumo de IA</p><div class="flex gap-2"><select id="days" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm"><option value="7">7 días</option><option value="30" selected>30 días</option><option value="90">90 días</option><option value="365">1 año</option></select><button id="refresh" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Actualizar</button><button id="logout" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Salir</button></div></div>
-      <div class="grid gap-3 sm:grid-cols-4"><article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Restaurantes registrados</p><strong id="count" class="text-2xl">—</strong></article><article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Costo IA con tarifa</p><strong id="total" class="text-2xl text-red-700">—</strong></article><article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Promedio por restaurante</p><strong id="average" class="text-2xl text-red-700">—</strong></article><article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Operaciones registradas</p><strong id="operations" class="text-2xl">—</strong></article></div>
-      <div class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]"><div class="border-b border-[#D7C2AD] p-4 font-semibold">Detalle por restaurante</div><div class="overflow-x-auto"><table class="w-full min-w-[680px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Operaciones</th><th class="p-3">Tokens entrada</th><th class="p-3">Tokens salida</th><th class="p-3">Costo estimado</th></tr></thead><tbody id="rows"></tbody></table></div></div>
-      <p id="note" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] p-3 text-xs text-[#69544A]"></p><p id="data-message" class="text-sm text-red-700" role="status" aria-live="polite"></p>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <label class="text-sm font-semibold">Período
+          <input id="periodo" type="month" class="ml-2 rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 font-normal">
+        </label>
+        <div class="flex gap-2">
+          <button id="refresh" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Actualizar</button>
+          <button id="logout" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Salir</button>
+        </div>
+      </div>
+
+      <nav class="flex gap-2 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-1" aria-label="Secciones financieras">
+        <button id="tab-resumen" type="button" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white" aria-selected="true">Resumen</button>
+        <button id="tab-restaurantes" type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Por restaurante</button>
+      </nav>
+
+      <section id="vista-resumen" class="space-y-4">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Ingresos registrados</p><strong id="ingresos-cop" class="mt-1 block text-2xl">—</strong><p id="ingresos-usd" class="mt-1 text-xs text-[#69544A]"></p></article>
+          <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Gastos registrados</p><strong id="gastos-cop" class="mt-1 block text-2xl">—</strong><p id="gastos-usd" class="mt-1 text-xs text-[#69544A]"></p></article>
+          <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Utilidad neta estimada</p><strong id="neto-cop" class="mt-1 block text-2xl text-red-700">—</strong><p id="neto-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
+          <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">OpenAI estimado</p><strong id="openai-usd" class="mt-1 block text-2xl">—</strong><p id="openai-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
+        </div>
+
+        <p id="finance-note" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] p-3 text-sm text-[#69544A]" role="status"></p>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+          <section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
+            <h2 class="text-lg font-semibold">Registrar ingreso o gasto</h2>
+            <p class="mb-3 text-xs text-[#69544A]">Registra suscripciones cobradas y facturas de Railway, Supabase, Meta o Claro. Los importes compartidos se reparten entre los restaurantes que pagaron suscripción en el mes.</p>
+            <form id="movimiento-form" class="grid gap-3 sm:grid-cols-2">
+              <label class="text-sm">Tipo<select id="mov-tipo" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="ingreso">Ingreso recibido</option><option value="gasto">Gasto</option></select></label>
+              <label class="text-sm">Categoría<select id="mov-categoria" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></select></label>
+              <label class="text-sm sm:col-span-2">Restaurante<select id="mov-restaurante" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="">Gasto compartido de Velox</option></select></label>
+              <label class="text-sm">Valor<input id="mov-monto" type="number" min="0.01" step="0.01" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Ej: 30000"></label>
+              <label class="text-sm">Moneda<select id="mov-moneda" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="COP">COP · pesos</option><option value="USD">USD · dólares</option></select></label>
+              <label class="text-sm">Fecha<input id="mov-fecha" type="date" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
+              <label class="text-sm">Referencia (opcional)<input id="mov-ref" maxlength="120" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Factura o comprobante"></label>
+              <label class="text-sm sm:col-span-2">Descripción<input id="mov-descripcion" maxlength="240" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Ej: Suscripción mensual / factura de internet Claro"></label>
+              <button id="mov-guardar" class="rounded-lg bg-red-600 p-3 font-semibold text-white sm:col-span-2">Guardar movimiento</button>
+            </form>
+            <p id="mov-mensaje" class="mt-2 text-sm" role="status" aria-live="polite"></p>
+          </section>
+
+          <section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
+            <h2 class="text-lg font-semibold">Tasa del período</h2>
+            <p class="mb-3 text-xs text-[#69544A]">Se usa para convertir costos en USD a COP en la utilidad. Ingresa la tasa que quieres usar para este mes; se guarda como referencia financiera.</p>
+            <form id="tasa-form" class="flex flex-wrap items-end gap-3">
+              <label class="min-w-48 flex-1 text-sm">COP por 1 USD<input id="tasa-usd-cop" type="number" min="1" step="0.01" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Ej: tasa usada en tu extracto"></label>
+              <button id="tasa-guardar" class="rounded-lg border border-[#D7C2AD] bg-[#F0E3D5] px-4 py-2.5 font-semibold">Guardar tasa</button>
+            </form>
+            <p id="tasa-mensaje" class="mt-2 text-sm" role="status" aria-live="polite"></p>
+            <div class="mt-4 border-t border-[#D7C2AD] pt-3">
+              <h3 class="font-semibold">Gastos por plataforma</h3>
+              <div id="gastos-categorias" class="mt-2 space-y-2 text-sm text-[#69544A]"></div>
+            </div>
+          </section>
+        </div>
+
+        <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
+          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Movimientos del período</h2><p class="text-xs text-[#69544A]">Puedes anular un registro; queda conservado como historial.</p></div>
+          <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Fecha</th><th class="p-3">Tipo</th><th class="p-3">Detalle</th><th class="p-3">Restaurante</th><th class="p-3">Valor</th><th class="p-3">Acción</th></tr></thead><tbody id="movimientos-body"></tbody></table></div>
+        </section>
+      </section>
+
+      <section id="vista-restaurantes" class="hidden space-y-4">
+        <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
+          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Ingreso y costo por restaurante</h2><p class="text-xs text-[#69544A]">Los gastos compartidos se distribuyen por igual entre quienes registraron una suscripción cobrada en el período.</p></div>
+          <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Ingresos COP</th><th class="p-3">Gastos directos COP</th><th class="p-3">Parte compartida COP</th><th class="p-3">OpenAI estimado</th><th class="p-3">Neto estimado COP</th></tr></thead><tbody id="restaurantes-finanzas-body"></tbody></table></div>
+        </section>
+        <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
+          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Consumo de IA por restaurante</h2><p id="ai-period-note" class="text-xs text-[#69544A]"></p></div>
+          <div class="overflow-x-auto"><table class="w-full min-w-[680px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Operaciones</th><th class="p-3">Tokens entrada</th><th class="p-3">Tokens salida</th><th class="p-3">Costo estimado USD</th></tr></thead><tbody id="ia-restaurantes-body"></tbody></table></div>
+        </section>
+      </section>
+      <p id="data-message" class="text-sm text-red-700" role="status" aria-live="polite"></p>
     </section>
   </main>
 </body>

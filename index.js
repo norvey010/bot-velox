@@ -235,6 +235,243 @@ app.get('/api/admin/costos', autenticarAdminPlataforma, async (req, res) => {
     });
 });
 
+function periodoFinancieroValido(valor) {
+    return typeof valor === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(valor);
+}
+
+function fechaMesIso(periodo) {
+    return `${periodo}-01`;
+}
+function periodoActualBogota() {
+    const partes = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
+    return `${partes.find(p => p.type === 'year').value}-${partes.find(p => p.type === 'month').value}`;
+}
+
+app.get('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
+    const periodo = periodoFinancieroValido(req.query.periodo)
+        ? req.query.periodo
+        : periodoActualBogota();
+    const [year, month] = periodo.split('-').map(Number);
+    const periodoInicio = fechaMesIso(periodo);
+    const desde = new Date(Date.UTC(year, month - 1, 1, 5)).toISOString();
+    const hasta = new Date(Date.UTC(year, month, 1, 5)).toISOString();
+    const [restaurantesRes, movimientosRes, usoRes, tasaRes] = await Promise.all([
+        supabaseAdmin.from('restaurantes')
+            .select('id, nombre_restaurante')
+            .order('created_at', { ascending: true })
+            .limit(10000),
+        supabaseAdmin.from('velox_financial_entries')
+            .select('id, tipo, categoria, restaurante_id, descripcion, monto, moneda, fecha, periodo, referencia, creado_en')
+            .eq('periodo', periodoInicio)
+            .is('anulado_en', null)
+            .order('fecha', { ascending: false })
+            .limit(2000),
+        supabaseAdmin.from('velox_ai_usage')
+            .select('restaurante_id, input_tokens, output_tokens, total_tokens, costo_estimado_usd, created_at')
+            .gte('created_at', desde)
+            .lt('created_at', hasta)
+            .order('created_at', { ascending: false })
+            .limit(10000),
+        supabaseAdmin.from('velox_financial_fx')
+            .select('cop_por_usd')
+            .eq('periodo', periodoInicio)
+            .maybeSingle()
+    ]);
+    const error = restaurantesRes.error || movimientosRes.error || usoRes.error || tasaRes.error;
+    if (error) {
+        console.error('No se pudo consultar finanzas de Velox:', error.message);
+        return res.status(503).json({ error: 'No se pudo cargar el panel financiero. Verifica la migración del libro financiero.' });
+    }
+    const tasa = Number(tasaRes.data?.cop_por_usd) || null;
+    const restaurantesMap = new Map((restaurantesRes.data || []).map(r => [r.id, {
+        restaurante_id: r.id, restaurante: r.nombre_restaurante || 'Sin nombre',
+        ingresos: { COP: 0, USD: 0 }, gastos_directos: { COP: 0, USD: 0 },
+        gastos_compartidos: { COP: 0, USD: 0 }, ia_usd: 0, ia_sin_tarifa: 0, operaciones_ia: 0,
+        tokens_entrada: 0, tokens_salida: 0, neto_cop: 0
+    }]));
+    const totales = {
+        ingresos: { COP: 0, USD: 0 },
+        gastos: { COP: 0, USD: 0 },
+        compartidos: { COP: 0, USD: 0 },
+        gastos_por_categoria: {},
+        operaciones_ia: 0, tokens_entrada: 0, tokens_salida: 0,
+        ia_usd: 0, ia_sin_tarifa: 0, clientes_pagadores: 0,
+        compartidos_sin_asignar: { COP: 0, USD: 0 }
+    };
+    const pagadores = new Set();
+    for (const movimiento of movimientosRes.data || []) {
+        const moneda = movimiento.moneda;
+        const monto = Number(movimiento.monto) || 0;
+        if (movimiento.tipo === 'ingreso') {
+            totales.ingresos[moneda] += monto;
+            if (movimiento.restaurante_id && movimiento.categoria === 'suscripcion') pagadores.add(movimiento.restaurante_id);
+            if (movimiento.restaurante_id) {
+                if (!restaurantesMap.has(movimiento.restaurante_id)) restaurantesMap.set(movimiento.restaurante_id, {
+                    restaurante_id: movimiento.restaurante_id, restaurante: 'Restaurante archivado',
+                    ingresos: { COP: 0, USD: 0 }, gastos_directos: { COP: 0, USD: 0 },
+                    gastos_compartidos: { COP: 0, USD: 0 }, ia_usd: 0, ia_sin_tarifa: 0,
+                    tokens_entrada: 0, tokens_salida: 0, neto_cop: 0
+                });
+                restaurantesMap.get(movimiento.restaurante_id).ingresos[moneda] += monto;
+            }
+        } else {
+            totales.gastos[moneda] += monto;
+            if (!totales.gastos_por_categoria[movimiento.categoria]) totales.gastos_por_categoria[movimiento.categoria] = { COP: 0, USD: 0 };
+            totales.gastos_por_categoria[movimiento.categoria][moneda] += monto;
+            if (movimiento.restaurante_id) {
+                if (restaurantesMap.has(movimiento.restaurante_id)) restaurantesMap.get(movimiento.restaurante_id).gastos_directos[moneda] += monto;
+            } else {
+                totales.compartidos[moneda] += monto;
+            }
+        }
+    }
+    totales.clientes_pagadores = pagadores.size;
+    for (const movimiento of movimientosRes.data || []) {
+        if (movimiento.tipo !== 'gasto' || movimiento.restaurante_id) continue;
+        const monto = Number(movimiento.monto) || 0;
+        const moneda = movimiento.moneda;
+        if (pagadores.size === 0) {
+            totales.compartidos_sin_asignar[moneda] += monto;
+            continue;
+        }
+        const parte = monto / pagadores.size;
+        for (const id of pagadores) {
+            if (restaurantesMap.has(id)) restaurantesMap.get(id).gastos_compartidos[moneda] += parte;
+        }
+    }
+    for (const uso of usoRes.data || []) {
+        totales.operaciones_ia++;
+        const entrada = Number(uso.input_tokens) || 0;
+        const salida = Number(uso.output_tokens) || 0;
+        totales.tokens_entrada += entrada;
+        totales.tokens_salida += salida;
+        const restaurante = uso.restaurante_id ? restaurantesMap.get(uso.restaurante_id) : null;
+        if (uso.costo_estimado_usd == null) {
+            totales.ia_sin_tarifa++;
+            if (restaurante) restaurante.ia_sin_tarifa++;
+        } else {
+            const costo = Number(uso.costo_estimado_usd) || 0;
+            totales.ia_usd += costo;
+            if (restaurante) restaurante.ia_usd += costo;
+        }
+        if (restaurante) {
+            restaurante.operaciones_ia++;
+            restaurante.tokens_entrada += entrada;
+            restaurante.tokens_salida += salida;
+        }
+    }
+    const aCop = (valor, moneda) => moneda === 'COP' ? valor : (tasa ? valor * tasa : null);
+    const ingresosCop = aCop(totales.ingresos.COP, 'COP') + (aCop(totales.ingresos.USD, 'USD') ?? 0);
+    const gastosCop = aCop(totales.gastos.COP, 'COP') + (aCop(totales.gastos.USD, 'USD') ?? 0);
+    const iaCop = tasa ? totales.ia_usd * tasa : null;
+    const requiereCambio = totales.ingresos.USD + totales.gastos.USD + totales.ia_usd > 0;
+    const netoCop = requiereCambio && !tasa ? null : ingresosCop - gastosCop - (iaCop || 0);
+    const restaurantes = [...restaurantesMap.values()].map(r => {
+        const ingresoCop = (aCop(r.ingresos.COP, 'COP') ?? 0) + (aCop(r.ingresos.USD, 'USD') ?? 0);
+        const gastosDirectosCop = (aCop(r.gastos_directos.COP, 'COP') ?? 0) + (aCop(r.gastos_directos.USD, 'USD') ?? 0);
+        const gastosCompartidosCop = (aCop(r.gastos_compartidos.COP, 'COP') ?? 0) + (aCop(r.gastos_compartidos.USD, 'USD') ?? 0);
+        const costoIaCop = tasa ? r.ia_usd * tasa : 0;
+        const monedaSinCambio = !tasa && (r.ingresos.USD + r.gastos_directos.USD + r.gastos_compartidos.USD + r.ia_usd > 0);
+        r.ingresos_cop = ingresoCop;
+        r.gastos_directos_cop = gastosDirectosCop;
+        r.gastos_compartidos_cop = gastosCompartidosCop;
+        r.ia_cop = tasa ? costoIaCop : null;
+        r.neto_cop = monedaSinCambio ? null : ingresoCop - gastosDirectosCop - gastosCompartidosCop - costoIaCop;
+        return r;
+    }).sort((a, b) => (b.gastos_directos_cop + b.gastos_compartidos_cop + (b.ia_cop || 0)) - (a.gastos_directos_cop + a.gastos_compartidos_cop + (a.ia_cop || 0)));
+    return res.json({
+        periodo,
+        tasa_cop_por_usd: tasa,
+        resumen: {
+            ingresos_cop: ingresosCop, gastos_registrados_cop: gastosCop,
+            gastos_cop: tasa ? gastosCop + totales.ia_usd * tasa : gastosCop,
+            ia_estimado_usd: totales.ia_usd,
+            ia_estimado_cop: iaCop, utilidad_neta_cop: netoCop,
+            utilidad_parcial: requiereCambio && !tasa || totales.ia_sin_tarifa > 0,
+            operaciones_ia: totales.operaciones_ia, ia_sin_tarifa: totales.ia_sin_tarifa,
+            gastos_compartidos_cop: (aCop(totales.compartidos.COP, 'COP') ?? 0) + (aCop(totales.compartidos.USD, 'USD') ?? 0),
+            compartidos_sin_asignar_cop: (aCop(totales.compartidos_sin_asignar.COP, 'COP') ?? 0) + (aCop(totales.compartidos_sin_asignar.USD, 'USD') ?? 0),
+            clientes_pagadores: pagadores.size,
+            ingresos_usd: totales.ingresos.USD, gastos_usd: totales.gastos.USD
+        },
+        gastos_por_categoria: totales.gastos_por_categoria,
+        restaurantes,
+        movimientos: movimientosRes.data || [],
+        nota: 'OpenAI se incluye como costo estimado según tokens y tarifas configuradas. Los gastos compartidos se reparten en partes iguales entre los restaurantes con una suscripción registrada en el mes. Las facturas de Railway, Supabase, Meta y Claro se ingresan aquí hasta conectar sus APIs.'
+    });
+});
+
+app.post('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const tipo = String(body.tipo || '');
+    const categoria = String(body.categoria || '');
+    const descripcion = String(body.descripcion || '').trim().slice(0, 240);
+    const moneda = String(body.moneda || 'COP').toUpperCase();
+    const monto = Number(body.monto);
+    const fecha = String(body.fecha || '');
+    const restauranteId = String(body.restaurante_id || '').trim() || null;
+    const referencia = String(body.referencia || '').trim().slice(0, 120) || null;
+    const categorias = new Set(['suscripcion', 'railway', 'supabase', 'claro', 'meta', 'otro']);
+    if (!['ingreso', 'gasto'].includes(tipo) || !categorias.has(categoria) || !descripcion ||
+        !Number.isFinite(monto) || monto <= 0 || monto > 1000000000000 ||
+        !['COP', 'USD'].includes(moneda) || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+        return res.status(400).json({ error: 'Revisa el tipo, categoría, descripción, fecha, moneda e importe.' });
+    }
+    if ((tipo === 'ingreso' && !['suscripcion', 'otro'].includes(categoria)) ||
+        (tipo === 'gasto' && categoria === 'suscripcion') ||
+        (tipo === 'ingreso' && !restauranteId)) {
+        return res.status(400).json({ error: 'Los ingresos requieren un restaurante y la categoría Suscripción u Otro.' });
+    }
+    const fechaValida = new Date(`${fecha}T00:00:00.000Z`);
+    if (!Number.isFinite(fechaValida.getTime()) || fechaValida.toISOString().slice(0, 10) !== fecha) {
+        return res.status(400).json({ error: 'La fecha no es válida.' });
+    }
+    if (restauranteId) {
+        const { data: restaurante, error: errRestaurante } = await supabaseAdmin.from('restaurantes').select('id').eq('id', restauranteId).maybeSingle();
+        if (errRestaurante || !restaurante) return res.status(400).json({ error: 'Ese restaurante no existe.' });
+    }
+    const { data, error } = await supabaseAdmin.from('velox_financial_entries').insert({
+        tipo, categoria, restaurante_id: restauranteId, descripcion, monto, moneda,
+        fecha, periodo: `${fecha.slice(0, 7)}-01`, referencia, creado_por: req.adminPlataforma.id
+    }).select('id').single();
+    if (error) {
+        console.error('No se pudo registrar movimiento financiero:', error.message);
+        return res.status(500).json({ error: 'No se pudo guardar el movimiento financiero.' });
+    }
+    return res.status(201).json({ id: data.id });
+});
+
+app.patch('/api/admin/finanzas/:id/anular', autenticarAdminPlataforma, async (req, res) => {
+    const id = String(req.params.id || '');
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ error: 'El movimiento no es válido.' });
+    const motivo = String(req.body?.motivo || 'Anulado desde el panel').trim().slice(0, 240);
+    const { data, error } = await supabaseAdmin.from('velox_financial_entries')
+        .update({ anulado_en: new Date().toISOString(), anulado_por: req.adminPlataforma.id, motivo_anulacion: motivo })
+        .eq('id', id).is('anulado_en', null).select('id').maybeSingle();
+    if (error) {
+        console.error('No se pudo anular movimiento financiero:', error.message);
+        return res.status(500).json({ error: 'No se pudo anular el movimiento.' });
+    }
+    if (!data) return res.status(404).json({ error: 'El movimiento ya fue anulado o no existe.' });
+    return res.json({ ok: true });
+});
+
+app.put('/api/admin/finanzas/tasa', autenticarAdminPlataforma, async (req, res) => {
+    const periodo = String(req.body?.periodo || '');
+    const tasa = Number(req.body?.cop_por_usd);
+    if (!periodoFinancieroValido(periodo) || !Number.isFinite(tasa) || tasa <= 0 || tasa > 1000000) {
+        return res.status(400).json({ error: 'Escribe un mes y una tasa COP por USD válida.' });
+    }
+    const { error } = await supabaseAdmin.from('velox_financial_fx').upsert({
+        periodo: fechaMesIso(periodo), cop_por_usd: tasa, actualizado_por: req.adminPlataforma.id, actualizado_en: new Date().toISOString()
+    }, { onConflict: 'periodo' });
+    if (error) {
+        console.error('No se pudo guardar la tasa de cambio:', error.message);
+        return res.status(500).json({ error: 'No se pudo guardar la tasa de cambio.' });
+    }
+    return res.json({ ok: true });
+});
+
 app.get('/', (req, res) => {
     res.send('¡El bot de Velox está activo y funcionando con OpenAI!');
 });
