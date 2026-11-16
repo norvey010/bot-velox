@@ -194,7 +194,7 @@ app.get('/api/admin/costos', autenticarAdminPlataforma, async (req, res) => {
     const desde = new Date(Date.now() - dias * 86400000).toISOString();
     const [restaurantesRes, usoRes] = await Promise.all([
         supabaseAdmin.from('restaurantes')
-            .select('id, nombre_restaurante')
+            .select('id, nombre_restaurante, created_at')
             .order('created_at', { ascending: true })
             .limit(10000),
         supabaseAdmin.from('velox_ai_usage')
@@ -283,60 +283,52 @@ app.get('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
         return res.status(503).json({ error: 'No se pudo cargar el panel financiero. Verifica la migración del libro financiero.' });
     }
     const tasa = Number(tasaRes.data?.cop_por_usd) || null;
-    const restaurantesMap = new Map((restaurantesRes.data || []).map(r => [r.id, {
-        restaurante_id: r.id, restaurante: r.nombre_restaurante || 'Sin nombre',
-        ingresos: { COP: 0, USD: 0 }, gastos_directos: { COP: 0, USD: 0 },
-        gastos_compartidos: { COP: 0, USD: 0 }, ia_usd: 0, ia_sin_tarifa: 0, operaciones_ia: 0,
-        tokens_entrada: 0, tokens_salida: 0, neto_cop: 0
-    }]));
+    const diasMes = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const inicioPeriodoDia = periodoInicio;
+    const finPeriodoDia = periodo + '-' + String(diasMes).padStart(2, '0');
+    const fechaEnBogota = valor => {
+        const partes = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(new Date(valor));
+        return partes.find(p => p.type === 'year').value + '-' +
+            partes.find(p => p.type === 'month').value + '-' +
+            partes.find(p => p.type === 'day').value;
+    };
+    const pesoRestaurante = new Map();
+    const restaurantesMap = new Map((restaurantesRes.data || []).map(r => {
+        const creado = r.created_at ? fechaEnBogota(r.created_at) : inicioPeriodoDia;
+        const primerDiaActivo = creado > inicioPeriodoDia ? creado : inicioPeriodoDia;
+        const diasActivos = primerDiaActivo > finPeriodoDia ? 0 :
+            Math.floor((Date.parse(finPeriodoDia + 'T00:00:00Z') - Date.parse(primerDiaActivo + 'T00:00:00Z')) / 86400000) + 1;
+        if (diasActivos > 0) pesoRestaurante.set(r.id, diasActivos);
+        return [r.id, {
+            restaurante_id: r.id, restaurante: r.nombre_restaurante || 'Sin nombre',
+            ingresos: { COP: 0, USD: 0 }, gastos_directos: { COP: 0, USD: 0 },
+            gastos_compartidos: { COP: 0, USD: 0 }, ia_usd: 0, ia_sin_tarifa: 0, operaciones_ia: 0,
+            tokens_entrada: 0, tokens_salida: 0, neto_cop: 0
+        }];
+    }));
     const totales = {
         ingresos: { COP: 0, USD: 0 },
         gastos: { COP: 0, USD: 0 },
         compartidos: { COP: 0, USD: 0 },
         gastos_por_categoria: {},
         operaciones_ia: 0, tokens_entrada: 0, tokens_salida: 0,
-        ia_usd: 0, ia_sin_tarifa: 0, clientes_pagadores: 0,
+        ia_usd: 0, ia_sin_tarifa: 0, restaurantes_en_reparto: 0,
         compartidos_sin_asignar: { COP: 0, USD: 0 }
     };
-    const pagadores = new Set();
-    for (const movimiento of movimientosRes.data || []) {
-        const moneda = movimiento.moneda;
-        const monto = Number(movimiento.monto) || 0;
-        if (movimiento.tipo === 'ingreso') {
-            totales.ingresos[moneda] += monto;
-            if (movimiento.restaurante_id && movimiento.categoria === 'suscripcion') pagadores.add(movimiento.restaurante_id);
-            if (movimiento.restaurante_id) {
-                if (!restaurantesMap.has(movimiento.restaurante_id)) restaurantesMap.set(movimiento.restaurante_id, {
-                    restaurante_id: movimiento.restaurante_id, restaurante: 'Restaurante archivado',
-                    ingresos: { COP: 0, USD: 0 }, gastos_directos: { COP: 0, USD: 0 },
-                    gastos_compartidos: { COP: 0, USD: 0 }, ia_usd: 0, ia_sin_tarifa: 0,
-                    tokens_entrada: 0, tokens_salida: 0, neto_cop: 0
-                });
-                restaurantesMap.get(movimiento.restaurante_id).ingresos[moneda] += monto;
-            }
-        } else {
-            totales.gastos[moneda] += monto;
-            if (!totales.gastos_por_categoria[movimiento.categoria]) totales.gastos_por_categoria[movimiento.categoria] = { COP: 0, USD: 0 };
-            totales.gastos_por_categoria[movimiento.categoria][moneda] += monto;
-            if (movimiento.restaurante_id) {
-                if (restaurantesMap.has(movimiento.restaurante_id)) restaurantesMap.get(movimiento.restaurante_id).gastos_directos[moneda] += monto;
-            } else {
-                totales.compartidos[moneda] += monto;
-            }
-        }
-    }
-    totales.clientes_pagadores = pagadores.size;
+    const pesoTotalReparto = [...pesoRestaurante.values()].reduce((suma, peso) => suma + peso, 0);
     for (const movimiento of movimientosRes.data || []) {
         if (movimiento.tipo !== 'gasto' || movimiento.restaurante_id) continue;
         const monto = Number(movimiento.monto) || 0;
         const moneda = movimiento.moneda;
-        if (pagadores.size === 0) {
+        if (pesoTotalReparto === 0) {
             totales.compartidos_sin_asignar[moneda] += monto;
             continue;
         }
-        const parte = monto / pagadores.size;
-        for (const id of pagadores) {
-            if (restaurantesMap.has(id)) restaurantesMap.get(id).gastos_compartidos[moneda] += parte;
+        for (const [id, peso] of pesoRestaurante) {
+            const restaurante = restaurantesMap.get(id);
+            if (restaurante) restaurante.gastos_compartidos[moneda] += monto * peso / pesoTotalReparto;
         }
     }
     for (const uso of usoRes.data || []) {
@@ -391,13 +383,13 @@ app.get('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
             operaciones_ia: totales.operaciones_ia, ia_sin_tarifa: totales.ia_sin_tarifa,
             gastos_compartidos_cop: (aCop(totales.compartidos.COP, 'COP') ?? 0) + (aCop(totales.compartidos.USD, 'USD') ?? 0),
             compartidos_sin_asignar_cop: (aCop(totales.compartidos_sin_asignar.COP, 'COP') ?? 0) + (aCop(totales.compartidos_sin_asignar.USD, 'USD') ?? 0),
-            clientes_pagadores: pagadores.size,
+            restaurantes_en_reparto: pesoRestaurante.size,
             ingresos_usd: totales.ingresos.USD, gastos_usd: totales.gastos.USD
         },
         gastos_por_categoria: totales.gastos_por_categoria,
         restaurantes,
         movimientos: movimientosRes.data || [],
-        nota: 'OpenAI se incluye como costo estimado según tokens y tarifas configuradas. Los gastos compartidos se reparten en partes iguales entre los restaurantes con una suscripción registrada en el mes. Las facturas de Railway, Supabase, Meta y Claro se ingresan aquí hasta conectar sus APIs.'
+        nota: 'Los costos propios de IA se asignan al restaurante que los genera. Los gastos compartidos se prorratean por días activos del mes entre todos los restaurantes creados hasta ese período, incluidos los que están en prueba. Este reparto es una estimación. Las facturas de Railway, Supabase, Meta y Claro aún requieren conexión o importación.'
     });
 });
 
