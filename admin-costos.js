@@ -7,7 +7,7 @@ const supabase = createClient(
 const $ = id => document.getElementById(id);
 const nombresCategoria = {
   suscripcion: 'Suscripción', railway: 'Railway', supabase: 'Supabase',
-  claro: 'Claro', meta: 'Meta', otro: 'Otro'
+  claro: 'Claro', meta: 'Meta', openai: 'OpenAI', otro: 'Otro'
 };
 const monedaCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 const monedaUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 4 });
@@ -93,30 +93,35 @@ function actualizarCategorias() {
 function renderizar(data) {
   datos = data;
   const r = data.resumen;
-  $('ingresos-cop').textContent = mostrarMoneda(r.ingresos_cop, 'COP');
+  $('ingresos-cop').textContent = r.ingresos_cop == null ? 'Falta tasa USD' : mostrarMoneda(r.ingresos_cop, 'COP');
   $('ingresos-usd').textContent = mostrarMoneda(r.ingresos_usd, 'USD') + ' registrados en USD';
-  $('gastos-cop').textContent = mostrarMoneda(r.gastos_registrados_cop, 'COP');
-  $('gastos-usd').textContent = mostrarMoneda(r.gastos_usd, 'USD') + ' registrados en USD';
-  $('openai-usd').textContent = r.operaciones_ia && r.ia_sin_tarifa === r.operaciones_ia
-    ? 'Sin tarifa' : mostrarMoneda(r.ia_estimado_usd, 'USD');
-  $('openai-nota').textContent = numero.format(r.operaciones_ia) + ' operaciones · ' +
-    numero.format(r.ia_sin_tarifa) + ' sin tarifa configurada';
+  $('gastos-cop').textContent = r.gastos_cop == null ? 'Falta tasa USD' : mostrarMoneda(r.gastos_cop, 'COP');
+  $('gastos-usd').textContent = mostrarMoneda(r.gastos_usd, 'USD') + ' en USD, incluye OpenAI';
+  const costoOpenAIUsd = r.ia_real_disponible ? r.ia_real_usd : r.ia_estimado_usd;
+  $('openai-usd').textContent = mostrarMoneda(costoOpenAIUsd, 'USD');
+  $('openai-cop').textContent = r.ia_costo_aplicado_cop == null
+    ? 'Equivalente COP: falta tasa' : '≈ ' + mostrarMoneda(r.ia_costo_aplicado_cop, 'COP');
+  $('openai-nota').textContent = r.ia_real_disponible
+    ? 'Costo monetario reportado por OpenAI · ' + numero.format(r.operaciones_ia) + ' operaciones registradas en Velox'
+    : 'Estimación local · ' + numero.format(r.operaciones_ia) + ' operaciones';
   if (r.utilidad_neta_cop == null) {
     $('neto-cop').textContent = 'Falta tasa USD';
     $('neto-nota').textContent = 'Guarda la tasa del período para convertir todos los valores.';
   } else {
     $('neto-cop').textContent = mostrarMoneda(r.utilidad_neta_cop, 'COP');
-    $('neto-nota').textContent = r.utilidad_parcial
-      ? 'Estimación parcial: hay operaciones de IA sin tarifa configurada.'
-      : 'Incluye los movimientos registrados y el costo estimado de OpenAI.';
+    $('neto-nota').textContent = r.ia_real_disponible
+      ? 'Incluye el gasto reportado por OpenAI y los movimientos del libro.'
+      : 'Incluye los movimientos del libro y el costo OpenAI estimado localmente.';
   }
-  $('finance-note').textContent = data.nota +
+  $('finance-note').textContent = data.nota + ' ' + (data.costos_openai?.mensaje || '') +
+    (r.ia_real_sin_asignar_usd > 0 ? ' OpenAI sin atribuir a restaurante: ' + mostrarMoneda(r.ia_real_sin_asignar_usd, 'USD') + '.' : '') +
     (r.compartidos_sin_asignar_cop > 0
-      ? ' Hay gastos compartidos sin repartir porque ningún restaurante tiene suscripción registrada este mes.'
+      ? ' Hay gastos compartidos sin repartir porque ningún restaurante tiene días activos en este mes.'
       : '');
   $('tasa-usd-cop').value = data.tasa_cop_por_usd || '';
-  $('ai-period-note').textContent = 'Período ' + data.periodo +
-    '. El costo depende de las tarifas configuradas; el consumo sin tarifa aparece separado.';
+  $('ai-period-note').textContent = data.costos_openai?.disponible
+    ? 'Período ' + data.periodo + '. Costo monetario real de OpenAI; el reparto por restaurante es estimado según la telemetría de Velox.'
+    : 'Período ' + data.periodo + '. Se muestra el costo OpenAI estimado localmente hasta conectar el reporte monetario del proveedor.';
   renderizarCategorias(data.gastos_por_categoria || {});
   renderizarMovimientos(data.movimientos || [], data.restaurantes || []);
   renderizarRestaurantes(data.restaurantes || []);
@@ -195,11 +200,8 @@ function renderizarRestaurantes(restaurantes) {
     fila.className = 'border-t border-[#E6D8C9]';
     celda(fila, r.restaurante);
     celda(fila, numero.format(r.operaciones_ia || 0));
-    celda(fila, numero.format(r.tokens_entrada || 0));
-    celda(fila, numero.format(r.tokens_salida || 0));
-    celda(fila, r.ia_sin_tarifa
-      ? mostrarMoneda(r.ia_usd, 'USD') + ' · ' + numero.format(r.ia_sin_tarifa) + ' sin tarifa'
-      : mostrarMoneda(r.ia_usd, 'USD'));
+    celda(fila, mostrarMoneda(r.ia_usd, 'USD'));
+    celda(fila, r.ia_cop == null ? 'Falta tasa USD' : mostrarMoneda(r.ia_cop, 'COP'));
     fragmentoIa.append(fila);
   }
   ia.replaceChildren(fragmentoIa);

@@ -69,9 +69,9 @@
       <section id="vista-resumen" class="space-y-4">
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Ingresos registrados</p><strong id="ingresos-cop" class="mt-1 block text-2xl">—</strong><p id="ingresos-usd" class="mt-1 text-xs text-[#69544A]"></p></article>
-          <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Gastos registrados</p><strong id="gastos-cop" class="mt-1 block text-2xl">—</strong><p id="gastos-usd" class="mt-1 text-xs text-[#69544A]"></p></article>
+          <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Gastos totales</p><strong id="gastos-cop" class="mt-1 block text-2xl">—</strong><p id="gastos-usd" class="mt-1 text-xs text-[#69544A]"></p></article>
           <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Utilidad neta estimada</p><strong id="neto-cop" class="mt-1 block text-2xl text-red-700">—</strong><p id="neto-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
-          <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">OpenAI estimado</p><strong id="openai-usd" class="mt-1 block text-2xl">—</strong><p id="openai-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
+          <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Costo OpenAI · USD</p><strong id="openai-usd" class="mt-1 block text-2xl">—</strong><p id="openai-cop" class="mt-1 text-sm font-semibold text-[#8A3D2C]">—</p><p id="openai-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
         </div>
 
         <p id="finance-note" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] p-3 text-sm text-[#69544A]" role="status"></p>
@@ -118,11 +118,11 @@
       <section id="vista-restaurantes" class="hidden space-y-4">
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
           <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Ingreso y costo por restaurante</h2><p class="text-xs text-[#69544A]">Los gastos compartidos se prorratean según los días activos de cada restaurante durante el período. Incluye las pruebas gratis.</p></div>
-          <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Ingresos COP</th><th class="p-3">Gastos directos COP</th><th class="p-3">Parte compartida COP</th><th class="p-3">OpenAI estimado</th><th class="p-3">Neto estimado COP</th></tr></thead><tbody id="restaurantes-finanzas-body"></tbody></table></div>
+          <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Ingresos COP</th><th class="p-3">Gastos directos COP</th><th class="p-3">Parte compartida COP</th><th class="p-3">OpenAI atribuido</th><th class="p-3">Neto estimado COP</th></tr></thead><tbody id="restaurantes-finanzas-body"></tbody></table></div>
         </section>
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Consumo de IA por restaurante</h2><p id="ai-period-note" class="text-xs text-[#69544A]"></p></div>
-          <div class="overflow-x-auto"><table class="w-full min-w-[680px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Operaciones</th><th class="p-3">Tokens entrada</th><th class="p-3">Tokens salida</th><th class="p-3">Costo estimado USD</th></tr></thead><tbody id="ia-restaurantes-body"></tbody></table></div>
+          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Costo de IA por restaurante</h2><p id="ai-period-note" class="text-xs text-[#69544A]"></p></div>
+          <div class="overflow-x-auto"><table class="w-full min-w-[680px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Operaciones</th><th class="p-3">Costo OpenAI (USD)</th><th class="p-3">Equivalente (COP)</th></tr></thead><tbody id="ia-restaurantes-body"></tbody></table></div>
         </section>
       </section>
       <p id="data-message" class="text-sm text-red-700" role="status" aria-live="polite"></p>
