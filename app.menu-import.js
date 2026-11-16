@@ -43,8 +43,8 @@ function prepararSelectorArchivosMenu() {
   opciones.setAttribute('role', 'group');
   opciones.setAttribute('aria-label', 'Elegir fotos o PDF de la carta');
   opciones.innerHTML = `
-    <button type="button" onclick="abrirSelectorArchivosMenu(true)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-700 px-2 py-2 text-sm font-semibold text-white hover:border-red-400">Subir fotos</button>
-    <button type="button" onclick="abrirSelectorArchivosMenu(false)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-900 px-2 py-2 text-sm font-semibold text-white hover:border-red-400">Subir archivos</button>`;
+    <button type="button" onclick="abrirSelectorArchivosMenu(true)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-700 px-2 py-2 text-sm font-semibold text-white hover:border-red-400">Fotos del menú</button>
+    <button type="button" onclick="abrirSelectorArchivosMenu(false)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-900 px-2 py-2 text-sm font-semibold text-white hover:border-red-400">Archivo PDF o fotos</button>`;
   boton.replaceWith(opciones);
 }
 function abrirSelectorArchivosMenu(soloFotos) {
@@ -186,7 +186,7 @@ function indicarLecturaMenu(activa) {
   leyendoMenu = activa;
   const boton = document.getElementById('btn-procesar-ia');
   boton.disabled = activa;
-  boton.textContent = activa ? 'Leyendo archivos…' : 'Leer con IA';
+  boton.textContent = activa ? 'Leyendo archivos…' : 'Crear borrador';
 }
 
 function guardarEdicionBorradorMenu() {
@@ -410,8 +410,9 @@ function actualizarResumenRevision() {
   const obligatorios = pendientes.filter(p => p.obligatorio).length;
   const fotosPendientes = borradorMenu.productos.filter(p => !p.imagen_url && !fotosBorradorMenu.has(p)).length;
   const listos = borradorMenu.productos.length - obligatorios;
+  const precios = borradorMenu.productos.filter(p => !Number.isSafeInteger(Number(p.precio)) || Number(p.precio) <= 0 || Number(p.precio) > 100000000).length;
   const resumen = [`${listos} ${listos === 1 ? 'listo' : 'listos'} para publicar`];
-  if (obligatorios) resumen.push(`${obligatorios} por corregir`);
+  if (obligatorios) resumen.push(`${obligatorios} por corregir${precios ? ' · ' + precios + ' con precio pendiente' : ''}`);
   if (fotosPendientes) resumen.push(`${fotosPendientes} sin foto (opcional)`);
   document.getElementById('revision-resumen').textContent = resumen.join(' · ');
   const aviso = document.getElementById('revision-bloqueos');
@@ -432,7 +433,18 @@ function revisarSiguienteProducto() {
   const pendientes = correcciones.length ? correcciones : todos;
   const actual = pendientes.findIndex(p => p.indice === indiceRevisionActual);
   const siguiente = pendientes[(actual + 1) % pendientes.length];
-  if (siguiente) abrirCartaBorrador(siguiente.indice);
+  if (!siguiente) return;
+  abrirCartaBorrador(siguiente.indice);
+  const p = borradorMenu.productos[siguiente.indice];
+  const editor = document.getElementById(`revision-producto-${siguiente.indice}`);
+  if (p.revision_opciones || opcionesBorradorIncompletas(p)) {
+    const opciones = document.getElementById(`revision-opciones-${siguiente.indice}`);
+    opciones.open = true;
+    opciones.querySelector?.('input, summary')?.focus();
+  } else if (siguiente.obligatorio) {
+    const campo = !p.nombre.trim() ? 'nombre' : !p.categoria.trim() ? 'categoria' : 'precio';
+    editor.querySelector?.(`[data-campo-revision="${campo}"]`)?.focus();
+  } else document.getElementById('revision-foto-archivo').focus();
 }
 
 function abrirCartaBorrador(indice = null) {
@@ -642,7 +654,7 @@ function renderizarRevisionMenu(i) {
   if (!p) return;
   const categoria = categoriaProductoBorrador(p);
   const foto = fotosBorradorMenu.get(p)?.previa || p.imagen_url;
-    const campo=(key,label,valor,extra='')=>`<label class="block text-xs text-slate-300">${label}<input ${extra} value="${escaparHtmlUI(valor)}" oninput="editarDatoBorrador(${i}, '${key}', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`;
+    const campo=(key,label,valor,extra='')=>`<label class="block text-xs text-slate-300">${label}<input ${extra} value="${escaparHtmlUI(valor)}" oninput="editarDatoBorrador(${i}, '${key}', this.value)" data-campo-revision="${key}" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`;
     const opciones=(p.opciones||[]).map((o,j)=>o.grupo==='__velox_combo_family__'?'':`<div class="grid gap-2 rounded-lg border border-slate-700 p-2">${['grupo','nombre','descripcion'].map(key=>`<label class="text-xs text-slate-300">${({grupo:'Grupo',nombre:'Opción',descripcion:'Descripción'})[key]}<input value="${escaparHtmlUI(o[key]||'')}" oninput="editarDatoBorrador(${i}, '${key}', this.value, ${j})" maxlength="${key==='descripcion'?5000:key==='grupo'?120:200}" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`).join('')}<button type="button" onclick="cambiarOpcionesBorrador(${i}, ${j})" class="min-h-11 justify-self-start text-xs text-red-300">Quitar opción</button></div>`).join('');
     document.getElementById('revision-menu-lista').innerHTML = `<article id="revision-producto-${i}" tabindex="-1" class="rounded-lg border border-slate-700 bg-slate-900 p-3">
           <div class="min-w-0">

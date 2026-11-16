@@ -28,7 +28,8 @@ const slug = (nombreRestaurante
     // 1. Crear el usuario en Auth de Supabase
     const { data: authData, error: authError } = await supabaseClient.auth.signUp({
       email: email,
-      password: password
+      password: password,
+      options: { emailRedirectTo: new URL('/login.html', window.location.origin).href }
     });
 
     if (authError) throw authError;
@@ -56,8 +57,8 @@ const slug = (nombreRestaurante
     });
 
    if (loginError) {
-            alert("¡Cuenta creada con éxito! Pero hubo un problema al iniciar sesión automáticamente.");
-            window.location.href = 'index.html';
+            alert("Tu cuenta está creada. Si recibiste un correo de confirmación, abre el enlace y luego inicia sesión.");
+            window.location.href = 'login.html';
             return;
         }
 
@@ -66,7 +67,7 @@ const slug = (nombreRestaurante
         
   } catch (err) {
     console.error("Error durante el registro:", err);
-    alert("Ocurrió un error al registrar la cuenta: " + err.message);
+    alert(err.code === "user_already_exists" ? "Ese correo ya está registrado. Entra por Iniciar sesión." : "No pudimos completar el registro. Revisa el correo y la contraseña e inténtalo de nuevo.");
     if (btn) {
       btn.disabled = false;
       btn.innerText = "Crear Cuenta y Continuar";

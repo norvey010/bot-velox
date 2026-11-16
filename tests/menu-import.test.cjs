@@ -23,7 +23,7 @@ test('validación permite precio pendiente solo en borrador y nunca multiplica l
 function servidor({incompleto=false,transcripcion,esperarModelo,supabaseAdmin}={}){
  const routes=new Map(),calls=[],rpcCalls=[];let writes=0;
  const user={from(){return{select(){return this},eq(){return this},maybeSingle:async()=>({data:{id:'rest-1'}}),delete(){writes++;throw Error('No debe escribir')},insert(){writes++;throw Error('No debe escribir')}}},rpc:async(name,args)=>{rpcCalls.push({name,args});return{data:'a'.repeat(32)}}};
- const context={console:{info(){},error(){}},Buffer,crypto:require('node:crypto'),supabaseAdmin,AbortController,setTimeout,clearTimeout,supabaseUrl:"https://proyecto.supabase.co",process:{env:{}},prepararFuentesMenu,validarProductosMenu,errorMenu,upload:{array:()=>()=>{}},autenticarImportacionMenu(){},multer:{MulterError:class{}},app:{use(){},post:(route,...handlers)=>routes.set(route,handlers.at(-1)),get:(route,...handlers)=>routes.set('GET '+route,handlers.at(-1)),delete:(route,...handlers)=>routes.set('DELETE '+route,handlers.at(-1))},openai:{chat:{completions:{create:async input=>{calls.push(input);if(esperarModelo) await esperarModelo;return{choices:[{finish_reason:incompleto&&calls.length===2?'length':'stop',message:{content:JSON.stringify(transcripcion || {productos:[{...producto('Producto '+calls.length,500),familia:'',es_combo:false,familia_combo:''}],variantes:[]})}}],usage:{},model:'modelo-prueba'}}}}}};
+ const context={registrarUsoIA:async()=>{},console:{info(){},error(){}},Buffer,crypto:require('node:crypto'),supabaseAdmin,AbortController,setTimeout,clearTimeout,supabaseUrl:"https://proyecto.supabase.co",process:{env:{}},prepararFuentesMenu,validarProductosMenu,errorMenu,upload:{array:()=>()=>{}},autenticarImportacionMenu(){},multer:{MulterError:class{}},app:{use(){},post:(route,...handlers)=>routes.set(route,handlers.at(-1)),get:(route,...handlers)=>routes.set('GET '+route,handlers.at(-1)),delete:(route,...handlers)=>routes.set('DELETE '+route,handlers.at(-1))},openai:{chat:{completions:{create:async input=>{calls.push(input);if(esperarModelo) await esperarModelo;return{choices:[{finish_reason:incompleto&&calls.length===2?'length':'stop',message:{content:JSON.stringify(transcripcion || {productos:[{...producto('Producto '+calls.length,500),familia:'',es_combo:false,familia_combo:''}],variantes:[]})}}],usage:{},model:'modelo-prueba'}}}}}};
  vm.createContext(context);const source=read('index.js');vm.runInContext(source.slice(source.indexOf('const uploadMenuFiles ='),source.indexOf("const { revisarDatosFotoMenu } = require")),context);
  const response=()=>({statusCode:200,status(n){this.statusCode=n;return this},json(data){this.data=data;return this}});
  return{context,routes,calls,rpcCalls,user,response,get writes(){return writes}};
@@ -196,8 +196,8 @@ test('el panel muestra los dos accesos a archivos sin un selector intermedio',()
  const opciones=selector.innerHTML;
  const input=html.match(/<input[^>]*id="menuFile"[^>]*>/)[0];
  assert.doesNotMatch(opciones,/<summary|Seleccionar archivos/);
- assert.match(opciones,/abrirSelectorArchivosMenu\(true\)[^>]*>Subir fotos/);
- assert.match(opciones,/abrirSelectorArchivosMenu\(false\)[^>]*>Subir archivos/);
+ assert.match(opciones,/abrirSelectorArchivosMenu\(true\)[^>]*>Fotos del menú/);
+ assert.match(opciones,/abrirSelectorArchivosMenu\(false\)[^>]*>Archivo PDF o fotos/);
  assert.match(input,/\bmultiple\b/);
  assert.doesNotMatch(input,/\b(?:accept|capture)=/);
 });
@@ -591,7 +591,7 @@ test('un plato sin descripción ni foto cuenta como listo si se puede vender', a
    {nombre:'Porción francesa',categoria:'Papas',precio:6000,descripcion:'',opciones:[]},
    {nombre:'Especial',categoria:'Otros',precio:0,descripcion:'',opciones:[]}
  ]; actualizarResumenRevision();`);
- assert.equal(n.el('revision-resumen').textContent, '1 listo para publicar · 1 por corregir · 2 sin foto (opcional)');
+ assert.equal(n.el('revision-resumen').textContent, '1 listo para publicar · 1 por corregir · 1 con precio pendiente · 2 sin foto (opcional)');
  assert.equal(n.el('revision-siguiente').textContent, 'Revisar correcciones');
  const {revisarDatosFotoMenu} = require('../app.menu-categorias');
  assert.equal(revisarDatosFotoMenu({nombre:'Porción francesa',categoria:'Papas'}),'');
