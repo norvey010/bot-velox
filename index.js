@@ -192,15 +192,27 @@ async function autenticarAdminPlataforma(req, res, next) {
 app.get('/api/admin/costos', autenticarAdminPlataforma, async (req, res) => {
     const dias = Math.min(365, Math.max(1, Number(req.query.dias) || 30));
     const desde = new Date(Date.now() - dias * 86400000).toISOString();
-    const { data, error } = await supabaseAdmin.from('velox_ai_usage')
-        .select('restaurante_id, operacion, modelo, input_tokens, output_tokens, total_tokens, costo_estimado_usd, created_at, restaurantes(nombre_restaurante)')
-        .gte('created_at', desde).order('created_at', { ascending: false }).limit(10000);
-    if (error) {
-        console.error('No se pudo consultar el consumo de IA:', error.message);
+    const [restaurantesRes, usoRes] = await Promise.all([
+        supabaseAdmin.from('restaurantes')
+            .select('id, nombre_restaurante')
+            .order('created_at', { ascending: true })
+            .limit(10000),
+        supabaseAdmin.from('velox_ai_usage')
+            .select('restaurante_id, operacion, modelo, input_tokens, output_tokens, total_tokens, costo_estimado_usd, created_at, restaurantes(nombre_restaurante)')
+            .gte('created_at', desde)
+            .order('created_at', { ascending: false })
+            .limit(10000)
+    ]);
+    if (restaurantesRes.error || usoRes.error) {
+        console.error('No se pudo consultar el consumo de IA:', restaurantesRes.error?.message || usoRes.error?.message);
         return res.status(503).json({ error: 'Aún no se puede leer el registro de costos. Verifica la migración de Supabase.' });
     }
-    const porRestaurante = new Map();
-    for (const fila of data || []) {
+    const porRestaurante = new Map((restaurantesRes.data || []).map(restaurante => [restaurante.id, {
+        restaurante_id: restaurante.id,
+        restaurante: restaurante.nombre_restaurante || 'Sin nombre',
+        operaciones: 0, tokens_entrada: 0, tokens_salida: 0, costo_estimado_usd: 0, operaciones_sin_tarifa: 0
+    }]));
+    for (const fila of usoRes.data || []) {
         const id = fila.restaurante_id || 'sin_restaurante';
         if (!porRestaurante.has(id)) porRestaurante.set(id, {
             restaurante_id: id, restaurante: fila.restaurantes?.nombre_restaurante || 'Sin restaurante',
@@ -213,7 +225,14 @@ app.get('/api/admin/costos', autenticarAdminPlataforma, async (req, res) => {
         if (fila.costo_estimado_usd == null) r.operaciones_sin_tarifa++;
         else r.costo_estimado_usd += Number(fila.costo_estimado_usd);
     }
-    return res.json({ dias, total_operaciones: (data || []).length, operaciones_sin_tarifa: [...porRestaurante.values()].reduce((n, r) => n + r.operaciones_sin_tarifa, 0), restaurantes: [...porRestaurante.values()].sort((a, b) => b.costo_estimado_usd - a.costo_estimado_usd), nota: 'El costo en USD es una estimación por operación; no incluye cargos compartidos de Railway ni Supabase.' });
+    const restaurantes = [...porRestaurante.values()].sort((a, b) => b.costo_estimado_usd - a.costo_estimado_usd);
+    return res.json({
+        dias,
+        total_operaciones: (usoRes.data || []).length,
+        operaciones_sin_tarifa: restaurantes.reduce((n, r) => n + r.operaciones_sin_tarifa, 0),
+        restaurantes,
+        nota: 'Los restaurantes aparecen desde su creación, incluso con consumo cero. El costo en USD es una estimación por operación; no incluye cargos compartidos de Railway ni Supabase.'
+    });
 });
 
 app.get('/', (req, res) => {
