@@ -8,7 +8,8 @@ const { prepararFuentesMenu, validarProductosMenu, TIPOS_MENU, errorMenu } = req
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai'); // 👈 Migrado a OpenAI
 const { registrarRutasFacturas } = require('./railway-invoices');
-const { ORIGEN_CARTA, datosCompartirCarta, mensajeCartaWhatsApp, crearPortadaCarta } = require('./carta-compartida');
+const { crearMiniaturaCarta } = require('./miniatura-carta');
+const { ORIGEN_CARTA, datosCompartirCarta, mensajeCartaWhatsApp } = require('./carta-compartida');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY }); // 👈 Inicialización con tu API Key
 const supabaseUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
@@ -64,45 +65,43 @@ const archivosPublicos = new Set([
 app.get([...archivosPublicos], (req, res) => {
     res.sendFile(path.join(__dirname, req.path.slice(1)));
 });
-// Portadas reutilizadas en memoria: no generan imágenes ni consumen IA.
+// Capturas de la carta real, sin IA. Solo se repiten si cambian los datos o se reinicia el proceso.
 const cachePortadasCarta = new Map();
-app.get('/c/:slug/portada.jpg', async (req, res) => {
+async function obtenerMiniaturaCarta(slug) {
+    const db = supabaseAdmin || supabase;
+    const {data: restaurante, error} = await db.from('restaurantes')
+        .select('id,slug,nombre_restaurante,telefono,menu_activo,horario_atencion').eq('slug',slug).maybeSingle();
+    if (error) throw error;
+    if (!restaurante) return null;
+    const {data: productos, error: errorProductos} = await db.from('productos')
+        .select('id,nombre,descripcion,precio,categoria,imagen_url,opciones,disponible')
+        .eq('restaurante_id',restaurante.id).order('id',{ascending:true});
+    if (errorProductos) throw errorProductos;
+    const disponibilidad = evaluarDisponibilidadMenu(restaurante);
+    const datos = {restaurante:{...restaurante,menu_disponible:disponibilidad.disponible,mensaje_cierre:disponibilidad.motivo},
+        productos:(productos || []).map(p=>({...p,disponible:p.disponible === true}))};
+    if (!datos.productos.length) return null;
+    const huella = crypto.createHash('sha256').update(JSON.stringify(datos)).digest('hex');
+    let cache = cachePortadasCarta.get(slug);
+    if (!cache || cache.huella !== huella) {
+        if (cachePortadasCarta.size >= 50) cachePortadasCarta.delete(cachePortadasCarta.keys().next().value);
+        const promesa = crearMiniaturaCarta(datos,new URL(supabaseUrl).origin);
+        cache = {huella,promesa};
+        cachePortadasCarta.set(slug,cache);
+        promesa.catch(()=>{if(cachePortadasCarta.get(slug) === cache) cachePortadasCarta.delete(slug);});
+    }
+    return cache.promesa;
+}
+app.get('/c/:slug/portada.jpg', async (req,res) => {
     const slug = String(req.params.slug || '').trim();
     if (!slug || slug.length > 120) return res.sendStatus(400);
     try {
-        const db = supabaseAdmin || supabase;
-        const { data: restaurante, error } = await db.from('restaurantes')
-            .select('id,nombre_restaurante').eq('slug', slug).maybeSingle();
-        if (error) throw error;
-        if (!restaurante) return res.sendStatus(404);
-        let cache = cachePortadasCarta.get(slug);
-        if (!cache || cache.vence < Date.now() || cache.nombre !== restaurante.nombre_restaurante) {
-            if (cachePortadasCarta.size >= 100) cachePortadasCarta.delete(cachePortadasCarta.keys().next().value);
-            const promesa = (async () => {
-                const {data: productos} = await db.from('productos').select('imagen_url')
-                    .eq('restaurante_id', restaurante.id).not('imagen_url', 'is', null).order('id').limit(8);
-                let foto;
-                const origenStorage = new URL(supabaseUrl).origin;
-                for (const producto of productos || []) {
-                    try {
-                        const url = new URL(producto.imagen_url);
-                        if (url.origin !== origenStorage || !url.pathname.startsWith('/storage/v1/object/public/productos/')) continue;
-                        const respuesta = await axios.get(url.href, {responseType:'arraybuffer',timeout:5000,maxRedirects:0,maxContentLength:5*1024*1024});
-                        foto = Buffer.from(respuesta.data);
-                        break;
-                    } catch { /* Prueba otra foto guardada; nunca consulta URLs externas. */ }
-                }
-                return crearPortadaCarta(restaurante.nombre_restaurante, foto);
-            })();
-            cache = {promesa, nombre:restaurante.nombre_restaurante, vence:Date.now()+10*60*1000};
-            cachePortadasCarta.set(slug, cache);
-        }
-        const imagen = await cache.promesa;
-        res.setHeader('Cache-Control', 'public, max-age=600');
+        const imagen = await obtenerMiniaturaCarta(slug);
+        if (!imagen) return res.sendStatus(404);
+        res.setHeader('Cache-Control','public, max-age=300');
         res.type('jpeg').send(imagen);
-    } catch (error) {
-        cachePortadasCarta.delete(slug);
-        console.error('Error al preparar portada:', error.message);
+    } catch(error) {
+        console.error('Error al capturar carta:',error.message);
         res.sendStatus(503);
     }
 });
@@ -116,13 +115,14 @@ app.get('/c/:slug', async (req, res) => {
             .select('nombre_restaurante').eq('slug', slug).maybeSingle();
         if (error) throw error;
         if (!data) return res.status(404).send('No encontramos esta carta.');
+        obtenerMiniaturaCarta(slug).catch(error=>console.error('No se pudo preparar miniatura:',error.message));
         const carta = datosCompartirCarta(data.nombre_restaurante, slug);
         const titulo = carta.titulo;
         const seguro = titulo.replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
         const html = await require('fs/promises').readFile(path.join(__dirname, 'menu.html'), 'utf8');
         res.setHeader('Cache-Control', 'no-store');
         res.type('html').send(html.replace('<title>Menú digital | Velox Bot</title>',
-            `<title>${seguro}</title><meta property="og:title" content="${seguro}"><meta property="og:description" content="Consulta nuestra carta digital y haz tu pedido."><meta property="og:type" content="website"><meta property="og:image" content="${carta.imagen}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="${seguro}"><meta property="og:url" content="${carta.url}">`));
+            `<title>${seguro}</title><meta property="og:title" content="${seguro}"><meta property="og:description" content="Consulta nuestra carta digital y haz tu pedido."><meta property="og:type" content="website"><meta property="og:image" content="${carta.imagen}"><meta property="og:image:width" content="860"><meta property="og:image:height" content="920"><meta property="og:image:alt" content="${seguro}"><meta property="og:url" content="${carta.url}">`));
     } catch (error) {
         console.error('Error al abrir enlace de carta:', error.message);
         res.status(503).send('No pudimos abrir la carta. Inténtalo de nuevo.');
@@ -861,7 +861,10 @@ async function enviarTextoWhatsApp(phoneNumberId, destinatario, texto) {
         const slug = decodeURIComponent(coincidencia[1]);
         const {data: restaurante} = await (supabaseAdmin || supabase).from('restaurantes')
             .select('nombre_restaurante').eq('slug',slug).maybeSingle();
-        if (restaurante) data = mensajeCartaWhatsApp(destinatario, restaurante.nombre_restaurante, slug);
+        if (restaurante) {
+            await obtenerMiniaturaCarta(slug).catch(error=>console.error('Miniatura WhatsApp pendiente:',error.message));
+            data = mensajeCartaWhatsApp(destinatario, restaurante.nombre_restaurante, slug);
+        }
     }
     const enviar = payload => axios({
         method:'POST', url:`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, data:payload,

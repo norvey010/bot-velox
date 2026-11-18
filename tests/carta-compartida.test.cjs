@@ -9,7 +9,7 @@ test('el mensaje del bot usa foto ampliable y botón, sin URL visible en el text
  const mensaje = mensajeCartaWhatsApp('573001234567','Cangreburger','cangreburger-123');
  assert.equal(mensaje.interactive.body.text,'Carta digital de Cangreburger');
  assert.equal(mensaje.interactive.header.type,'image');
- assert.match(mensaje.interactive.header.image.link,/\/c\/cangreburger-123\/portada.jpg$/);
+ assert.match(mensaje.interactive.header.image.link,/\/c\/cangreburger-123\/portada.jpg\?v=carta$/);
  assert.equal(mensaje.interactive.action.parameters.display_text,'Ver carta');
  assert.doesNotMatch(mensaje.interactive.body.text,/https?:/);
 });
@@ -29,7 +29,7 @@ test('el envío convierte enlaces de la carta y reintenta sin imagen solo ante r
  const end=source.indexOf("app.post('/webhook'",start);
  const llamadas=[]; let fallo;
  const db={from:()=>({select(){return this},eq(){return this},maybeSingle:async()=>({data:{nombre_restaurante:'Sol'}})})};
- const ctx={process:{env:{WHATSAPP_TOKEN:'prueba'}},supabaseAdmin:db,supabase:db,mensajeCartaWhatsApp,axios:async req=>{llamadas.push(req.data);if(fallo){const e=fallo;fallo=null;throw e;}}};
+ const ctx={obtenerMiniaturaCarta:async()=>Buffer.from('miniatura'),console,process:{env:{WHATSAPP_TOKEN:'prueba'}},supabaseAdmin:db,supabase:db,mensajeCartaWhatsApp,axios:async req=>{llamadas.push(req.data);if(fallo){const e=fallo;fallo=null;throw e;}}};
  vm.createContext(ctx);vm.runInContext(source.slice(start,end),ctx);
  const url=datosCompartirCarta('Sol','sol').url;
  await ctx.enviarTextoWhatsApp('id','destino',`Aquí tienes tu carta: ${url}`);

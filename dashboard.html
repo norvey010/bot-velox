@@ -1477,6 +1477,7 @@
         return;
       }
       const url = new URL('/c/' + encodeURIComponent(String(slug).trim()), window.location.origin);
+      url.searchParams.set('v', 'carta');
       urlVistaPreviaCarta = url.href;
       miniatura.hidden = false;
       estado.hidden = true;

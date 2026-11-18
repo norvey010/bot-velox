@@ -1,0 +1,6 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "deploy": {
+    "aptPackages": ["...", "libnss3", "libnspr4", "libexpat1"]
+  }
+}

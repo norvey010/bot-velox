@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@google/genai": "^2.27.0",
+    "@sparticuz/chromium": "143.0.4",
     "@supabase/supabase-js": "^2.110.8",
     "axios": "^1.18.1",
     "dejavu-fonts-ttf": "^2.37.3",
@@ -10,6 +11,7 @@
     "openai": "^7.31.0",
     "pdf-lib": "1.17.1",
     "pdf-parse": "^1.1.1",
+    "playwright-core": "1.65.1",
     "sharp": "^0.34.5"
   }
 }
