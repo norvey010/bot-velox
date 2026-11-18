@@ -5,7 +5,7 @@ const escapar = valor => String(valor).replace(/[&<>"']/g, c => ({'&':'&amp;','<
 function datosCompartirCarta(nombre, slug) {
   const titulo = `Carta digital de ${String(nombre || 'Restaurante').trim()}`;
   const url = `${ORIGEN_CARTA}/c/${encodeURIComponent(slug)}`;
-  return { titulo, url, imagen: `${url}/portada.jpg` };
+  return { titulo, url: `${url}?v=carta`, imagen: `${url}/portada.jpg?v=carta` };
 }
 
 function mensajeCartaWhatsApp(destinatario, nombre, slug) {
