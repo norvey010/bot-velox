@@ -200,3 +200,25 @@ test('Editar menú abre la tarjeta con los datos ya cargados y permite quitar su
   assert.equal(d.el('producto-imagen-preview').hidden, true);
   assert.equal(d.run('quitarImagenGuardadaProducto'), true);
 });
+
+test('la categoría se hereda y un nombre vacío no pierde la categoría del producto', () => {
+  const d = dashboard();
+  d.el('producto-imagen-miniatura').removeAttribute = function (name) { delete this[name]; };
+  d.el('editor-producto').showModal = function () { this.open = true; };
+  d.run(`productosEditor=[{id:'1',categoria:'Pizzas'},{id:'2',categoria:'Bebidas'}]; categoriaEditorActiva='Pizzas';`);
+  d.context.nuevoProducto();
+  assert.equal(d.el('prod-categoria').value, 'Pizzas');
+  assert.equal(d.el('prod-categoria-panel').open, false);
+  d.context.cambiarCategoriaProducto('Bebidas');
+  assert.equal(d.el('prod-categoria').value, 'Bebidas');
+  d.context.cambiarCategoriaProducto('__nueva__');
+  d.context.asignarCategoriaProducto('  ');
+  assert.equal(d.el('prod-categoria').value, 'Bebidas');
+  d.context.asignarCategoriaProducto(' pizzas ');
+  assert.equal(d.el('prod-categoria').value, 'Pizzas');
+  d.context.asignarCategoriaProducto('Postres');
+  assert.equal(d.el('prod-categoria-resumen').textContent, 'Categoría: Postres');
+  d.context.prepararCategoriaProducto('Bebidas');
+  assert.equal(d.el('prod-categoria').value, 'Bebidas');
+  assert.equal(d.el('prod-categoria-nueva-panel').hidden, true);
+});
