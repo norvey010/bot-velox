@@ -270,7 +270,8 @@ async function cargarMenu() {
     if (window.VELOX_VISTA_BORRADOR) return;
     var contenedor = document.getElementById('contenedor-menu');
     var urlParams = new URLSearchParams(window.location.search);
-    var clienteSlug = urlParams.get('slug') || urlParams.get('r');
+    var clienteSlug = urlParams.get('slug') || urlParams.get('r')
+        || (window.location.pathname.startsWith('/c/') ? decodeURIComponent(window.location.pathname.slice(3)) : '');
 
     if (!clienteSlug) {
         contenedor.innerHTML = '<p class="text-center text-red-400 py-10">Error: No se especificó el restaurante.</p>';
@@ -310,6 +311,7 @@ function mostrarCartaMenu(restData, productos) {
     }
     var elNombre = document.getElementById('nombre-restaurante');
     if (elNombre) elNombre.innerText = restData.nombre_restaurante;
+    document.title = `Carta digital de ${restData.nombre_restaurante || 'Restaurante'}`;
 
     todosLosProductos = productos.map(producto => ({
         ...producto,

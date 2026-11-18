@@ -247,7 +247,17 @@
           </div>
           <div class="space-y-3 pt-3">
             <h3 class="text-sm font-semibold text-white">Carta publicada</h3>
-            <a id="compartir-carta" class="velox-volver inline-block" hidden>Compartir por WhatsApp</a>
+            <button id="compartir-carta" type="button" onclick="compartirCarta()" class="velox-volver inline-block" hidden>Compartir carta</button>
+            <dialog id="compartir-carta-dialogo" aria-labelledby="compartir-carta-titulo" class="m-auto w-[90%] max-w-sm rounded-xl bg-slate-800 p-5 text-white backdrop:bg-black/60">
+              <h3 id="compartir-carta-titulo" class="text-lg font-bold">Compartir carta</h3>
+              <label for="compartir-carta-enlace" class="mt-3 block text-sm">Enlace de tu carta</label>
+              <input id="compartir-carta-enlace" readonly onclick="this.select()" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm">
+              <p id="compartir-carta-status" class="mt-2 text-sm" role="status" aria-live="polite"></p>
+              <div class="mt-3 flex justify-between gap-2">
+                <button type="button" onclick="document.getElementById('compartir-carta-dialogo').close()" class="velox-volver">Cerrar</button>
+                <button type="button" onclick="copiarEnlaceCarta()" class="min-h-11 rounded-lg bg-red-600 px-3 text-sm font-semibold text-white">Copiar enlace</button>
+              </div>
+            </dialog>
             <p id="carta-preview-status" class="text-xs text-slate-400" role="status">Cargando vista previa…</p>
             <button id="carta-miniatura" type="button" onclick="abrirMenuEnVivo()" class="carta-miniatura" aria-label="Ampliar vista previa de mi carta" aria-haspopup="dialog" hidden>
               <iframe id="carta-preview-frame" title="Miniatura de la carta" tabindex="-1" aria-hidden="true" loading="lazy"></iframe>
@@ -566,7 +576,7 @@
 
       // 3. Asignar ID global y en el DOM de forma segura
       RESTAURANTE_ID = restaurante.id;
-      configurarVistaPreviaCarta(restaurante.slug);
+      configurarVistaPreviaCarta(restaurante.slug, restaurante.nombre_restaurante);
       cargarConfiguracion();
       if (!document.getElementById('sec-menu-ia').classList.contains('hidden')) cargarProductos();
       if (typeof recuperarLecturaMenu === 'function' && !document.getElementById('sec-menu-ia').classList.contains('hidden')) recuperarLecturaMenu();
@@ -1452,8 +1462,10 @@
       document.getElementById('producto-form-status').classList.add('hidden');
     }
     let urlVistaPreviaCarta = '';
+    let tituloCompartirCarta = 'Carta digital';
 
-    function configurarVistaPreviaCarta(slug) {
+    function configurarVistaPreviaCarta(slug, nombreRestaurante) {
+      tituloCompartirCarta = `Carta digital de ${String(nombreRestaurante || 'Mi restaurante').trim() || 'Mi restaurante'}`;
       const estado = document.getElementById('carta-preview-status');
       const miniatura = document.getElementById('carta-miniatura');
       if (!String(slug || '').trim()) {
@@ -1461,20 +1473,46 @@
         estado.textContent = 'Tu carta aún no tiene enlace.';
         miniatura.hidden = true;
         urlVistaPreviaCarta = '';
+        document.getElementById('compartir-carta').hidden = true;
         return;
       }
-      const url = new URL('/menu.html', window.location.origin);
-      url.searchParams.set('slug', String(slug).trim());
+      const url = new URL('/c/' + encodeURIComponent(String(slug).trim()), window.location.origin);
       urlVistaPreviaCarta = url.href;
       miniatura.hidden = false;
       estado.hidden = true;
       estado.textContent = '';
       const compartir = document.getElementById('compartir-carta');
-      compartir.href = 'https://wa.me/?text=' + encodeURIComponent(urlVistaPreviaCarta);
-      compartir.target = '_blank';
-      compartir.rel = 'noopener noreferrer';
+      document.getElementById('compartir-carta-enlace').value = urlVistaPreviaCarta;
       compartir.hidden = false;
       actualizarVistaPreviaCarta();
+    }
+
+    async function compartirCarta() {
+      if (!urlVistaPreviaCarta) return;
+      if (typeof navigator.share === 'function') {
+        try {
+          await navigator.share({ title: tituloCompartirCarta, text: tituloCompartirCarta, url: urlVistaPreviaCarta });
+          return;
+        } catch (error) {
+          if (error.name === 'AbortError') return;
+        }
+      }
+      document.getElementById('compartir-carta-status').textContent = '';
+      const dialogo = document.getElementById('compartir-carta-dialogo');
+      if (!dialogo.open) dialogo.showModal();
+    }
+
+    async function copiarEnlaceCarta() {
+      const estado = document.getElementById('compartir-carta-status');
+      try {
+        await navigator.clipboard.writeText(urlVistaPreviaCarta);
+        estado.textContent = 'Enlace copiado';
+      } catch {
+        const campo = document.getElementById('compartir-carta-enlace');
+        campo.focus();
+        campo.select();
+        estado.textContent = 'Mantén pulsado el enlace y elige Copiar.';
+      }
     }
 
     function actualizarVistaPreviaCarta() {
