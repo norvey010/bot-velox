@@ -259,7 +259,7 @@ test('compartir usa el nombre registrado y el menú nativo sin depender de Whats
  assert.equal(d.el('compartir-carta-status').textContent, 'Enlace copiado');
  const server = read('index.js');
  assert(server.includes('/c/${encodeURIComponent(restauranteData.slug)}'));
- assert(server.includes('preview_url: true'));
+ assert.match(server, /preview_url\s*:\s*true/);
 });
 
 test('el enlace corto publica el nombre seguro para las vistas previas de las apps', async () => {
@@ -268,10 +268,11 @@ test('el enlace corto publica el nombre seguro para las vistas previas de las ap
  const end = source.indexOf('const historiales', start);
  let handler;
  const db = {from: () => ({select(){return this},eq(){return this},maybeSingle:async()=>({data:{nombre_restaurante:'Pizza <Sol> & Amigos'}})})};
- vm.runInNewContext(source.slice(start,end), {app:{get:(_ruta,fn)=>{handler=fn}},supabaseAdmin:db,supabase:db,path:require('node:path'),__dirname:'/',require:()=>({readFile:async()=>read('menu.html')}),console});
+ vm.runInNewContext(source.slice(start,end), {datosCompartirCarta:require('../carta-compartida').datosCompartirCarta,app:{get:(_ruta,fn)=>{handler=fn}},supabaseAdmin:db,supabase:db,path:require('node:path'),__dirname:'/',require:()=>({readFile:async()=>read('menu.html')}),console});
  const res = {setHeader(){},type(){return this},status(n){this.code=n;return this},send(html){this.html=html;return this}};
  await handler({params:{slug:'pizza-sol'}},res);
  assert.match(res.html, /<title>Carta digital de Pizza &lt;Sol&gt; &amp; Amigos<\/title>/);
  assert.match(res.html, /property="og:title" content="Carta digital de Pizza &lt;Sol&gt; &amp; Amigos"/);
+ assert.match(res.html, /property="og:image" content="https:\/\/bot-velox-production.up.railway.app\/c\/pizza-sol\/portada.jpg"/);
  assert(read('menu.html').includes("window.location.pathname.startsWith('/c/')"));
 });
