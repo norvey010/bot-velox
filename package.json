@@ -3,6 +3,7 @@
     "@google/genai": "^2.27.0",
     "@supabase/supabase-js": "^2.110.8",
     "axios": "^1.18.1",
+    "dejavu-fonts-ttf": "^2.37.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "multer": "^2.3.0",

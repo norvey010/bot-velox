@@ -29,9 +29,24 @@ async function crearPortadaCarta(nombre, foto) {
     if (lineas[i] && (lineas[i] + ' ' + palabra).length > 19 && lineas.length < 3) lineas.push(palabra);
     else lineas[i] += (lineas[i] ? ' ' : '') + palabra;
   }
-  const texto = lineas.map((l, i) => `<text x="70" y="${250 + i * 64}" font-size="${l.length > 22 ? 37 : 51}" font-weight="700" fill="#2B211B">${escapar(l.length > 24 ? l.slice(0, 23) + '…' : l)}</text>`).join('');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#F6EFE5"/><rect x="26" y="26" width="1148" height="578" rx="28" fill="#FFFBF5" stroke="#D7C2AD"/><path d="M70 136H145" stroke="#A53D24" stroke-width="5"/><g font-family="sans-serif"><text x="70" y="181" font-size="20" letter-spacing="4" fill="#A53D24">CARTA DIGITAL</text>${texto}<text x="70" y="502" font-size="23" fill="#69544A">Descubre nuestro menú</text><text x="70" y="557" font-size="18" fill="#A53D24">Velox Bot</text></g><circle cx="884" cy="313" r="199" fill="#F0E3D5"/><circle cx="884" cy="313" r="150" fill="#FFFBF5" stroke="#D7C2AD" stroke-width="3"/><circle cx="884" cy="313" r="120" fill="none" stroke="#D7C2AD" stroke-width="2"/></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#F6EFE5"/><rect x="26" y="26" width="1148" height="578" rx="28" fill="#FFFBF5" stroke="#D7C2AD"/><path d="M70 136H145" stroke="#A53D24" stroke-width="5"/><circle cx="884" cy="313" r="199" fill="#F0E3D5"/><circle cx="884" cy="313" r="150" fill="#FFFBF5" stroke="#D7C2AD" stroke-width="3"/><circle cx="884" cy="313" r="120" fill="none" stroke="#D7C2AD" stroke-width="2"/></svg>`;
   const capas = [];
+  // Fuentes empaquetadas: el servidor de producción puede no tener fuentes instaladas.
+  const fuente = require.resolve('dejavu-fonts-ttf/ttf/DejaVuSans.ttf');
+  const fuenteNegrita = require.resolve('dejavu-fonts-ttf/ttf/DejaVuSans-Bold.ttf');
+  async function agregarTexto(texto, tamano, color, top, negrita = false) {
+    const input = await sharp({text:{
+      text:`<span foreground="${color}">${escapar(texto)}</span>`,
+      font:`DejaVu Sans ${negrita ? 'Bold ' : ''}${tamano}`,
+      fontfile:negrita ? fuenteNegrita : fuente,
+      width:520, rgba:true
+    }}).png().toBuffer();
+    capas.push({input,left:70,top});
+  }
+  await agregarTexto('CARTA DIGITAL',20,'#A53D24',162);
+  await agregarTexto(lineas.map(l => l.length > 24 ? l.slice(0,23)+'…' : l).join('\n'),48,'#2B211B',211,true);
+  await agregarTexto('Descubre nuestro menú',23,'#69544A',481);
+  await agregarTexto('Velox Bot',18,'#A53D24',539);
   if (foto) {
     try {
       const imagen = await sharp(foto, {limitInputPixels: 25000000}).rotate().resize(480, 490, {fit:'contain', background:'#FFFBF5'}).jpeg({quality:85}).toBuffer();
