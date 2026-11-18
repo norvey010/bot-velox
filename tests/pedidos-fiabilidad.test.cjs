@@ -234,3 +234,44 @@ test('el contador aparece solo mientras quedan productos por mostrar', () => {
  d.run(`productosEditor=productosEditor.slice(0,1); actualizarCategoriasProductos(); renderizarProductos();`);
  assert.equal(d.el('productos-editor-resumen').hidden, true);
 });
+
+test('compartir usa el nombre registrado y el menú nativo sin depender de WhatsApp', async () => {
+ const d = dashboard();
+ d.context.configurarVistaPreviaCarta('pizzas-123', 'Pizzas del Sol');
+ assert.equal(d.el('compartir-carta-enlace').value, 'https://velox.test/c/pizzas-123');
+ let enviado;
+ d.context.navigator.share = async datos => { enviado = datos; };
+ await d.context.compartirCarta();
+ assert.equal(enviado.title, 'Carta digital de Pizzas del Sol');
+ assert.equal(enviado.url, 'https://velox.test/c/pizzas-123');
+ let aperturas = 0;
+ d.el('compartir-carta-dialogo').showModal = () => { aperturas++; };
+ d.context.navigator.share = async () => { throw Object.assign(new Error(), {name:'AbortError'}); };
+ await d.context.compartirCarta();
+ assert.equal(aperturas, 0);
+ delete d.context.navigator.share;
+ await d.context.compartirCarta();
+ assert.equal(aperturas, 1);
+ let copiado;
+ d.context.navigator.clipboard = {writeText: async texto => { copiado = texto; }};
+ await d.context.copiarEnlaceCarta();
+ assert.equal(copiado, enviado.url);
+ assert.equal(d.el('compartir-carta-status').textContent, 'Enlace copiado');
+ const server = read('index.js');
+ assert(server.includes('/c/${encodeURIComponent(restauranteData.slug)}'));
+ assert(server.includes('preview_url: true'));
+});
+
+test('el enlace corto publica el nombre seguro para las vistas previas de las apps', async () => {
+ const source = read('index.js');
+ const start = source.indexOf("app.get('/c/:slug'");
+ const end = source.indexOf('const historiales', start);
+ let handler;
+ const db = {from: () => ({select(){return this},eq(){return this},maybeSingle:async()=>({data:{nombre_restaurante:'Pizza <Sol> & Amigos'}})})};
+ vm.runInNewContext(source.slice(start,end), {app:{get:(_ruta,fn)=>{handler=fn}},supabaseAdmin:db,supabase:db,path:require('node:path'),__dirname:'/',require:()=>({readFile:async()=>read('menu.html')}),console});
+ const res = {setHeader(){},type(){return this},status(n){this.code=n;return this},send(html){this.html=html;return this}};
+ await handler({params:{slug:'pizza-sol'}},res);
+ assert.match(res.html, /<title>Carta digital de Pizza &lt;Sol&gt; &amp; Amigos<\/title>/);
+ assert.match(res.html, /property="og:title" content="Carta digital de Pizza &lt;Sol&gt; &amp; Amigos"/);
+ assert(read('menu.html').includes("window.location.pathname.startsWith('/c/')"));
+});
