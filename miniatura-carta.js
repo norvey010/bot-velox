@@ -24,7 +24,9 @@ async function capturarCarta(datos, origenStorage) {
   try {
     const executablePath = await chromium.executablePath();
     if (vencido) throw new Error('Tiempo agotado al preparar vista previa.');
-    browser = await playwright.launch({executablePath,args:chromium.args,headless:true,timeout:15000});
+    browser = await playwright.launch({executablePath,args:chromium.args,headless:true,timeout:15000,
+      env:{...process.env,FONTCONFIG_PATH:path.join(require('os').tmpdir(),'fonts')}
+    });
     if (vencido) throw new Error('Tiempo agotado al abrir vista previa.');
     const page = await browser.newPage({viewport:{width:430,height:460},deviceScaleFactor:2,reducedMotion:'reduce'});
     const archivos = {'/menu.html':'menu.html','/velox-theme.css':'velox-theme.css','/app.menu-categorias.js':'app.menu-categorias.js'};
@@ -57,6 +59,10 @@ async function capturarCarta(datos, origenStorage) {
     await page.waitForFunction(() => document.querySelector('#contenedor-menu .menu-product-reveal'),{},{timeout:4000});
     await page.evaluate(async () => {
       await document.fonts.ready;
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.font = '20px sans-serif';
+      if (ctx.measureText('Carta digital').width < 20) throw new Error('No se pudieron cargar las fuentes de la miniatura.');
       await Promise.all([...document.querySelectorAll('#contenedor-menu img')].filter(img=>img.getBoundingClientRect().top < 460).map(img=>Promise.race([img.decode().catch(()=>{}),new Promise(resolve=>setTimeout(resolve,3000))])));
       window.scrollTo(0,0);
     });
