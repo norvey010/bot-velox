@@ -7,6 +7,7 @@ const {chromium: playwright} = require('playwright-core');
 const ORIGEN_CAPTURA = 'https://miniatura.velox.invalid';
 let pendientes = 0;
 let cola = Promise.resolve();
+let fuentesPreparadas = false;
 
 // Un navegador a la vez y una cola pequeña para limitar memoria y CPU.
 function crearMiniaturaCarta(datos, origenStorage) {
@@ -23,6 +24,10 @@ async function capturarCarta(datos, origenStorage) {
   const temporizador = setTimeout(() => {vencido = true; browser?.close().catch(() => {});}, 25000);
   try {
     const executablePath = await chromium.executablePath();
+    if (!fuentesPreparadas) {
+      await fs.copyFile('/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf',path.join(require('os').tmpdir(),'fonts','NotoColorEmoji.ttf'));
+      fuentesPreparadas = true;
+    }
     if (vencido) throw new Error('Tiempo agotado al preparar vista previa.');
     browser = await playwright.launch({executablePath,args:chromium.args,headless:true,timeout:15000,
       env:{...process.env,FONTCONFIG_PATH:path.join(require('os').tmpdir(),'fonts')}
