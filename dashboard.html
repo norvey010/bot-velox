@@ -296,7 +296,7 @@
             <label for="buscar-producto" class="sr-only">Buscar producto</label>
             <input id="buscar-producto" type="search" oninput="buscarProductoMenu()" placeholder="Buscar producto" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-white focus:border-red-400">
             <nav id="productos-editor-categorias" aria-label="Categorías del menú" class="relative flex w-full gap-2 overflow-x-auto whitespace-nowrap p-1" hidden></nav>
-            <p id="productos-editor-resumen" class="text-xs text-slate-400" role="status" aria-live="polite"></p>
+            <p id="productos-editor-resumen" hidden class="text-xs text-slate-400" role="status" aria-live="polite"></p>
             <p id="editor-menu-status" class="hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
             <p id="producto-save-status" class="mt-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
             <button id="reintentar-productos" type="button" onclick="cargarProductos()" hidden class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-white">Reintentar</button>
@@ -1039,9 +1039,9 @@
         : (productosPorCategoriaEditor.get(categoriaEditorActiva) || []);
       const visibles = productos.slice(0, limiteProductosEditor);
       document.getElementById('productos-editor-mas').hidden = visibles.length >= productos.length;
-      document.getElementById('productos-editor-resumen').textContent = productos.length
-        ? `Mostrando ${visibles.length} de ${productos.length} productos`
-        : '0 productos encontrados';
+      const resumen = document.getElementById('productos-editor-resumen');
+      resumen.hidden = visibles.length >= productos.length;
+      resumen.textContent = resumen.hidden ? '' : `${visibles.length} de ${productos.length} productos`;
       document.getElementById('productos-editor-ayuda').hidden = !productos.length;
       if (!productos.length) {
         contenedor.innerHTML = `<p class="rounded-lg bg-slate-900 p-4 text-sm text-slate-400 lg:col-span-2">${productosEditor.length ? 'No encontramos ese producto. Prueba otro nombre o categoría.' : 'Tu menú está vacío. Toca “Agregar producto” o carga fotos de tu carta.'}</p>`;

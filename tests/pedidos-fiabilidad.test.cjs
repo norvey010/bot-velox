@@ -222,3 +222,15 @@ test('la categoría se hereda y un nombre vacío no pierde la categoría del pro
   assert.equal(d.el('prod-categoria').value, 'Bebidas');
   assert.equal(d.el('prod-categoria-nueva-panel').hidden, true);
 });
+
+test('el contador aparece solo mientras quedan productos por mostrar', () => {
+ const d = dashboard();
+ d.run(`productosEditor=Array.from({length:8},(_,i)=>({id:String(i),nombre:'Pizza '+i,categoria:'Pizzas',precio:10000})); actualizarCategoriasProductos(); renderizarProductos();`);
+ assert.equal(d.el('productos-editor-resumen').hidden, false);
+ assert.equal(d.el('productos-editor-resumen').textContent, '6 de 8 productos');
+ d.context.mostrarMasProductos();
+ assert.equal(d.el('productos-editor-resumen').hidden, true);
+ assert.equal(d.el('productos-editor-resumen').textContent, '');
+ d.run(`productosEditor=productosEditor.slice(0,1); actualizarCategoriasProductos(); renderizarProductos();`);
+ assert.equal(d.el('productos-editor-resumen').hidden, true);
+});
