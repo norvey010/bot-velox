@@ -5,21 +5,6 @@ let consultandoLecturaMenu = false;
 let consultaLecturaMenu;
 let guardadoBorradorMenu;
 let publicandoMenu = false;
-const ETAPAS_IMPORTACION = ['Preparando archivos', 'Leyendo con IA', 'Lista para revisar'];
-
-function mostrarProgresoImportacion(etapa, interrumpida = false) {
-  const progreso = document.getElementById('velox-progreso-importacion');
-  progreso.hidden = etapa < 0;
-  progreso.innerHTML = etapa < 0 ? '' : ETAPAS_IMPORTACION.map((texto, indice) => {
-    const estado = indice < etapa || (indice === etapa && etapa === 2 && !interrumpida)
-      ? 'listo' : indice > etapa ? 'pendiente' : interrumpida ? 'error' : 'actual';
-    return `<li data-estado="${estado}"${indice === etapa ? ' aria-current="step"' : ''}>
-      <span class="velox-numero-etapa" aria-hidden="true">${estado === 'listo' ? '✓' : indice + 1}</span>
-      <span>${texto}${estado === 'error' ? ' · interrumpida' : ''}</span>
-    </li>`;
-  }).join('');
-}
-
 function estadoImportacion(mensaje, tipo='info') {
   mostrarAviso(document.getElementById('importacion-menu-status'), mensaje, tipo);
   if (tipo === 'error' && document.getElementById('revision-carta-ampliada').open) {
@@ -27,13 +12,16 @@ function estadoImportacion(mensaje, tipo='info') {
   }
 }
 
-function mostrarLecturaArchivosMenu(mensaje = 'Leyendo archivos…') {
+function mostrarLecturaArchivosMenu(mensaje = 'Leyendo tu menú…', subiendo = false) {
   const estado = document.getElementById('importacion-menu-status');
-  estadoImportacion('Leyendo archivos…');
+  const fotos = mensaje.match(/(?:Preparando imágenes|Creando fotos)[,:]?\s*(\d+) de (\d+)/i);
+  const titulo = fotos ? `Creando fotos: ${fotos[1]} de ${fotos[2]}`
+    : /Leyendo (?:páginas|archivos)/i.test(mensaje) ? 'Leyendo tu menú…' : mensaje;
+  estadoImportacion(titulo);
   estado.innerHTML = `
-    <span class="velox-lectura-titulo">${escaparHtmlUI(mensaje)}</span>
+    <span class="velox-lectura-titulo">${escaparHtmlUI(titulo)}</span>
     <span class="velox-lectura-linea" aria-hidden="true"></span>
-    <small class="velox-lectura-nota">Archivos recibidos. Puedes salir y volver.<br>Los cambios se aplican al publicar.</small>`;
+    <small class="velox-lectura-nota">${subiendo ? 'Mantén esta pantalla abierta hasta terminar el envío.' : 'Tu carta cambia solo al publicar.'}</small>`;
 }
 function prepararSelectorArchivosMenu() {
   const boton = document.querySelector('#form-importar-ia button[aria-controls="menuFile"]');
@@ -186,7 +174,8 @@ function indicarLecturaMenu(activa) {
   leyendoMenu = activa;
   const boton = document.getElementById('btn-procesar-ia');
   boton.disabled = activa;
-  boton.textContent = activa ? 'Leyendo archivos…' : 'Crear borrador';
+  boton.hidden = activa;
+  boton.textContent = 'Crear borrador';
 }
 
 function guardarEdicionBorradorMenu() {
@@ -509,8 +498,8 @@ function mostrarBorradorMenu(resultado, lecturaId) {
   document.getElementById('revision-menu').hidden = false;
   actualizarAccionesBorrador();
   cargarVistaClientesBorrador(document.getElementById('revision-miniatura-frame'));
-  mostrarProgresoImportacion(2);
-  estadoImportacion(`${borradorMenu.productos.length} productos en el borrador. ${resultado.reutilizada ? 'Lectura y fotos reutilizadas.' : 'Revisa y publica.'}`, 'exito');
+
+  estadoImportacion('Tu carta está lista', 'exito');
   if (!document.hidden && !document.getElementById('sec-menu-ia').classList.contains('hidden')
       && !document.getElementById('importar-menu-fotos').classList.contains('hidden')) {
     abrirCartaBorrador();
@@ -526,7 +515,7 @@ function aplicarEstadoLecturaMenu(lectura) {
   if (lectura.estado === 'procesando') {
     document.getElementById('cargar-carta-ayuda').textContent = 'Lectura en curso';
     indicarLecturaMenu(true);
-    mostrarProgresoImportacion(1);
+
     mostrarLecturaArchivosMenu(lectura.mensaje || 'Leyendo archivos…');
     programarConsultaLecturaMenu();
     return;
@@ -537,7 +526,7 @@ function aplicarEstadoLecturaMenu(lectura) {
     return mostrarBorradorMenu(lectura.resultado, lectura.id);
   } else {
     document.getElementById('cargar-carta-ayuda').textContent = 'Revisar lectura';
-    mostrarProgresoImportacion(1, true);
+
     estadoImportacion(lectura.mensaje || 'La lectura se interrumpió. Tu carta publicada sigue igual.', 'error');
   }
 }
@@ -563,7 +552,7 @@ async function recuperarLecturaMenu() {
       if (leyendoMenu) {
         indicarLecturaMenu(false);
         document.getElementById('cargar-carta-ayuda').textContent = '';
-        mostrarProgresoImportacion(-1);
+
         estadoImportacion('Ya no hay una lectura activa. Puedes volver a subir los archivos.');
       }
       return false;
@@ -573,7 +562,7 @@ async function recuperarLecturaMenu() {
   } catch (error) {
     if (error.sesionVencida) {
       indicarLecturaMenu(false);
-      mostrarProgresoImportacion(1, true);
+
       estadoImportacion('Tu sesión venció. Inicia sesión de nuevo para recuperar la lectura.', 'error');
     } else if (leyendoMenu) {
       estadoImportacion('No pudimos consultar el avance. Reintentando la conexión…');
@@ -603,8 +592,8 @@ async function enviarMenuConIA(event) {
   subiendoArchivosMenu = true;
   indicarLecturaMenu(true);
   document.getElementById('btn-procesar-ia').textContent = 'Subiendo archivos…';
-  mostrarProgresoImportacion(0);
-  estadoImportacion('Preparando archivos…');
+
+  mostrarLecturaArchivosMenu('Preparando archivos…', true);
   try {
     const archivos=await leerArchivosLocalesMenu(files);
     const token=await sesionImportacion();
@@ -612,7 +601,7 @@ async function enviarMenuConIA(event) {
     for(const archivo of archivos) formData.append('menuFile',archivo.blob,archivo.nombre);
     formData.set('restaurante_id',RESTAURANTE_ID);
     formData.set('crear_fotos', '1');
-    estadoImportacion('Subiendo archivos… Mantén el panel abierto hasta confirmar la recepción.');
+    mostrarLecturaArchivosMenu('Subiendo archivos…', true);
     const referencia=typeof crypto!=='undefined' && crypto.randomUUID ? crypto.randomUUID() : '';
     const { respuesta, resultado } = await conPlazoLecturaMenu(async signal => {
       const respuesta = await fetch('/api/importar-menu', { method: 'POST', signal,
@@ -632,7 +621,7 @@ async function enviarMenuConIA(event) {
     indicarLecturaMenu(false);
     mostrarBorradorMenu(resultado, null);
   } catch (error) {
-    mostrarProgresoImportacion(0, true);
+
     estadoImportacion(mensajeErrorImportacion(error), 'error');
     indicarLecturaMenu(false);
     // Una respuesta perdida puede ocultar una tarea aceptada. Consultar no genera otra lectura.
@@ -784,7 +773,7 @@ async function descartarRevisionMenu() {
     }
   }
   olvidarBorradorMenu();
-  mostrarProgresoImportacion(-1);
+
   estadoImportacion('Lectura descartada. Tu carta publicada sigue igual.');
 }
 
@@ -815,7 +804,7 @@ async function publicarMenuRevisado(event) {
     if(!respuesta.ok || !resultado.success)throw new Error(resultado.error || 'No se pudo publicar. Revisa tu carta publicada antes de reintentar.');
     olvidarBorradorMenu();
     document.getElementById('form-importar-ia').reset();actualizarResumenFotosMenu();
-    mostrarProgresoImportacion(-1);
+
     if (typeof actualizarVistaPreviaCarta === 'function') actualizarVistaPreviaCarta();
     await cargarProductos();estadoImportacion(`Carta publicada: ${resultado.count} productos.`,'exito');
   } catch(error) {estadoImportacion(mensajeErrorImportacion(error,'publicacion'),'error');}
@@ -888,12 +877,6 @@ function prepararCentroVelox() {
   document.querySelector('header nav').setAttribute('aria-label', 'Secciones de Velox Bot');
   document.querySelector('#ajustes-inicio h2 + p').textContent = 'Administra tu negocio y la operación de Velox Bot.';
   document.querySelector('#printer-width-preview > div:first-child').textContent = 'Velox Bot · Comanda';
-
-  const progreso = document.createElement('ol');
-  progreso.id = 'velox-progreso-importacion';
-  progreso.setAttribute('aria-label', 'Progreso de carga de la carta');
-  progreso.hidden = true;
-  document.getElementById('importacion-menu-status').before(progreso);
 
   const controles = [
     ['#tab-menu', 'carta', '🍽️'], ['#tab-pedidos', 'pedido', '📦'],

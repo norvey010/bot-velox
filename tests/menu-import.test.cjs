@@ -225,20 +225,19 @@ test('el editor coloca la búsqueda bajo las categorías y Agregar producto al f
 
 test('la carga muestra la etapa real y confirma la publicación', async () => {
  const n = navegador();
- const progreso = n.el('velox-progreso-importacion');
  const peticion = n.context.fetch;
  n.context.fetch = (...args) => {
    if (args[0] === '/api/importar-menu') {
-     assert.match(progreso.innerHTML, /data-estado="actual"[^>]*>\s*<span[^>]*>1<\/span>\s*<span>Preparando archivos/);
+     assert.match(n.el('importacion-menu-status').innerHTML, /Subiendo archivos/);
    }
    return peticion(...args);
  };
  await n.context.enviarMenuConIA({ preventDefault() {} });
- assert.equal((progreso.innerHTML.match(/data-estado="listo"/g) || []).length, 3);
+ assert.match(n.el('importacion-menu-status').textContent, /Tu carta está lista/);
+ assert.equal(n.el('btn-procesar-ia').hidden, false);
  assert.doesNotMatch(n.el('importacion-menu-status').textContent || '', /Carta publicada/);
  await n.context.publicarMenuRevisado({ preventDefault() {} });
  assert.match(n.el('importacion-menu-status').textContent, /Carta publicada/);
- assert.equal(progreso.hidden, true);
 });
 
 test('un panel recién abierto recupera un borrador listo sin reenviar archivos', async () => {
@@ -474,7 +473,11 @@ test('una consulta del panel colgada libera su estado y programa la reconexión'
  n.context.setTimeout = (fn, ms) => { const id = ++secuencia; temporizadores.set(id, { fn, ms }); return id; };
  n.context.clearTimeout = id => temporizadores.delete(id);
  n.context.aplicarEstadoLecturaMenu({ id: 'lectura-1', estado: 'procesando', mensaje: 'Leyendo páginas 3–4 de 6…' });
- assert.match(n.el('importacion-menu-status').innerHTML, /páginas 3–4 de 6/);
+ assert.match(n.el('importacion-menu-status').innerHTML, /Leyendo tu menú/);
+ assert.equal(n.el('btn-procesar-ia').hidden, true);
+ n.context.aplicarEstadoLecturaMenu({ id: 'lectura-1', estado: 'procesando', mensaje: 'Preparando imágenes, 23 de 35…' });
+ assert.match(n.el('importacion-menu-status').innerHTML, /Creando fotos: 23 de 35/);
+ assert.match(n.el('importacion-menu-status').innerHTML, /Tu carta cambia solo al publicar/);
  let signal;
  n.context.fetch = async (_url, req) => { signal = req.signal; return new Promise(() => {}); };
  const consulta = n.context.recuperarLecturaMenu();
