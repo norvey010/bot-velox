@@ -7,6 +7,7 @@ const express = require('express');
 const { prepararFuentesMenu, validarProductosMenu, TIPOS_MENU, errorMenu } = require('./menu-import');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai'); // 👈 Migrado a OpenAI
+const { registrarRutasFacturas } = require('./railway-invoices');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY }); // 👈 Inicialización con tu API Key
 const supabaseUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
@@ -2151,6 +2152,8 @@ app.post(['/api/productos/generar-imagen-borrador', '/api/productos/:id/generar-
         return res.status(500).json({ error: 'No se pudo crear o guardar la imagen. Revisa los registros de Railway para ver el motivo.' });
     }
 });
+
+registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma, esAdminId: id => idsAdministradoresPlataforma().has(id) });
 
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);

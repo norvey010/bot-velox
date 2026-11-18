@@ -125,6 +125,11 @@
           <div class="overflow-x-auto"><table class="w-full min-w-[680px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Operaciones</th><th class="p-3">Costo OpenAI (USD)</th><th class="p-3">Equivalente (COP)</th></tr></thead><tbody id="ia-restaurantes-body"></tbody></table></div>
         </section>
       </section>
+      <section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
+  <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-semibold">Facturas y comprobantes</h2><p class="mt-1 text-xs text-[#69544A]">Importa Railway, Supabase, OpenAI, Meta y Claro desde tu correo. Los archivos se guardan en privado y solo tú puedes abrirlos.</p></div><div class="flex gap-2"><button id="connect-gmail" class="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white">Conectar correo</button><button id="sync-invoices" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-sm">Sincronizar</button></div></div>
+  <p id="gmail-status" class="rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-3 text-sm text-[#69544A]" role="status">Revisando conexión de facturas…</p>
+  <p id="invoice-summary" class="text-xs text-[#69544A]">Los totales aparecerán cuando se importen comprobantes.</p><div id="invoice-list" class="space-y-2"></div>
+</section>
       <p id="data-message" class="text-sm text-red-700" role="status" aria-live="polite"></p>
     </section>
   </main>

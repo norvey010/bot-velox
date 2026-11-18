@@ -15,6 +15,7 @@ const numero = new Intl.NumberFormat('es-CO');
 let token = null;
 let recoveryMode = false;
 let autoRefresh = null;
+let autoRefreshFacturas = null;
 let cargando = false;
 let datos = null;
 
@@ -220,6 +221,90 @@ async function cargar() {
     cargando = false;
   }
 }
+
+async function solicitarAdmin(url, opciones = {}) {
+  const response = await fetch(url, { ...opciones, headers: { Authorization: `Bearer ${token}`, ...(opciones.headers || {}) } });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || 'No se pudo completar la operación.');
+  return body;
+}
+function estadoFacturas(texto, conectado = false) {
+  $('gmail-status').textContent = texto;
+  $('gmail-status').className = `rounded-lg border border-[#D7C2AD] p-3 text-sm ${conectado ? 'bg-emerald-50 text-emerald-900' : 'bg-[#FFF8EF] text-[#69544A]'}`;
+}
+const fechaFactura = valor => valor ? new Date(valor).toLocaleDateString('es-CO') : 'Fecha no detectada';
+const dineroFactura = (valor, moneda) => valor == null ? 'Por revisar' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: moneda || 'USD', maximumFractionDigits: 2 }).format(Number(valor));
+async function abrirComprobante(id, indice, nombre) {
+  const response = await fetch(`/api/admin/facturas/${encodeURIComponent(id)}/archivo/${indice}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) throw new Error('No se pudo abrir el comprobante.');
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a'); link.href = url; link.download = nombre || 'comprobante'; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+async function cargarFacturas(auto = true) {
+  const status = await solicitarAdmin('/api/admin/integraciones/gmail/estado');
+  $('connect-gmail').disabled = !status.configurado;
+  $('sync-invoices').disabled = !status.conectado;
+  if (!status.configurado) {
+    estadoFacturas(`Para vincular ${status.correo}, el administrador debe configurar el cliente OAuth de Google en Railway. URI de retorno: ${status.redirect_uri || 'pendiente del dominio público'}.`);
+  } else if (!status.conectado) {
+    estadoFacturas(`Conecta ${status.correo} una vez. Velox buscará únicamente correos de facturación de las plataformas.`);
+  } else {
+    estadoFacturas(`Correo conectado: ${status.correo}${status.ultima_sync ? ` · Última sincronización ${new Date(status.ultima_sync).toLocaleString('es-CO')}` : ' · Aún no se sincroniza'}`, true);
+    if (auto && (!status.ultima_sync || Date.now() - new Date(status.ultima_sync).getTime() > 6 * 60 * 60 * 1000)) {
+      estadoFacturas('Buscando comprobantes y guardando los originales…', true);
+      await solicitarAdmin('/api/admin/facturas/sync', { method: 'POST' });
+      status.ultima_sync = new Date().toISOString();
+      estadoFacturas(`Correo conectado: ${status.correo} · Comprobantes actualizados`, true);
+    }
+  }
+  const { facturas = [] } = await solicitarAdmin('/api/admin/facturas');
+  const confirmados = new Map(), porRevisar = new Map();
+  for (const invoice of facturas) {
+    const moneda = invoice.currency || 'USD';
+    if (invoice.status === 'paid' && invoice.paid_amount != null) confirmados.set(moneda, (confirmados.get(moneda) || 0) + Number(invoice.paid_amount));
+    else if (invoice.amount != null) porRevisar.set(moneda, (porRevisar.get(moneda) || 0) + Number(invoice.amount));
+  }
+  const resumen = mapa => [...mapa].map(([moneda, valor]) => dineroFactura(valor, moneda)).join(' · ') || '—';
+  $('invoice-summary').textContent = `Guardados: ${facturas.length} · Pagos identificados: ${resumen(confirmados)} · Montos por revisar: ${resumen(porRevisar)}. No se mezclan monedas.`;
+  const list = $('invoice-list'); list.replaceChildren();
+  if (!facturas.length) {
+    const vacio = document.createElement('p'); vacio.className = 'text-sm text-[#69544A]';
+    vacio.textContent = status.conectado ? 'Todavía no hay comprobantes importados.' : 'Al conectar el correo, aquí aparecerán los comprobantes originales.';
+    list.append(vacio); return;
+  }
+  const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
+  for (const invoice of facturas) {
+    const fila = document.createElement('article'); fila.className = 'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E6D8C9] p-3';
+    const info = document.createElement('div'); info.className = 'min-w-0';
+    const titulo = document.createElement('p'); titulo.className = 'truncate text-sm font-medium text-[#241A15]';
+    titulo.textContent = `${nombres[invoice.provider] || invoice.provider} · ${invoice.invoice_number ? `Factura ${invoice.invoice_number}` : invoice.email_subject || 'Comprobante'}`;
+    const detalle = document.createElement('p'); detalle.className = 'mt-1 text-xs text-[#69544A]';
+    detalle.textContent = `${fechaFactura(invoice.invoice_date || invoice.source_received_at)} · ${invoice.status === 'paid' ? 'Pago identificado' : 'Revisar'} · ${dineroFactura(invoice.paid_amount ?? invoice.amount, invoice.currency)}`;
+    info.append(titulo, detalle);
+    const acciones = document.createElement('div'); acciones.className = 'flex flex-wrap gap-2';
+    for (const [indice, archivo] of (Array.isArray(invoice.files) ? invoice.files : []).entries()) {
+      const boton = document.createElement('button'); boton.type = 'button'; boton.className = 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs text-[#241A15]'; boton.textContent = `Abrir ${archivo.name || 'comprobante'}`;
+      boton.addEventListener('click', () => abrirComprobante(invoice.id, indice, archivo.name).catch(error => { $('data-message').textContent = error.message; }));
+      acciones.append(boton);
+    }
+    fila.append(info, acciones);
+    if (invoice.extraction_note) { const nota = document.createElement('p'); nota.className = 'w-full text-xs text-[#69544A]'; nota.textContent = invoice.extraction_note; fila.append(nota); }
+    list.append(fila);
+  }
+}
+$('connect-gmail').addEventListener('click', async () => {
+  $('connect-gmail').disabled = true;
+  try { const result = await solicitarAdmin('/api/admin/integraciones/gmail/conectar', { method: 'POST' }); window.location.assign(result.url); }
+  catch (error) { estadoFacturas(error.message); $('connect-gmail').disabled = false; }
+});
+$('sync-invoices').addEventListener('click', async () => {
+  $('sync-invoices').disabled = true;
+  try { estadoFacturas('Sincronizando comprobantes…', true); await solicitarAdmin('/api/admin/facturas/sync', { method: 'POST' }); await cargarFacturas(false); }
+  catch (error) { estadoFacturas(error.message); }
+  finally { $('sync-invoices').disabled = false; }
+});
+
 function mostrarVista(session) {
   token = session && session.access_token ? session.access_token : null;
   const enRecuperacion = recoveryMode;
@@ -230,12 +315,16 @@ function mostrarVista(session) {
   if (session && !enRecuperacion) {
     if (!$('periodo').value) $('periodo').value = periodoBogota();
     cargar();
+    cargarFacturas(true).catch(error => estadoFacturas(error.message));
     if (!autoRefresh) autoRefresh = setInterval(() => {
       if (document.visibilityState === 'visible') cargar();
     }, 15000);
-  } else if (autoRefresh) {
-    clearInterval(autoRefresh);
-    autoRefresh = null;
+    if (!autoRefreshFacturas) autoRefreshFacturas = setInterval(() => {
+      if (token && document.visibilityState === 'visible') cargarFacturas(false).catch(error => estadoFacturas(error.message));
+    }, 10 * 60 * 1000);
+  } else {
+    if (autoRefresh) { clearInterval(autoRefresh); autoRefresh = null; }
+    if (autoRefreshFacturas) { clearInterval(autoRefreshFacturas); autoRefreshFacturas = null; }
   }
 }
 supabase.auth.getSession().then(({ data }) => mostrarVista(data.session));
@@ -398,3 +487,11 @@ $('movimientos-body').addEventListener('click', async event => {
     boton.disabled = false;
   }
 });
+
+
+const parametrosFactura = new URLSearchParams(window.location.search);
+if (parametrosFactura.has('gmail') || parametrosFactura.has('gmail_error')) {
+  const texto = parametrosFactura.get('gmail') === 'connected' ? 'Correo conectado. Importando comprobantes…' : parametrosFactura.get('gmail_error');
+  if (texto) setTimeout(() => { if (token) { estadoFacturas(texto, parametrosFactura.get('gmail') === 'connected'); cargarFacturas(true).catch(error => estadoFacturas(error.message)); } }, 700);
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
