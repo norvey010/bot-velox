@@ -390,10 +390,16 @@
           <input type="text" id="prod-precio" inputmode="numeric" autocomplete="off" required placeholder="Ej: 25.000" class="w-full rounded-lg border border-slate-700 bg-slate-900 py-2 pl-8 pr-3 text-sm text-white focus:border-red-400 focus:outline-none">
         </div>
       </div>
-      <div>
-        <label for="prod-categoria">Categoría del menú <span class="text-red-400">*</span></label>
-        <input type="text" id="prod-categoria" required placeholder="Ej: Hamburguesas, Bebidas" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
-      </div>
+      <details id="prod-categoria-panel" class="sm:col-span-2">
+        <summary class="cursor-pointer py-2 text-sm"><span id="prod-categoria-resumen">Categoría: General</span> · <span class="text-red-400">Cambiar</span></summary>
+        <input type="hidden" id="prod-categoria" value="General">
+        <label for="prod-categoria-selector" class="block text-sm">Categoría</label>
+        <select id="prod-categoria-selector" onchange="cambiarCategoriaProducto(this.value)" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></select>
+        <div id="prod-categoria-nueva-panel" hidden>
+          <label for="prod-categoria-nueva" class="block mt-2 text-sm">Nueva categoría</label>
+          <input id="prod-categoria-nueva" maxlength="120" placeholder="Ej: Postres" oninput="asignarCategoriaProducto(this.value)" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white">
+        </div>
+      </details>
       <div class="sm:col-span-2">
         <label for="prod-descripcion">Descripción (opcional)</label>
         <input type="text" id="prod-descripcion" placeholder="Ej: Carne, queso y salsa especial" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
@@ -1077,9 +1083,37 @@
 
     let guardandoProducto = false;
 
+    function asignarCategoriaProducto(valor) {
+      const categoria = String(valor || '').trim();
+      // Vaciar el nombre de una categoría nueva no borra la categoría anterior.
+      if (!categoria) return;
+      const existente = productosEditor.find(p => String(p.categoria || '').trim().toLocaleLowerCase('es') === categoria.toLocaleLowerCase('es'));
+      const elegida = existente ? existente.categoria.trim() : categoria;
+      document.getElementById('prod-categoria').value = elegida;
+      document.getElementById('prod-categoria-resumen').textContent = `Categoría: ${elegida}`;
+    }
+
+    function prepararCategoriaProducto(categoria) {
+      const actual = String(categoria || '').trim() || 'General';
+      asignarCategoriaProducto(actual);
+      const categorias = [...new Set([actual, ...productosEditor.map(p => String(p.categoria || '').trim()).filter(Boolean)])];
+      document.getElementById('prod-categoria-selector').innerHTML = categorias.map(c => `<option value="${escaparHtmlUI(c)}"${c === actual ? ' selected' : ''}>${escaparHtmlUI(c)}</option>`).join('') + '<option value="__nueva__">+ Nueva categoría</option>';
+      document.getElementById('prod-categoria-nueva').value = '';
+      document.getElementById('prod-categoria-nueva-panel').hidden = true;
+      document.getElementById('prod-categoria-panel').open = false;
+    }
+
+    function cambiarCategoriaProducto(valor) {
+      const nueva = valor === '__nueva__';
+      document.getElementById('prod-categoria-nueva-panel').hidden = !nueva;
+      if (nueva) document.getElementById('prod-categoria-nueva').focus();
+      else asignarCategoriaProducto(valor);
+    }
+
     function nuevoProducto() {
       if (guardandoProducto) return;
       limpiarFormProducto();
+      prepararCategoriaProducto(categoriaEditorActiva || 'General');
       document.getElementById('producto-form-summary-text').textContent = 'Agregar producto';
       document.getElementById('editor-producto').showModal();
     }
@@ -1202,7 +1236,7 @@
           nombre: document.getElementById('prod-nombre').value,
           precio: precioNumerico,
           descripcion: document.getElementById('prod-descripcion').value,
-          categoria: document.getElementById('prod-categoria').value || 'General',
+          categoria: document.getElementById('prod-categoria').value.trim() || 'General',
           restaurante_id: RESTAURANTE_ID
         };
 
@@ -1340,7 +1374,7 @@
           : `${opcion.grupo || 'Variante'}: ${opcion.nombre || ''}`)
         .join('\n').trim();
       document.getElementById('prod-opciones').value = textoOpcionesGuardadas;
-      document.getElementById('prod-categoria').value = data.categoria || '';
+      prepararCategoriaProducto(data.categoria || 'General');
       imagenGuardadaProducto = data.imagen_url || '';
       mostrarMiniaturaProducto();
       document.getElementById('producto-form-summary-text').textContent = 'Editar producto';
