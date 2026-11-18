@@ -630,3 +630,17 @@ test('la búsqueda de la carta recorre categorías y vuelve a la categoría acti
  contexto.mostrarProductosCarta();
  assert.equal(vistas.at(-1).productos[0], pizza);
 });
+
+test('al recuperar desde Mi carta anuncia el borrador sin sacar al usuario del inicio', async () => {
+ const n = navegador();
+ n.el('importar-menu-fotos').classList.contains = clase => clase === 'hidden';
+ n.context.fetch = async () => ({ok:true,json:async()=>({lectura:{id:'lectura-inicio',estado:'listo',resultado:{productos:[producto()],version:'a'.repeat(32)}}})});
+ assert.equal(await n.context.recuperarLecturaMenu(), true);
+ assert.equal(n.el('cargar-carta-ayuda').textContent, 'Revisar borrador');
+ assert.notEqual(n.el('revision-carta-ampliada').open, true);
+ const html = read('dashboard.html');
+ assert.match(html, /id="sec-menu-ia" class="order-1 space-y-4"/);
+ assert.match(html, /id="sec-pedidos" class="hidden space-y-4"/);
+ assert.match(html, /if \(borradorMenu\) abrirCartaBorrador\(\)/);
+ assert.match(html, /<details class="text-xs text-slate-400"><summary[^>]*>Formatos y límites/);
+});

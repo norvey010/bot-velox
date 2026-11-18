@@ -125,8 +125,8 @@
     
     <!-- Pestañas de Navegación -->
     <nav aria-label="Secciones de Velox" class="max-w-full flex gap-1 overflow-x-auto bg-[#F6EFE5] p-1 rounded-xl border border-slate-800">
-      <button onclick="cambiarSeccion('menu')" id="tab-menu" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">🍽️ Mi carta</button>
-      <button onclick="cambiarSeccion('pedidos')" id="tab-pedidos" class="px-3 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white whitespace-nowrap">📦 Pedidos</button>
+      <button onclick="cambiarSeccion('menu')" id="tab-menu" class="px-3 py-2 rounded-lg text-sm font-bold bg-red-600 text-white whitespace-nowrap">🍽️ Mi carta</button>
+      <button onclick="cambiarSeccion('pedidos')" id="tab-pedidos" class="px-3 py-2 rounded-lg text-sm font-medium bg-slate-800 text-slate-400 hover:text-white whitespace-nowrap">📦 Pedidos</button>
       <button onclick="cambiarSeccion('configuracion')" id="tab-configuracion" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white whitespace-nowrap">⚙️ Ajustes</button>
     </nav>
 
@@ -139,7 +139,7 @@
   <main class="max-w-7xl mx-auto p-4 md:p-5 space-y-4 flex flex-col">
 
     <!-- SECCIÓN 1: PEDIDOS -->
-    <section id="sec-pedidos" class="space-y-4">
+    <section id="sec-pedidos" class="hidden space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-800 p-3">
         <p id="estado-recepcion-pedidos" class="text-sm font-semibold" role="status">Cargando disponibilidad…</p>
         <button id="control-recepcion-pedidos" type="button" onclick="cambiarRecepcionPedidos()" class="min-h-11 rounded-lg bg-slate-700 px-3 text-sm" hidden></button>
@@ -228,7 +228,7 @@
       </section>
     </section>
 
-    <section id="sec-menu-ia" class="hidden order-1 space-y-4">
+    <section id="sec-menu-ia" class="order-1 space-y-4">
       <div class="rounded-xl border border-slate-700 bg-slate-800 p-3 sm:p-4 shadow-lg">
         <div id="menu-inicio">
           <h2 id="menu-inicio-titulo" class="mb-3 text-lg font-bold text-white" tabindex="-1">Mi carta</h2>
@@ -1146,7 +1146,10 @@
         window.scrollTo(0, 0);
       }
       if (pantalla === 'editar-menu') cargarProductos();
-      if (pantalla === 'importar-menu-fotos') recuperarLecturaMenu();
+      if (pantalla === 'importar-menu-fotos') {
+        if (borradorMenu) abrirCartaBorrador();
+        else recuperarLecturaMenu();
+      }
     }
     function generarImagenDesdeEditor() {
       const id = document.getElementById('prod-id').value;
@@ -1871,6 +1874,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=nombres-carta"></script>
+  <script src="/app.menu-import.js?v=inicio-carta"></script>
 </body>
 </html>

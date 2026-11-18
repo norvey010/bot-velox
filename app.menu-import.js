@@ -494,7 +494,7 @@ function mostrarBorradorMenu(resultado, lecturaId) {
       }
     } catch {}
   }
-  document.getElementById('cargar-carta-ayuda').textContent = 'Borrador listo para revisar';
+  document.getElementById('cargar-carta-ayuda').textContent = 'Revisar borrador';
   document.getElementById('revision-menu').hidden = false;
   actualizarAccionesBorrador();
   cargarVistaClientesBorrador(document.getElementById('revision-miniatura-frame'));
@@ -513,7 +513,7 @@ function programarConsultaLecturaMenu() {
 
 function aplicarEstadoLecturaMenu(lectura) {
   if (lectura.estado === 'procesando') {
-    document.getElementById('cargar-carta-ayuda').textContent = 'Lectura en curso';
+    document.getElementById('cargar-carta-ayuda').textContent = 'Carta en proceso';
     indicarLecturaMenu(true);
 
     mostrarLecturaArchivosMenu(lectura.mensaje || 'Leyendo archivos…');
