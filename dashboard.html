@@ -258,6 +258,7 @@
         <section id="importar-menu-fotos" class="hidden" aria-labelledby="menu-importar-titulo">
           <button type="button" onclick="mostrarPantallaMenu('menu-inicio')" class="velox-volver mb-2">‹ Mi carta</button>
           <h2 id="menu-importar-titulo" class="text-lg font-bold text-white" tabindex="-1">Crear carta con IA</h2>
+          <p class="mt-2 text-sm text-slate-400">Sube tu menú y la IA crea tu carta.</p>
           <div class="pt-3">
             <form id="form-importar-ia" onsubmit="enviarMenuConIA(event)" class="space-y-2">
               <input type="hidden" id="ai-restaurante-id">
@@ -271,7 +272,7 @@
                 <ul id="menu-file-preview-list" class="space-y-2 pb-2" aria-label="Archivos seleccionados"></ul>
               </details>
               <details class="text-xs text-slate-400"><summary class="cursor-pointer py-2">Formatos y límites</summary><p id="menu-limites" class="pb-2 leading-relaxed">JPG, PNG, WEBP, GIF o PDF. Hasta 10 archivos, 8 MB cada uno, 25 MB en total y 20 páginas.</p></details>
-              <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700">Crear borrador</button>
+              <button type="submit" id="btn-procesar-ia" class="w-full rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700">Generar carta con IA</button>
             </form>
             <p id="importacion-menu-status" class="mt-3 hidden rounded-lg border p-3 text-sm" role="status" aria-live="polite"></p>
             <section id="revision-menu" hidden class="mt-4 space-y-3 rounded-xl border border-slate-600 p-3" aria-labelledby="revision-menu-titulo">
@@ -1870,6 +1871,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=progreso-unico"></script>
+  <script src="/app.menu-import.js?v=nombres-carta"></script>
 </body>
 </html>

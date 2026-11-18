@@ -31,8 +31,8 @@ function prepararSelectorArchivosMenu() {
   opciones.setAttribute('role', 'group');
   opciones.setAttribute('aria-label', 'Elegir fotos o PDF de la carta');
   opciones.innerHTML = `
-    <button type="button" onclick="abrirSelectorArchivosMenu(true)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-700 px-2 py-2 text-sm font-semibold text-white hover:border-red-400">Fotos del menú</button>
-    <button type="button" onclick="abrirSelectorArchivosMenu(false)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-900 px-2 py-2 text-sm font-semibold text-white hover:border-red-400">Archivo PDF o fotos</button>`;
+    <button type="button" onclick="abrirSelectorArchivosMenu(true)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-700 px-2 py-2 text-sm font-semibold text-white hover:border-red-400">Subir fotos</button>
+    <button type="button" onclick="abrirSelectorArchivosMenu(false)" aria-controls="menuFile" class="min-h-11 rounded-lg border border-slate-600 bg-slate-900 px-2 py-2 text-sm font-semibold text-white hover:border-red-400">Subir PDF o archivo</button>`;
   boton.replaceWith(opciones);
 }
 function abrirSelectorArchivosMenu(soloFotos) {
@@ -175,7 +175,7 @@ function indicarLecturaMenu(activa) {
   const boton = document.getElementById('btn-procesar-ia');
   boton.disabled = activa;
   boton.hidden = activa;
-  boton.textContent = 'Crear borrador';
+  boton.textContent = 'Generar carta con IA';
 }
 
 function guardarEdicionBorradorMenu() {
