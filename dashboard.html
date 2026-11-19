@@ -405,37 +405,26 @@
         <label for="prod-nombre">Nombre del producto <span class="text-red-400">*</span></label>
         <input type="text" id="prod-nombre" required placeholder="Ej: Hamburguesa doble" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
       </div>
-      <div>
+      <div class="sm:col-span-2">
         <label for="prod-precio">Precio ($ COP) <span class="text-red-400">*</span></label>
         <div class="relative">
           <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-semibold text-slate-200">$</span>
           <input type="text" id="prod-precio" inputmode="numeric" autocomplete="off" required placeholder="Ej: 25.000" class="w-full rounded-lg border border-slate-700 bg-slate-900 py-2 pl-8 pr-3 text-sm text-white focus:border-red-400 focus:outline-none">
         </div>
       </div>
-      <details id="prod-categoria-panel" class="sm:col-span-2">
-        <summary class="cursor-pointer py-2 text-sm"><span id="prod-categoria-resumen">Categoría: General</span> · <span class="text-red-400">Cambiar</span></summary>
+      <div class="sm:col-span-2">
+        <label for="prod-descripcion">Descripción (opcional)</label>
+        <input type="text" id="prod-descripcion" placeholder="Ej: Carne, queso y salsa especial" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
+      </div>
+      <div id="prod-categoria-panel" class="sm:col-span-2">
         <input type="hidden" id="prod-categoria" value="General">
-        <label for="prod-categoria-selector" class="block text-sm">Categoría</label>
+        <label for="prod-categoria-selector">Categoría</label>
         <select id="prod-categoria-selector" onchange="cambiarCategoriaProducto(this.value)" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></select>
         <div id="prod-categoria-nueva-panel" hidden>
           <label for="prod-categoria-nueva" class="block mt-2 text-sm">Nueva categoría</label>
           <input id="prod-categoria-nueva" maxlength="120" placeholder="Ej: Postres" oninput="asignarCategoriaProducto(this.value)" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white">
         </div>
-      </details>
-      <div class="sm:col-span-2">
-        <label for="prod-descripcion">Descripción (opcional)</label>
-        <input type="text" id="prod-descripcion" placeholder="Ej: Carne, queso y salsa especial" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
       </div>
-      <details id="prod-opciones-panel" class="velox-opciones-panel sm:col-span-2">
-        <summary><span>Lo que el cliente puede elegir<small class="mt-1 block text-xs font-normal text-slate-400">Sabores, tamaños o acompañamientos al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
-        <section class="m-2 rounded-lg border border-slate-700 p-3" aria-label="Vista previa de las elecciones del cliente">
-          <h4 class="mb-2 text-sm font-semibold">Así lo verá tu cliente</h4>
-          <div id="producto-elecciones-previa"></div>
-        </section>
-        <label for="prod-opciones">Una opción por línea</label>
-        <textarea id="prod-opciones" oninput="actualizarVistaEleccionesProducto()" rows="3" aria-describedby="prod-opciones-ayuda" placeholder="Proteína: ¼ de pollo&#10;Proteína: costilla churrasco" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></textarea>
-        <p id="prod-opciones-ayuda" class="mt-1 text-xs text-slate-400">Escribe el grupo y la opción separados por dos puntos. El cliente elige una por grupo, al mismo precio.</p>
-      </details>
       <div class="sm:col-span-2">
         <label for="prod-imagen-file">Foto del producto (opcional)</label>
         <input type="file" id="prod-imagen-file" accept="image/*" aria-describedby="producto-foto-ayuda" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
@@ -453,6 +442,16 @@
           <p id="producto-foto-ayuda" class="text-xs text-slate-400">Los PDF de tu menú se suben en «Crear carta con IA».</p>
         </div>
       </div>
+      <details id="prod-opciones-panel" class="velox-opciones-panel sm:col-span-2">
+        <summary><span>Lo que el cliente puede elegir<small class="mt-1 block text-xs font-normal text-slate-400">Sabores, tamaños o acompañamientos al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <section class="m-2 rounded-lg border border-slate-700 p-3" aria-label="Vista previa de las elecciones del cliente">
+          <h4 class="mb-2 text-sm font-semibold">Así lo verá tu cliente</h4>
+          <div id="producto-elecciones-previa"></div>
+        </section>
+        <label for="prod-opciones">Una opción por línea</label>
+        <textarea id="prod-opciones" oninput="actualizarVistaEleccionesProducto()" rows="3" aria-describedby="prod-opciones-ayuda" placeholder="Proteína: ¼ de pollo&#10;Proteína: costilla churrasco" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></textarea>
+        <p id="prod-opciones-ayuda" class="mt-1 text-xs text-slate-400">Escribe el grupo y la opción separados por dos puntos. El cliente elige una por grupo, al mismo precio.</p>
+      </details>
       <div id="producto-edicion-acciones" class="hidden sm:col-span-2 flex flex-wrap gap-2">
         <button type="button" onclick="eliminarProductoDesdeEditor()" class="rounded-lg px-3 py-2 text-sm text-red-300">Eliminar producto</button>
       </div>
@@ -1123,7 +1122,6 @@
       const existente = productosEditor.find(p => String(p.categoria || '').trim().toLocaleLowerCase('es') === categoria.toLocaleLowerCase('es'));
       const elegida = existente ? existente.categoria.trim() : categoria;
       document.getElementById('prod-categoria').value = elegida;
-      document.getElementById('prod-categoria-resumen').textContent = `Categoría: ${elegida}`;
     }
 
     function prepararCategoriaProducto(categoria) {
@@ -1133,7 +1131,6 @@
       document.getElementById('prod-categoria-selector').innerHTML = categorias.map(c => `<option value="${escaparHtmlUI(c)}"${c === actual ? ' selected' : ''}>${escaparHtmlUI(c)}</option>`).join('') + '<option value="__nueva__">+ Nueva categoría</option>';
       document.getElementById('prod-categoria-nueva').value = '';
       document.getElementById('prod-categoria-nueva-panel').hidden = true;
-      document.getElementById('prod-categoria-panel').open = false;
     }
 
     function cambiarCategoriaProducto(valor) {
@@ -1951,6 +1948,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=acceso-borrador"></script>
+  <script src="/app.menu-import.js?v=orden-campos"></script>
 </body>
 </html>

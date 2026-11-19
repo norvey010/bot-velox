@@ -698,8 +698,9 @@ function renderizarRevisionMenu(i) {
             <span id="revision-categoria-${i}" class="block break-words text-xs text-slate-400">${escaparHtmlUI(categoria)}</span>
           </div>
         <div class="mt-3 space-y-2 border-t border-slate-700 pt-3">
-          <div class="grid gap-3 sm:grid-cols-2">${campo('nombre','Nombre',p.nombre,'maxlength="200"')}${campo('categoria','Categoría',p.categoria,'maxlength="120"')}${campo('precio','Precio en pesos (COP)',formatearPrecioCOP(p.precio),'inputmode="numeric"')}
+          <div class="grid gap-3">${campo('nombre','Nombre del producto',p.nombre,'maxlength="200"')}${campo('precio','Precio en pesos (COP)',formatearPrecioCOP(p.precio),'inputmode="numeric"')}
             <label class="block text-xs text-slate-300">Descripción e ingredientes<textarea maxlength="5000" oninput="editarDatoBorrador(${i}, 'descripcion', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white" rows="3">${escaparHtmlUI(p.descripcion||'')}</textarea></label>
+            ${campo('categoria','Categoría',p.categoria,'maxlength="120"')}
           </div>
           <div class="space-y-2">
             <label for="revision-foto-archivo" class="block text-xs text-slate-300">Foto del producto (opcional)</label>
