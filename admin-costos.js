@@ -294,6 +294,47 @@ async function cargarFacturas(auto = true) {
     list.append(fila);
   }
 }
+const formularioFactura = $('manual-invoice-form');
+formularioFactura.elements.comprobante.addEventListener('change', () => {
+  for (const name of ['invoice_date', 'amount', 'currency', 'invoice_number']) formularioFactura.elements[name].value = '';
+  $('manual-invoice-message').textContent = '';
+});
+$('read-invoice').addEventListener('click', async () => {
+  const provider = formularioFactura.elements.provider.value;
+  const file = formularioFactura.elements.comprobante.files[0];
+  const message = $('manual-invoice-message');
+  if (!provider || !file) {
+    message.textContent = 'Selecciona el programa y el PDF primero.';
+    message.className = 'text-sm text-red-700';
+    return;
+  }
+  const button = $('read-invoice');
+  button.disabled = true;
+  button.textContent = 'Leyendo PDF…';
+  message.textContent = 'Extrayendo texto localmente; no se usa IA…';
+  message.className = 'text-sm text-[#69544A]';
+  try {
+    const data = new FormData();
+    data.append('provider', provider);
+    data.append('comprobante', file);
+    const fields = await solicitarAdmin('/api/admin/facturas/leer', { method: 'POST', body: data });
+    const parsed = [];
+    if (fields.invoice_date) { formularioFactura.elements.invoice_date.value = fields.invoice_date; parsed.push('fecha'); }
+    if (fields.amount != null) { formularioFactura.elements.amount.value = fields.amount; parsed.push('importe'); }
+    if (fields.currency) { formularioFactura.elements.currency.value = fields.currency; parsed.push('moneda'); }
+    if (fields.invoice_number) { formularioFactura.elements.invoice_number.value = fields.invoice_number; parsed.push('número'); }
+    message.textContent = parsed.length
+      ? 'Detecté ' + parsed.join(', ') + '. Revísalos, completa lo que falte y guarda.'
+      : (fields.texto_detectado ? 'El PDF tiene texto, pero no pude identificar esos datos con certeza. Complétalos y guarda.' : 'Este PDF parece escaneado. Escribe fecha, importe y moneda; se guardará sin IA.');
+    message.className = 'text-sm ' + (parsed.length ? 'text-[#256444]' : 'text-[#69544A]');
+  } catch (error) {
+    message.textContent = error.message;
+    message.className = 'text-sm text-red-700';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Leer datos del PDF';
+  }
+});
 $('manual-invoice-form').addEventListener('submit', async event => {
   event.preventDefault();
   const form = event.currentTarget;
@@ -301,7 +342,7 @@ $('manual-invoice-form').addEventListener('submit', async event => {
   button.disabled = true;
   button.textContent = 'Leyendo y guardando…';
   const message = $('manual-invoice-message');
-  message.textContent = 'Extrayendo texto del PDF sin usar IA…';
+  message.textContent = 'Guardando el comprobante privado y registrando el gasto…';
   message.className = 'text-sm text-[#69544A]';
   try {
     const result = await solicitarAdmin('/api/admin/facturas/manual', { method: 'POST', body: new FormData(form) });
