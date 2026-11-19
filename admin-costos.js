@@ -17,6 +17,7 @@ let recoveryMode = false;
 let autoRefresh = null;
 let autoRefreshFacturas = null;
 let cargando = false;
+let cargandoAcumulado = false;
 let datos = null;
 
 function periodoBogota() {
@@ -81,15 +82,25 @@ function llenarSelectorRestaurantes(restaurantes) {
   select.replaceChildren(...opciones);
   if ([...select.options].some(o => o.value === elegido)) select.value = elegido;
 }
-function actualizarCategorias() {
+function actualizarCategorias(reiniciarAtribucion = false) {
   const tipo = $('mov-tipo').value;
   const categoria = $('mov-categoria');
+  const selector = $('mov-restaurante');
   const opciones = tipo === 'ingreso'
     ? [['suscripcion', 'Suscripción'], ['otro', 'Otro ingreso']]
     : [['railway', 'Railway'], ['supabase', 'Supabase'], ['claro', 'Claro'], ['meta', 'Meta'], ['otro', 'Otro gasto']];
   categoria.replaceChildren(...opciones.map(([valor, texto]) => new Option(texto, valor)));
-  $('mov-restaurante').required = tipo === 'ingreso';
-  $('mov-restaurante').options[0].textContent = tipo === 'ingreso' ? 'Selecciona un restaurante' : 'Gasto compartido de Velox';
+  selector.required = tipo === 'ingreso';
+  selector.options[0].textContent = tipo === 'ingreso'
+    ? 'Selecciona el restaurante que pagó'
+    : 'Gasto compartido de Velox · repartir entre restaurantes activos';
+  $('mov-restaurante-label').textContent = tipo === 'ingreso'
+    ? 'Restaurante que pagó'
+    : '¿A quién atribuimos este gasto?';
+  $('mov-restaurante-help').textContent = tipo === 'ingreso'
+    ? 'El ingreso se asignará a este restaurante.'
+    : 'Déjalo como gasto compartido para repartirlo entre restaurantes activos. Elige un restaurante solo si el gasto es exclusivo de ese negocio.';
+  if (reiniciarAtribucion) selector.value = '';
 }
 function renderizar(data) {
   datos = data;
@@ -212,7 +223,9 @@ async function cargar() {
   cargando = true;
   $('data-message').textContent = '';
   try {
-    const periodo = $('periodo').value || periodoBogota();
+    const periodo = $('periodo').value || localStorage.getItem('velox-finance-period') || periodoBogota();
+    $('periodo').value = periodo;
+    localStorage.setItem('velox-finance-period', periodo);
     const data = await solicitar('/api/admin/finanzas?periodo=' + encodeURIComponent(periodo));
     renderizar(data);
   } catch (error) {
@@ -275,7 +288,7 @@ async function cargarFacturas(auto = true) {
     else if (invoice.amount != null) porRevisar.set(moneda, (porRevisar.get(moneda) || 0) + Number(invoice.amount));
   }
   const resumen = mapa => [...mapa].map(([moneda, valor]) => dineroFactura(valor, moneda)).join(' · ') || '—';
-  $('invoice-summary').textContent = `Comprobantes: ${facturas.length} · Pagos identificados: ${resumen(confirmados)} · Pendientes o por revisar: ${resumen(porRevisar)} · Anulados: ${anuladas}. No se mezclan monedas.`;
+  $('invoice-summary').textContent = `Historial completo · ${activas} activas, ${anuladas} anuladas. Los filtros solo cambian la lista; no cambian el período ni los totales.`;
   const list = $('invoice-list'); list.replaceChildren();
   if (!facturasFiltradas.length) {
     const vacio = document.createElement('p'); vacio.className = 'text-sm text-[#69544A]';
@@ -285,7 +298,12 @@ async function cargarFacturas(auto = true) {
     list.append(vacio); return;
   }
   const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
-  const filtroFactura = $('invoice-filter').value;
+  const anuladas = facturas.filter(invoice => ['void', 'refunded'].includes(invoice.status)).length;
+  const activas = facturas.length - anuladas;
+  $('invoice-filter').options[0].textContent = 'Activas (' + activas + ')';
+  $('invoice-filter').options[1].textContent = 'Anuladas (' + anuladas + ')';
+  $('invoice-filter').options[2].textContent = 'Todas (' + facturas.length + ')';
+  const filtroFactura = $('invoice-filter').value || 'active';
   const facturasFiltradas = facturas.filter(invoice => filtroFactura === 'all'
     || (filtroFactura === 'void' ? ['void', 'refunded'].includes(invoice.status) : !['void', 'refunded'].includes(invoice.status)));
   for (const invoice of facturasFiltradas) {
@@ -340,7 +358,7 @@ async function anularFactura(invoice, button) {
       body: JSON.stringify({ amount: invoice.amount, invoice_date: invoice.invoice_date, currency: invoice.currency, invoice_number: invoice.invoice_number, status: 'void' })
     });
     $('data-message').textContent = result.message;
-    await Promise.allSettled([cargar(), cargarFacturas(false)]);
+    await Promise.allSettled([cargar(), cargarFacturas(false), cargarAcumulado()]);
   } catch (error) {
     $('data-message').textContent = error.message;
     button.disabled = false;
@@ -368,7 +386,7 @@ formularioEdicionFactura.addEventListener('submit', async event => {
     dialogoFactura.close();
     facturaEnEdicion = null;
     $('data-message').textContent = result.message;
-    await Promise.allSettled([cargar(), cargarFacturas(false)]);
+    await Promise.allSettled([cargar(), cargarFacturas(false), cargarAcumulado()]);
   } catch (error) {
     message.textContent = error.message;
   } finally {
@@ -430,7 +448,7 @@ $('manual-invoice-form').addEventListener('submit', async event => {
     form.reset();
     message.textContent = result.message + ' ' + dineroFactura(result.amount, result.currency) + ' · ' + fechaFactura(result.invoice_date) + '.';
     message.className = 'text-sm text-[#256444]';
-    await Promise.allSettled([cargar(), cargarFacturas(false)]);
+    await Promise.allSettled([cargar(), cargarFacturas(false), cargarAcumulado()]);
   } catch (error) {
     message.textContent = error.message;
     message.className = 'text-sm text-red-700';
@@ -446,7 +464,7 @@ $('connect-gmail').addEventListener('click', async () => {
 });
 $('sync-invoices').addEventListener('click', async () => {
   $('sync-invoices').disabled = true;
-  try { estadoFacturas('Sincronizando comprobantes…', true); await solicitarAdmin('/api/admin/facturas/sync', { method: 'POST' }); await cargarFacturas(false); }
+  try { estadoFacturas('Sincronizando comprobantes…', true); await solicitarAdmin('/api/admin/facturas/sync', { method: 'POST' }); await Promise.allSettled([cargarFacturas(false), cargarAcumulado()]); }
   catch (error) { estadoFacturas(error.message); }
   finally { $('sync-invoices').disabled = false; }
 });
@@ -459,8 +477,12 @@ function mostrarVista(session) {
   $('password-card').classList.toggle('hidden', !enRecuperacion);
   $('dashboard').classList.toggle('hidden', !session || enRecuperacion);
   if (session && !enRecuperacion) {
-    if (!$('periodo').value) $('periodo').value = periodoBogota();
+    if (!$('periodo').value) $('periodo').value = localStorage.getItem('velox-finance-period') || periodoBogota();
+    const filtroGuardado = localStorage.getItem('velox-invoice-filter');
+    if (filtroGuardado && ['active', 'void', 'all'].includes(filtroGuardado)) $('invoice-filter').value = filtroGuardado;
+    localStorage.setItem('velox-finance-period', $('periodo').value);
     cargar();
+    cargarAcumulado();
     cargarFacturas(true).catch(error => estadoFacturas(error.message));
     if (!autoRefresh) autoRefresh = setInterval(() => {
       if (document.visibilityState === 'visible') cargar();
@@ -559,16 +581,23 @@ $('tab-resumen').addEventListener('click', () => activarPestana('resumen'));
 $('tab-restaurantes').addEventListener('click', () => activarPestana('restaurantes'));
 $('tab-acumulado').addEventListener('click', () => activarPestana('acumulado'));
 async function cargarAcumulado() {
-  if (!token) return;
+  if (!token || cargandoAcumulado) return;
+  cargandoAcumulado = true;
   $('acumulado-nota').textContent = 'Sumando los gastos guardados y consultando el costo histórico disponible…';
   try {
     const data = await solicitar('/api/admin/finanzas/acumulado');
     $('acumulado-cop').textContent = mostrarMoneda(data.monedas?.COP, 'COP');
     $('acumulado-usd').textContent = mostrarMoneda(data.monedas?.USD, 'USD');
     $('acumulado-equivalente').textContent = mostrarMoneda(data.monedas?.equivalente_cop, 'COP');
-    $('acumulado-sin-tasa').textContent = Number(data.monedas?.usd_sin_tasa) > 0
-      ? mostrarMoneda(data.monedas.usd_sin_tasa, 'USD') + ' sin tasa histórica guardada'
-      : 'Todos los USD convertibles según las tasas registradas.';
+    const sinTasa = Number(data.monedas?.usd_sin_tasa) > 0
+      ? mostrarMoneda(data.monedas.usd_sin_tasa, 'USD') + ' sin tasa mensual guardada'
+      : 'No hay USD pendientes de conversión.';
+    $('acumulado-sin-tasa').textContent = sinTasa;
+    $('vida-cop').textContent = mostrarMoneda(data.monedas?.COP, 'COP');
+    $('vida-usd').textContent = mostrarMoneda(data.monedas?.USD, 'USD');
+    $('vida-equivalente').textContent = mostrarMoneda(data.monedas?.equivalente_cop, 'COP');
+    $('vida-sin-tasa').textContent = sinTasa;
+    $('vida-nota').textContent = data.nota + ' ' + data.nota_openai;
     $('acumulado-nota').textContent = data.nota + ' ' + data.nota_openai;
     $('acumulado-fecha').textContent = data.inicio
       ? 'Desde ' + fechaFactura(data.inicio) + ' · actualizado ' + new Date(data.actualizado_en).toLocaleString('es-CO') + ' · ' + numero.format(data.movimientos_contados || 0) + ' gastos registrados.'
@@ -587,15 +616,23 @@ async function cargarAcumulado() {
     tbody.replaceChildren(fragmento);
   } catch (error) {
     $('acumulado-nota').textContent = error.message;
+    $('vida-nota').textContent = error.message;
   }
 }
-$('periodo').addEventListener('change', cargar);
+$('periodo').addEventListener('change', () => {
+  localStorage.setItem('velox-finance-period', $('periodo').value || periodoBogota());
+  cargar();
+});
 $('refresh').addEventListener('click', cargar);
 $('actualizar-acumulado').addEventListener('click', cargarAcumulado);
-$('invoice-filter').addEventListener('change', () => cargarFacturas(false));
+$('refresh-lifetime-top').addEventListener('click', cargarAcumulado);
+$('invoice-filter').addEventListener('change', () => {
+  localStorage.setItem('velox-invoice-filter', $('invoice-filter').value);
+  cargarFacturas(false);
+});
 $('logout').addEventListener('click', () => supabase.auth.signOut());
 
-$('mov-tipo').addEventListener('change', actualizarCategorias);
+$('mov-tipo').addEventListener('change', () => actualizarCategorias(true));
 actualizarCategorias();
 $('mov-fecha').value = hoyBogota();
 $('movimiento-form').addEventListener('submit', async event => {
@@ -623,8 +660,8 @@ $('movimiento-form').addEventListener('submit', async event => {
     $('mov-fecha').value = hoyBogota();
     $('mov-tipo').value = 'ingreso';
     actualizarCategorias();
-    mensaje('mov-mensaje', 'Movimiento guardado. El resumen ya está actualizado.', false);
-    await cargar();
+    mensaje('mov-mensaje', 'Movimiento guardado. El resumen del mes y el historial ya están actualizados.', false);
+    await Promise.allSettled([cargar(), cargarAcumulado()]);
   } catch (error) {
     mensaje('mov-mensaje', error.message, true);
   } finally {
