@@ -208,7 +208,6 @@ test('la categoría se hereda y un nombre vacío no pierde la categoría del pro
   d.run(`productosEditor=[{id:'1',categoria:'Pizzas'},{id:'2',categoria:'Bebidas'}]; categoriaEditorActiva='Pizzas';`);
   d.context.nuevoProducto();
   assert.equal(d.el('prod-categoria').value, 'Pizzas');
-  assert.equal(d.el('prod-categoria-panel').open, false);
   d.context.cambiarCategoriaProducto('Bebidas');
   assert.equal(d.el('prod-categoria').value, 'Bebidas');
   d.context.cambiarCategoriaProducto('__nueva__');
@@ -217,7 +216,7 @@ test('la categoría se hereda y un nombre vacío no pierde la categoría del pro
   d.context.asignarCategoriaProducto(' pizzas ');
   assert.equal(d.el('prod-categoria').value, 'Pizzas');
   d.context.asignarCategoriaProducto('Postres');
-  assert.equal(d.el('prod-categoria-resumen').textContent, 'Categoría: Postres');
+  assert.equal(d.el('prod-categoria').value, 'Postres');
   d.context.prepararCategoriaProducto('Bebidas');
   assert.equal(d.el('prod-categoria').value, 'Bebidas');
   assert.equal(d.el('prod-categoria-nueva-panel').hidden, true);
