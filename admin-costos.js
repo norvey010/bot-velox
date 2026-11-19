@@ -266,11 +266,11 @@ async function cargarFacturas(auto = true) {
     else if (invoice.amount != null) porRevisar.set(moneda, (porRevisar.get(moneda) || 0) + Number(invoice.amount));
   }
   const resumen = mapa => [...mapa].map(([moneda, valor]) => dineroFactura(valor, moneda)).join(' · ') || '—';
-  $('invoice-summary').textContent = `Guardados: ${facturas.length} · Pagos identificados: ${resumen(confirmados)} · Montos por revisar: ${resumen(porRevisar)}. No se mezclan monedas.`;
+  $('invoice-summary').textContent = `Guardados: ${facturas.length} · Pagos identificados: ${resumen(confirmados)} · Pendientes o por revisar: ${resumen(porRevisar)}. No se mezclan monedas.`;
   const list = $('invoice-list'); list.replaceChildren();
   if (!facturas.length) {
     const vacio = document.createElement('p'); vacio.className = 'text-sm text-[#69544A]';
-    vacio.textContent = status.conectado ? 'Todavía no hay comprobantes importados.' : 'Al conectar el correo, aquí aparecerán los comprobantes originales.';
+    vacio.textContent = 'Aún no hay comprobantes. Súbelos arriba o conecta Gmail más adelante.';
     list.append(vacio); return;
   }
   const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
@@ -280,7 +280,8 @@ async function cargarFacturas(auto = true) {
     const titulo = document.createElement('p'); titulo.className = 'truncate text-sm font-medium text-[#241A15]';
     titulo.textContent = `${nombres[invoice.provider] || invoice.provider} · ${invoice.invoice_number ? `Factura ${invoice.invoice_number}` : invoice.email_subject || 'Comprobante'}`;
     const detalle = document.createElement('p'); detalle.className = 'mt-1 text-xs text-[#69544A]';
-    detalle.textContent = `${fechaFactura(invoice.invoice_date || invoice.source_received_at)} · ${invoice.status === 'paid' ? 'Pago identificado' : 'Revisar'} · ${dineroFactura(invoice.paid_amount ?? invoice.amount, invoice.currency)}`;
+    const estado = invoice.status === 'paid' ? 'Pagada' : invoice.status === 'open' ? 'Pendiente de pago' : invoice.status === 'void' ? 'Anulada' : invoice.status === 'refunded' ? 'Reembolsada' : 'Importe por revisar';
+    detalle.textContent = `${fechaFactura(invoice.invoice_date || invoice.source_received_at)} · ${estado} · ${dineroFactura(invoice.paid_amount ?? invoice.amount, invoice.currency)}`;
     info.append(titulo, detalle);
     const acciones = document.createElement('div'); acciones.className = 'flex flex-wrap gap-2';
     for (const [indice, archivo] of (Array.isArray(invoice.files) ? invoice.files : []).entries()) {
@@ -293,6 +294,29 @@ async function cargarFacturas(auto = true) {
     list.append(fila);
   }
 }
+$('manual-invoice-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = $('save-manual-invoice');
+  button.disabled = true;
+  button.textContent = 'Leyendo y guardando…';
+  const message = $('manual-invoice-message');
+  message.textContent = 'Extrayendo texto del PDF sin usar IA…';
+  message.className = 'text-sm text-[#69544A]';
+  try {
+    const result = await solicitarAdmin('/api/admin/facturas/manual', { method: 'POST', body: new FormData(form) });
+    form.reset();
+    message.textContent = result.message + ' ' + dineroFactura(result.amount, result.currency) + ' · ' + fechaFactura(result.invoice_date) + '.';
+    message.className = 'text-sm text-[#256444]';
+    await Promise.allSettled([cargar(), cargarFacturas(false)]);
+  } catch (error) {
+    message.textContent = error.message;
+    message.className = 'text-sm text-red-700';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Guardar comprobante y gasto';
+  }
+});
 $('connect-gmail').addEventListener('click', async () => {
   $('connect-gmail').disabled = true;
   try { const result = await solicitarAdmin('/api/admin/integraciones/gmail/conectar', { method: 'POST' }); window.location.assign(result.url); }
