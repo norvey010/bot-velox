@@ -157,7 +157,7 @@ function parseInvoice(text, subject, receivedAt, provider) {
 }
 
 function detectarFechaFactura(text) {
-    const match = String(text || '').match(/(?:invoice date|issue date|date issued|fecha de factura|fecha de emisión|fecha de emision)\\s*[:#-]?\\s*(\\d{4}-\\d{2}-\\d{2})/i);
+    const match = String(text || '').match(/(?:invoice date|issue date|date issued|fecha de factura|fecha de emisión|fecha de emision)\s*[:#-]?\s*(\d{4}-\d{2}-\d{2})/i);
     if (!match) return null;
     const date = new Date(match[1] + 'T00:00:00Z');
     return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== match[1] ? null : match[1];
@@ -165,8 +165,8 @@ function detectarFechaFactura(text) {
 
 function detectarMonedaFactura(text) {
     const source = String(text || '');
-    const cop = /\\bCOP\\b|COP\\$|pesos colombianos|colombian pesos/i.test(source);
-    const usd = /\\bUSD\\b|US\\$|U\\.S\\.\\s*dollars?/i.test(source);
+    const cop = /\bCOP\b|COP\$|pesos colombianos|colombian pesos/i.test(source);
+    const usd = /\bUSD\b|US\$|U\.S\.\s*dollars?/i.test(source);
     return cop === usd ? null : cop ? 'COP' : 'USD';
 }
 
@@ -412,7 +412,7 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                 }
 
                 const invoiceDate = String(req.body.invoice_date || '').trim() || detectarFechaFactura(pdfText);
-                if (!invoiceDate || !/^\\d{4}-\\d{2}-\\d{2}$/.test(invoiceDate)) {
+                if (!invoiceDate || !/^\d{4}-\d{2}-\d{2}$/.test(invoiceDate)) {
                     return res.status(422).json({ error: 'No pude confirmar la fecha. Escríbela en el campo Fecha de factura y vuelve a guardar.' });
                 }
                 const dateCheck = new Date(invoiceDate + 'T00:00:00Z');
