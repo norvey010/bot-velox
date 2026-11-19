@@ -547,7 +547,7 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
             const status = String(req.body.status || '').trim();
             const invoiceNumber = String(req.body.invoice_number || '').trim().slice(0, 120) || null;
             if (!Number.isFinite(amount) || amount <= 0) return res.status(422).json({ error: 'El total debe ser mayor que cero.' });
-            if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(invoiceDate)) return res.status(422).json({ error: 'La fecha no es válida.' });
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(invoiceDate)) return res.status(422).json({ error: 'La fecha no es válida.' });
             const dateCheck = new Date(invoiceDate + 'T00:00:00Z');
             if (Number.isNaN(dateCheck.getTime()) || dateCheck.toISOString().slice(0, 10) !== invoiceDate) return res.status(422).json({ error: 'La fecha no es válida.' });
             if (!['COP', 'USD'].includes(currency)) return res.status(422).json({ error: 'Selecciona COP o USD.' });
