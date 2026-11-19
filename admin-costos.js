@@ -234,12 +234,19 @@ function estadoFacturas(texto, conectado = false) {
 }
 const fechaFactura = valor => valor ? new Date(valor).toLocaleDateString('es-CO') : 'Fecha no detectada';
 const dineroFactura = (valor, moneda) => valor == null ? 'Por revisar' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: moneda || 'USD', maximumFractionDigits: 2 }).format(Number(valor));
-async function abrirComprobante(id, indice, nombre) {
-  const response = await fetch(`/api/admin/facturas/${encodeURIComponent(id)}/archivo/${indice}`, { headers: { Authorization: `Bearer ${token}` } });
-  if (!response.ok) throw new Error('No se pudo abrir el comprobante.');
-  const url = URL.createObjectURL(await response.blob());
-  const link = document.createElement('a'); link.href = url; link.download = nombre || 'comprobante'; link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+async function abrirComprobante(id, indice) {
+  const ventana = window.open('about:blank', '_blank');
+  if (!ventana) throw new Error('El navegador bloqueó la pestaña. Permite ventanas emergentes para ver el comprobante.');
+  try {
+    const response = await fetch(`/api/admin/facturas/${encodeURIComponent(id)}/archivo/${indice}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error('No se pudo abrir el comprobante.');
+    const url = URL.createObjectURL(await response.blob());
+    ventana.location.replace(url);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (error) {
+    ventana.close();
+    throw error;
+  }
 }
 async function cargarFacturas(auto = true) {
   const status = await solicitarAdmin('/api/admin/integraciones/gmail/estado');
@@ -260,13 +267,15 @@ async function cargarFacturas(auto = true) {
   }
   const { facturas = [] } = await solicitarAdmin('/api/admin/facturas');
   const confirmados = new Map(), porRevisar = new Map();
+  let anuladas = 0;
   for (const invoice of facturas) {
+    if (invoice.status === 'void' || invoice.status === 'refunded') { anuladas++; continue; }
     const moneda = invoice.currency || 'USD';
     if (invoice.status === 'paid' && invoice.paid_amount != null) confirmados.set(moneda, (confirmados.get(moneda) || 0) + Number(invoice.paid_amount));
     else if (invoice.amount != null) porRevisar.set(moneda, (porRevisar.get(moneda) || 0) + Number(invoice.amount));
   }
   const resumen = mapa => [...mapa].map(([moneda, valor]) => dineroFactura(valor, moneda)).join(' · ') || '—';
-  $('invoice-summary').textContent = `Guardados: ${facturas.length} · Pagos identificados: ${resumen(confirmados)} · Pendientes o por revisar: ${resumen(porRevisar)}. No se mezclan monedas.`;
+  $('invoice-summary').textContent = `Comprobantes: ${facturas.length} · Pagos identificados: ${resumen(confirmados)} · Pendientes o por revisar: ${resumen(porRevisar)} · Anulados: ${anuladas}. No se mezclan monedas.`;
   const list = $('invoice-list'); list.replaceChildren();
   if (!facturas.length) {
     const vacio = document.createElement('p'); vacio.className = 'text-sm text-[#69544A]';
@@ -285,15 +294,82 @@ async function cargarFacturas(auto = true) {
     info.append(titulo, detalle);
     const acciones = document.createElement('div'); acciones.className = 'flex flex-wrap gap-2';
     for (const [indice, archivo] of (Array.isArray(invoice.files) ? invoice.files : []).entries()) {
-      const boton = document.createElement('button'); boton.type = 'button'; boton.className = 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs text-[#241A15]'; boton.textContent = `Abrir ${archivo.name || 'comprobante'}`;
-      boton.addEventListener('click', () => abrirComprobante(invoice.id, indice, archivo.name).catch(error => { $('data-message').textContent = error.message; }));
+      const boton = document.createElement('button'); boton.type = 'button'; boton.className = 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs text-[#241A15]'; boton.textContent = `Ver ${archivo.name || 'comprobante'}`;
+      boton.addEventListener('click', () => abrirComprobante(invoice.id, indice).catch(error => { $('data-message').textContent = error.message; }));
       acciones.append(boton);
+    }
+    const editar = document.createElement('button');
+    editar.type = 'button'; editar.className = 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs text-[#241A15]'; editar.textContent = 'Corregir';
+    editar.addEventListener('click', () => abrirEdicionFactura(invoice));
+    acciones.append(editar);
+    if (invoice.status !== 'void' && invoice.status !== 'refunded') {
+      const anular = document.createElement('button');
+      anular.type = 'button'; anular.className = 'rounded-lg border border-red-200 px-3 py-2 text-xs text-red-800'; anular.textContent = 'Anular';
+      anular.addEventListener('click', () => anularFactura(invoice, anular).catch(error => { $('data-message').textContent = error.message; }));
+      acciones.append(anular);
     }
     fila.append(info, acciones);
     if (invoice.extraction_note) { const nota = document.createElement('p'); nota.className = 'w-full text-xs text-[#69544A]'; nota.textContent = invoice.extraction_note; fila.append(nota); }
     list.append(fila);
   }
 }
+const dialogoFactura = $('invoice-edit-dialog');
+const formularioEdicionFactura = $('invoice-edit-form');
+let facturaEnEdicion = null;
+function abrirEdicionFactura(invoice) {
+  facturaEnEdicion = invoice;
+  formularioEdicionFactura.elements.amount.value = invoice.amount ?? '';
+  formularioEdicionFactura.elements.invoice_date.value = invoice.invoice_date || '';
+  formularioEdicionFactura.elements.currency.value = invoice.currency || '';
+  formularioEdicionFactura.elements.invoice_number.value = invoice.invoice_number || '';
+  formularioEdicionFactura.elements.status.value = ['paid', 'open', 'void', 'refunded'].includes(invoice.status) ? invoice.status : 'open';
+  $('invoice-edit-message').textContent = '';
+  dialogoFactura.showModal();
+}
+async function anularFactura(invoice, button) {
+  if (!window.confirm('¿Anular este comprobante? Se conservará el PDF y dejará de contar como gasto.')) return;
+  button.disabled = true;
+  try {
+    const result = await solicitarAdmin(`/api/admin/facturas/${encodeURIComponent(invoice.id)}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: invoice.amount, invoice_date: invoice.invoice_date, currency: invoice.currency, invoice_number: invoice.invoice_number, status: 'void' })
+    });
+    $('data-message').textContent = result.message;
+    await Promise.allSettled([cargar(), cargarFacturas(false)]);
+  } catch (error) {
+    $('data-message').textContent = error.message;
+    button.disabled = false;
+  }
+}
+formularioEdicionFactura.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!facturaEnEdicion) return;
+  const button = $('invoice-edit-save');
+  const message = $('invoice-edit-message');
+  button.disabled = true;
+  message.textContent = 'Guardando corrección…';
+  try {
+    const form = event.currentTarget;
+    const result = await solicitarAdmin(`/api/admin/facturas/${encodeURIComponent(facturaEnEdicion.id)}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: form.elements.amount.value,
+        invoice_date: form.elements.invoice_date.value,
+        currency: form.elements.currency.value,
+        invoice_number: form.elements.invoice_number.value,
+        status: form.elements.status.value
+      })
+    });
+    dialogoFactura.close();
+    facturaEnEdicion = null;
+    $('data-message').textContent = result.message;
+    await Promise.allSettled([cargar(), cargarFacturas(false)]);
+  } catch (error) {
+    message.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
 const formularioFactura = $('manual-invoice-form');
 formularioFactura.elements.comprobante.addEventListener('change', () => {
   for (const name of ['invoice_date', 'amount', 'currency', 'invoice_number']) formularioFactura.elements[name].value = '';
