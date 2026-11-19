@@ -1,12 +1,20 @@
 const axios = require('axios');
 const crypto = require('crypto');
 const pdfParse = require('pdf-parse');
+const multer = require('multer');
 
 const PROVIDER = 'gmail';
 const BUCKET = 'velox-comprobantes';
 const INVOICE_ACCOUNT = (process.env.GMAIL_INVOICE_ACCOUNT_EMAIL || 'pizanorvey@gmail.com').toLowerCase();
 const MAX_MESSAGES = 1000;
 const MAX_PDF_BYTES = 12 * 1024 * 1024;
+const uploadManualInvoice = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_PDF_BYTES, files: 1, fields: 8, parts: 10 },
+    fileFilter: (_req, file, callback) => file.mimetype === 'application/pdf'
+        ? callback(null, true)
+        : callback(new Error('Sube la factura en formato PDF.'))
+});
 
 function keyFor(purpose) {
     const master = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
@@ -146,6 +154,20 @@ function parseInvoice(text, subject, receivedAt, provider) {
             ? (paidContext ? 'Importe y pago detectados desde el comprobante; conserva el original para verificarlo.' : 'Importe detectado, pero el mensaje no confirma claramente que ya se haya pagado.')
             : 'Se guardó el comprobante original; el importe no se pudo identificar con suficiente certeza y requiere revisión.'
     };
+}
+
+function detectarFechaFactura(text) {
+    const match = String(text || '').match(/(?:invoice date|issue date|date issued|fecha de factura|fecha de emisión|fecha de emision)\\s*[:#-]?\\s*(\\d{4}-\\d{2}-\\d{2})/i);
+    if (!match) return null;
+    const date = new Date(match[1] + 'T00:00:00Z');
+    return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== match[1] ? null : match[1];
+}
+
+function detectarMonedaFactura(text) {
+    const source = String(text || '');
+    const cop = /\\bCOP\\b|COP\\$|pesos colombianos|colombian pesos/i.test(source);
+    const usd = /\\bUSD\\b|US\\$|U\\.S\\.\\s*dollars?/i.test(source);
+    return cop === usd ? null : cop ? 'COP' : 'USD';
 }
 
 async function ensureBucket(supabaseAdmin) {
@@ -363,6 +385,106 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
             res.status(status === 401 || status === 403 ? 502 : 503).json({ error: status === 401 || status === 403 ? 'Gmail rechazó la conexión. Reconecta el correo desde el panel.' : 'No se pudieron sincronizar los comprobantes. Reintenta desde el panel.' });
         }
     });
+
+    app.post('/api/admin/facturas/manual', autenticarAdminPlataforma,
+        (req, res, next) => uploadManualInvoice.single('comprobante')(req, res, error => {
+            if (error) return res.status(400).json({ error: error.code === 'LIMIT_FILE_SIZE' ? 'El PDF supera el límite de 12 MB.' : error.message });
+            next();
+        }),
+        async (req, res) => {
+            let filePath = null;
+            try {
+                const file = req.file;
+                if (!file || file.buffer.subarray(0, 5).toString() !== '%PDF-') {
+                    return res.status(400).json({ error: 'Selecciona un archivo PDF válido.' });
+                }
+                const provider = String(req.body.provider || '').trim().toLowerCase();
+                const allowedProviders = new Set(['railway', 'supabase', 'openai', 'meta', 'claro', 'otro']);
+                if (!allowedProviders.has(provider)) return res.status(400).json({ error: 'Selecciona el proveedor de la factura.' });
+
+                const pdf = await pdfParse(file.buffer);
+                const pdfText = String(pdf.text || '');
+                const parsed = parseInvoice(pdfText, file.originalname, new Date().toISOString(), provider);
+                const amountInput = String(req.body.amount || '').trim();
+                const amount = amountInput ? parseAmount(amountInput) : parsed.amount;
+                if (!Number.isFinite(amount) || amount <= 0) {
+                    return res.status(422).json({ error: 'No pude leer un total único. Escribe el importe del PDF y vuelve a guardar.' });
+                }
+
+                const invoiceDate = String(req.body.invoice_date || '').trim() || detectarFechaFactura(pdfText);
+                if (!invoiceDate || !/^\\d{4}-\\d{2}-\\d{2}$/.test(invoiceDate)) {
+                    return res.status(422).json({ error: 'No pude confirmar la fecha. Escríbela en el campo Fecha de factura y vuelve a guardar.' });
+                }
+                const dateCheck = new Date(invoiceDate + 'T00:00:00Z');
+                if (Number.isNaN(dateCheck.getTime()) || dateCheck.toISOString().slice(0, 10) !== invoiceDate) {
+                    return res.status(400).json({ error: 'La fecha de factura no es válida.' });
+                }
+
+                const currency = String(req.body.currency || '').trim().toUpperCase() || detectarMonedaFactura(pdfText);
+                if (!['COP', 'USD'].includes(currency)) {
+                    return res.status(422).json({ error: 'No pude confirmar si el valor está en COP o USD. Selecciona la moneda y vuelve a guardar.' });
+                }
+                const status = String(req.body.status || '').trim();
+                if (!['paid', 'open'].includes(status)) return res.status(400).json({ error: 'Indica si la factura está pagada o pendiente.' });
+
+                const invoiceNumber = String(req.body.invoice_number || parsed.invoiceNumber || '').trim().slice(0, 120) || null;
+                const externalId = invoiceNumber ? 'invoice:' + invoiceNumber : null;
+                if (externalId) {
+                    const { data: duplicate, error: duplicateError } = await supabaseAdmin.from('velox_platform_invoices')
+                        .select('id').eq('provider', provider).eq('source_external_id', externalId).maybeSingle();
+                    if (duplicateError) throw duplicateError;
+                    if (duplicate) return res.status(409).json({ error: 'Ya existe un comprobante de ese proveedor con ese número. Revisa la lista antes de volverlo a cargar.' });
+                }
+
+                await ensureBucket(supabaseAdmin);
+                const id = crypto.randomUUID();
+                const safeName = String(file.originalname || 'factura.pdf').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120) || 'factura.pdf';
+                filePath = provider + '/manual/' + invoiceDate.slice(0, 7) + '/' + id + '.pdf';
+                const { error: uploadError } = await supabaseAdmin.storage.from(BUCKET).upload(filePath, file.buffer, {
+                    contentType: 'application/pdf', upsert: false
+                });
+                if (uploadError) throw uploadError;
+
+                const receivedAt = new Date().toISOString();
+                const extractionNote = [
+                    amountInput ? 'Importe confirmado por el administrador' : 'Importe único leído del texto del PDF',
+                    req.body.invoice_date ? 'fecha confirmada por el administrador' : (detectarFechaFactura(pdfText) ? 'fecha ISO leída del PDF' : 'fecha confirmada por el administrador'),
+                    'sin uso de IA'
+                ].join('; ') + '.';
+                const row = {
+                    provider,
+                    source_message_id: 'manual:' + id,
+                    source_external_id: externalId,
+                    invoice_number: invoiceNumber,
+                    invoice_date: invoiceDate,
+                    status,
+                    amount,
+                    paid_amount: status === 'paid' ? amount : null,
+                    currency,
+                    description: 'Factura cargada manualmente de ' + provider,
+                    email_subject: 'Archivo subido manualmente',
+                    email_from: null,
+                    source_received_at: receivedAt,
+                    file_paths: [{ path: filePath, name: safeName, mimeType: 'application/pdf' }],
+                    extraction_note: extractionNote
+                };
+                const { data, error } = await supabaseAdmin.from('velox_platform_invoices').insert(row).select('id').single();
+                if (error) throw error;
+                return res.status(201).json({
+                    id: data.id, amount, currency, invoice_date: invoiceDate,
+                    expense_registered: provider !== 'openai',
+                    message: provider === 'openai'
+                        ? 'Comprobante guardado. OpenAI ya se cuenta desde su reporte de costos para evitar duplicarlo.'
+                        : 'Comprobante guardado y gasto sumado automáticamente al libro financiero.'
+                });
+            } catch (error) {
+                if (filePath) {
+                    try { await supabaseAdmin.storage.from(BUCKET).remove([filePath]); } catch {}
+                }
+                console.error('No se pudo guardar la factura manual:', error.message);
+                res.status(503).json({ error: 'No se pudo guardar la factura. Verifica que el PDF sea legible y vuelve a intentarlo.' });
+            }
+        });
 
     app.get('/api/admin/facturas', autenticarAdminPlataforma, async (_req, res) => {
         try {
