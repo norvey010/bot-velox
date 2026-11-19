@@ -539,6 +539,33 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
         } catch (error) { res.status(503).json({ error: 'No se pudieron cargar las facturas guardadas.' }); }
     });
 
+    app.patch('/api/admin/facturas/:id', autenticarAdminPlataforma, async (req, res) => {
+        try {
+            const amount = Number(req.body.amount);
+            const invoiceDate = String(req.body.invoice_date || '').trim();
+            const currency = String(req.body.currency || '').trim().toUpperCase();
+            const status = String(req.body.status || '').trim();
+            const invoiceNumber = String(req.body.invoice_number || '').trim().slice(0, 120) || null;
+            if (!Number.isFinite(amount) || amount <= 0) return res.status(422).json({ error: 'El total debe ser mayor que cero.' });
+            if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(invoiceDate)) return res.status(422).json({ error: 'La fecha no es válida.' });
+            const dateCheck = new Date(invoiceDate + 'T00:00:00Z');
+            if (Number.isNaN(dateCheck.getTime()) || dateCheck.toISOString().slice(0, 10) !== invoiceDate) return res.status(422).json({ error: 'La fecha no es válida.' });
+            if (!['COP', 'USD'].includes(currency)) return res.status(422).json({ error: 'Selecciona COP o USD.' });
+            if (!['paid', 'open', 'void', 'refunded'].includes(status)) return res.status(422).json({ error: 'Selecciona un estado válido.' });
+
+            const { data, error } = await supabaseAdmin.from('velox_platform_invoices')
+                .update({ amount, paid_amount: status === 'paid' ? amount : null, invoice_date: invoiceDate, currency, invoice_number: invoiceNumber, status, extraction_note: 'Datos revisados o corregidos por el administrador.' })
+                .eq('id', req.params.id).select('id').maybeSingle();
+            if (error?.code === '23505') return res.status(409).json({ error: 'Ya existe una factura de este proveedor con ese número.' });
+            if (error) throw error;
+            if (!data) return res.sendStatus(404);
+            return res.json({ ok: true, message: status === 'void' || status === 'refunded' ? 'Factura anulada; el comprobante se conserva y el gasto dejó de contar.' : 'Factura corregida y totales actualizados.' });
+        } catch (error) {
+            console.error('No se pudo actualizar la factura:', error.message);
+            return res.status(503).json({ error: 'No se pudo actualizar la factura. Inténtalo otra vez.' });
+        }
+    });
+
     app.get('/api/admin/facturas/:id/archivo/:index', autenticarAdminPlataforma, async (req, res) => {
         try {
             const { data, error } = await supabaseAdmin.from('velox_platform_invoices').select('file_paths').eq('id', req.params.id).maybeSingle();
@@ -550,7 +577,7 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
             if (signError || !signed?.signedUrl) return res.sendStatus(404);
             const download = await axios.get(signed.signedUrl, { responseType: 'stream', timeout: 15000 });
             res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
-            res.setHeader('Content-Disposition', `attachment; filename="${String(file.name || 'comprobante').replace(/["\\\r\n]/g, '_')}"`);
+            res.setHeader('Content-Disposition', `inline; filename="${String(file.name || 'comprobante').replace(/["\\\r\n]/g, '_')}"`);
             download.data.pipe(res);
             return;
         } catch { return res.sendStatus(404); }
