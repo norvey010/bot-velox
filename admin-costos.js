@@ -277,13 +277,18 @@ async function cargarFacturas(auto = true) {
   const resumen = mapa => [...mapa].map(([moneda, valor]) => dineroFactura(valor, moneda)).join(' · ') || '—';
   $('invoice-summary').textContent = `Comprobantes: ${facturas.length} · Pagos identificados: ${resumen(confirmados)} · Pendientes o por revisar: ${resumen(porRevisar)} · Anulados: ${anuladas}. No se mezclan monedas.`;
   const list = $('invoice-list'); list.replaceChildren();
-  if (!facturas.length) {
+  if (!facturasFiltradas.length) {
     const vacio = document.createElement('p'); vacio.className = 'text-sm text-[#69544A]';
-    vacio.textContent = 'Aún no hay comprobantes. Súbelos arriba o conecta Gmail más adelante.';
+    vacio.textContent = facturas.length
+      ? 'No hay comprobantes en este filtro.'
+      : 'Aún no hay comprobantes. Súbelos arriba o conecta Gmail más adelante.';
     list.append(vacio); return;
   }
   const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
-  for (const invoice of facturas) {
+  const filtroFactura = $('invoice-filter').value;
+  const facturasFiltradas = facturas.filter(invoice => filtroFactura === 'all'
+    || (filtroFactura === 'void' ? ['void', 'refunded'].includes(invoice.status) : !['void', 'refunded'].includes(invoice.status)));
+  for (const invoice of facturasFiltradas) {
     const fila = document.createElement('article'); fila.className = 'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E6D8C9] p-3';
     const info = document.createElement('div'); info.className = 'min-w-0';
     const titulo = document.createElement('p'); titulo.className = 'truncate text-sm font-medium text-[#241A15]';
@@ -538,24 +543,56 @@ $('password-form').addEventListener('submit', async event => {
   }
 });
 
-$('tab-resumen').addEventListener('click', () => {
-  $('vista-resumen').classList.remove('hidden');
-  $('vista-restaurantes').classList.add('hidden');
-  $('tab-resumen').className = 'rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white';
-  $('tab-restaurantes').className = 'rounded-lg px-4 py-2 text-sm font-semibold text-[#69544A]';
-  $('tab-resumen').setAttribute('aria-selected', 'true');
-  $('tab-restaurantes').setAttribute('aria-selected', 'false');
-});
-$('tab-restaurantes').addEventListener('click', () => {
-  $('vista-restaurantes').classList.remove('hidden');
-  $('vista-resumen').classList.add('hidden');
-  $('tab-restaurantes').className = 'rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white';
-  $('tab-resumen').className = 'rounded-lg px-4 py-2 text-sm font-semibold text-[#69544A]';
-  $('tab-restaurantes').setAttribute('aria-selected', 'true');
-  $('tab-resumen').setAttribute('aria-selected', 'false');
-});
+function activarPestana(nombre) {
+  for (const [id, vista] of [['resumen', 'vista-resumen'], ['restaurantes', 'vista-restaurantes'], ['acumulado', 'vista-acumulado']]) {
+    const activa = id === nombre;
+    $(`vista-${id}`).classList.toggle('hidden', !activa);
+    const boton = $(`tab-${id}`);
+    boton.className = activa
+      ? 'rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white'
+      : 'rounded-lg px-4 py-2 text-sm font-semibold text-[#69544A]';
+    boton.setAttribute('aria-selected', String(activa));
+  }
+  if (nombre === 'acumulado') cargarAcumulado();
+}
+$('tab-resumen').addEventListener('click', () => activarPestana('resumen'));
+$('tab-restaurantes').addEventListener('click', () => activarPestana('restaurantes'));
+$('tab-acumulado').addEventListener('click', () => activarPestana('acumulado'));
+async function cargarAcumulado() {
+  if (!token) return;
+  $('acumulado-nota').textContent = 'Sumando los gastos guardados y consultando el costo histórico disponible…';
+  try {
+    const data = await solicitar('/api/admin/finanzas/acumulado');
+    $('acumulado-cop').textContent = mostrarMoneda(data.monedas?.COP, 'COP');
+    $('acumulado-usd').textContent = mostrarMoneda(data.monedas?.USD, 'USD');
+    $('acumulado-equivalente').textContent = mostrarMoneda(data.monedas?.equivalente_cop, 'COP');
+    $('acumulado-sin-tasa').textContent = Number(data.monedas?.usd_sin_tasa) > 0
+      ? mostrarMoneda(data.monedas.usd_sin_tasa, 'USD') + ' sin tasa histórica guardada'
+      : 'Todos los USD convertibles según las tasas registradas.';
+    $('acumulado-nota').textContent = data.nota + ' ' + data.nota_openai;
+    $('acumulado-fecha').textContent = data.inicio
+      ? 'Desde ' + fechaFactura(data.inicio) + ' · actualizado ' + new Date(data.actualizado_en).toLocaleString('es-CO') + ' · ' + numero.format(data.movimientos_contados || 0) + ' gastos registrados.'
+      : 'Aún no hay gastos con fecha en el libro financiero.';
+    const tbody = $('servicios-acumulado-body');
+    if (!data.servicios?.length) return filaVacia(tbody, 4, 'Aún no hay gastos registrados.');
+    const fragmento = document.createDocumentFragment();
+    for (const servicio of data.servicios) {
+      const fila = document.createElement('tr'); fila.className = 'border-t border-[#E6D8C9]';
+      celda(fila, servicio.servicio);
+      celda(fila, mostrarMoneda(servicio.COP, 'COP'));
+      celda(fila, mostrarMoneda(servicio.USD, 'USD'));
+      celda(fila, mostrarMoneda(servicio.equivalente_cop, 'COP'));
+      fragmento.append(fila);
+    }
+    tbody.replaceChildren(fragmento);
+  } catch (error) {
+    $('acumulado-nota').textContent = error.message;
+  }
+}
 $('periodo').addEventListener('change', cargar);
 $('refresh').addEventListener('click', cargar);
+$('actualizar-acumulado').addEventListener('click', cargarAcumulado);
+$('invoice-filter').addEventListener('change', () => cargarFacturas(false));
 $('logout').addEventListener('click', () => supabase.auth.signOut());
 
 $('mov-tipo').addEventListener('change', actualizarCategorias);
