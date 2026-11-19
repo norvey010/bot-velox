@@ -126,7 +126,44 @@
         </section>
       </section>
       <section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
-  <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-semibold">Facturas y comprobantes</h2><p class="mt-1 text-xs text-[#69544A]">Importa Railway, Supabase, OpenAI, Meta y Claro desde tu correo. Los archivos se guardan en privado y solo tú puedes abrirlos.</p></div><div class="flex gap-2"><button id="connect-gmail" class="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white">Conectar correo</button><button id="sync-invoices" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-sm">Sincronizar</button></div></div>
+        <div>
+          <h2 class="font-semibold">Subir factura y registrar costo</h2>
+          <p class="mt-1 text-xs text-[#69544A]">Sin IA: Velox intenta leer el PDF. Si el total, la fecha o la moneda no se leen claramente, complétalos. El comprobante queda privado y el gasto se agrega al mes de la factura.</p>
+        </div>
+        <form id="manual-invoice-form" class="grid gap-2 sm:grid-cols-2">
+          <label class="block text-xs text-[#69544A]">Programa
+            <select name="provider" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-white p-2 text-sm text-[#241A15]">
+              <option value="">Selecciona</option><option value="railway">Railway</option><option value="supabase">Supabase</option><option value="openai">OpenAI</option><option value="meta">Meta</option><option value="claro">Claro</option><option value="otro">Otro</option>
+            </select>
+          </label>
+          <label class="block text-xs text-[#69544A]">Factura en PDF · máximo 12 MB
+            <input name="comprobante" type="file" accept="application/pdf,.pdf" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-white p-2 text-sm text-[#241A15]">
+          </label>
+          <label class="block text-xs text-[#69544A]">Fecha de factura · se detecta si el PDF la muestra
+            <input name="invoice_date" type="date" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-white p-2 text-sm text-[#241A15]">
+          </label>
+          <label class="block text-xs text-[#69544A]">Importe · se detecta si el total es claro
+            <input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-white p-2 text-sm text-[#241A15]" placeholder="Ej.: 25000">
+          </label>
+          <label class="block text-xs text-[#69544A]">Moneda · se detecta si el PDF la indica
+            <select name="currency" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-white p-2 text-sm text-[#241A15]">
+              <option value="">Detectar del PDF</option><option value="COP">COP · pesos colombianos</option><option value="USD">USD · dólares</option>
+            </select>
+          </label>
+          <label class="block text-xs text-[#69544A]">Número de factura · opcional
+            <input name="invoice_number" maxlength="120" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-white p-2 text-sm text-[#241A15]" placeholder="Puede detectarse en el PDF">
+          </label>
+          <label class="block text-xs text-[#69544A]">Estado
+            <select name="status" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-white p-2 text-sm text-[#241A15]">
+              <option value="">Selecciona</option><option value="paid">Pagada</option><option value="open">Pendiente de pago</option>
+            </select>
+          </label>
+          <button id="save-manual-invoice" type="submit" class="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white sm:col-span-2">Guardar comprobante y gasto</button>
+        </form>
+        <p id="manual-invoice-message" class="text-sm text-[#69544A]" role="status" aria-live="polite"></p>
+      </section>
+      <section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
+  <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-semibold">Facturas y comprobantes</h2><p class="mt-1 text-xs text-[#69544A]">Conecta Gmail más adelante si quieres automatizar la importación. Los comprobantes subidos se guardan en privado.</p></div><div class="flex gap-2"><button id="connect-gmail" class="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white">Conectar correo</button><button id="sync-invoices" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-sm">Sincronizar</button></div></div>
   <p id="gmail-status" class="rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-3 text-sm text-[#69544A]" role="status">Revisando conexión de facturas…</p>
   <p id="invoice-summary" class="text-xs text-[#69544A]">Los totales aparecerán cuando se importen comprobantes.</p><div id="invoice-list" class="space-y-2"></div>
 </section>
