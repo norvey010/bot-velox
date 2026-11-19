@@ -170,6 +170,20 @@ function detectarMonedaFactura(text) {
     return cop === usd ? null : cop ? 'COP' : 'USD';
 }
 
+async function leerDatosFactura(file, provider) {
+    if (!file || file.buffer.subarray(0, 5).toString() !== '%PDF-') throw new Error('Selecciona un archivo PDF válido.');
+    const pdf = await pdfParse(file.buffer);
+    const text = String(pdf.text || '');
+    const parsed = parseInvoice(text, file.originalname, new Date().toISOString(), provider);
+    return {
+        amount: parsed.amount,
+        currency: detectarMonedaFactura(text),
+        invoice_date: detectarFechaFactura(text),
+        invoice_number: parsed.invoiceNumber,
+        texto_detectado: Boolean(text.trim())
+    };
+}
+
 async function ensureBucket(supabaseAdmin) {
     const { error } = await supabaseAdmin.storage.createBucket(BUCKET, {
         public: false,
@@ -386,6 +400,24 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
         }
     });
 
+    app.post('/api/admin/facturas/leer', autenticarAdminPlataforma,
+        (req, res, next) => uploadManualInvoice.single('comprobante')(req, res, error => {
+            if (error) return res.status(400).json({ error: error.code === 'LIMIT_FILE_SIZE' ? 'El PDF supera el límite de 12 MB.' : error.message });
+            next();
+        }),
+        async (req, res) => {
+            try {
+                const provider = String(req.body.provider || '').trim().toLowerCase();
+                if (!['railway', 'supabase', 'openai', 'meta', 'claro', 'otro'].includes(provider)) {
+                    return res.status(400).json({ error: 'Selecciona el programa de la factura.' });
+                }
+                const fields = await leerDatosFactura(req.file, provider);
+                res.json(fields);
+            } catch (error) {
+                res.status(422).json({ error: error.message || 'No se pudo leer el PDF.' });
+            }
+        });
+
     app.post('/api/admin/facturas/manual', autenticarAdminPlataforma,
         (req, res, next) => uploadManualInvoice.single('comprobante')(req, res, error => {
             if (error) return res.status(400).json({ error: error.code === 'LIMIT_FILE_SIZE' ? 'El PDF supera el límite de 12 MB.' : error.message });
@@ -402,16 +434,13 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                 const allowedProviders = new Set(['railway', 'supabase', 'openai', 'meta', 'claro', 'otro']);
                 if (!allowedProviders.has(provider)) return res.status(400).json({ error: 'Selecciona el proveedor de la factura.' });
 
-                const pdf = await pdfParse(file.buffer);
-                const pdfText = String(pdf.text || '');
-                const parsed = parseInvoice(pdfText, file.originalname, new Date().toISOString(), provider);
                 const amountInput = String(req.body.amount || '').trim();
-                const amount = amountInput ? parseAmount(amountInput) : parsed.amount;
+                const amount = parseAmount(amountInput);
                 if (!Number.isFinite(amount) || amount <= 0) {
                     return res.status(422).json({ error: 'No pude leer un total único. Escribe el importe del PDF y vuelve a guardar.' });
                 }
 
-                const invoiceDate = String(req.body.invoice_date || '').trim() || detectarFechaFactura(pdfText);
+                const invoiceDate = String(req.body.invoice_date || '').trim();
                 if (!invoiceDate || !/^\d{4}-\d{2}-\d{2}$/.test(invoiceDate)) {
                     return res.status(422).json({ error: 'No pude confirmar la fecha. Escríbela en el campo Fecha de factura y vuelve a guardar.' });
                 }
@@ -420,14 +449,14 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                     return res.status(400).json({ error: 'La fecha de factura no es válida.' });
                 }
 
-                const currency = String(req.body.currency || '').trim().toUpperCase() || detectarMonedaFactura(pdfText);
+                const currency = String(req.body.currency || '').trim().toUpperCase();
                 if (!['COP', 'USD'].includes(currency)) {
                     return res.status(422).json({ error: 'No pude confirmar si el valor está en COP o USD. Selecciona la moneda y vuelve a guardar.' });
                 }
                 const status = String(req.body.status || '').trim();
                 if (!['paid', 'open'].includes(status)) return res.status(400).json({ error: 'Indica si la factura está pagada o pendiente.' });
 
-                const invoiceNumber = String(req.body.invoice_number || parsed.invoiceNumber || '').trim().slice(0, 120) || null;
+                const invoiceNumber = String(req.body.invoice_number || '').trim().slice(0, 120) || null;
                 const externalId = invoiceNumber ? 'invoice:' + invoiceNumber : null;
                 if (externalId) {
                     const { data: duplicate, error: duplicateError } = await supabaseAdmin.from('velox_platform_invoices')
@@ -446,11 +475,7 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                 if (uploadError) throw uploadError;
 
                 const receivedAt = new Date().toISOString();
-                const extractionNote = [
-                    amountInput ? 'Importe confirmado por el administrador' : 'Importe único leído del texto del PDF',
-                    req.body.invoice_date ? 'fecha confirmada por el administrador' : (detectarFechaFactura(pdfText) ? 'fecha ISO leída del PDF' : 'fecha confirmada por el administrador'),
-                    'sin uso de IA'
-                ].join('; ') + '.';
+                const extractionNote = 'Importe, fecha y moneda revisados en el panel; comprobante original guardado. Sin uso de IA.';
                 const row = {
                     provider,
                     source_message_id: 'manual:' + id,
