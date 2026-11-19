@@ -37,7 +37,7 @@
     .velox-volver:focus-visible { outline: none; }
     summary { list-style: none; }
     summary::-webkit-details-marker { display: none; }
-    #revision-menu[hidden], #revision-carta-frame[hidden], #revision-edicion[hidden], #revision-volver-carta[hidden], #revision-fotos-opcionales[hidden], #revision-resumen[hidden], #revision-bloqueos[hidden], #revision-siguiente[hidden] { display: none; }
+    #revision-menu[hidden], #revision-carta-frame[hidden], #revision-edicion[hidden], #revision-volver-carta[hidden], #revision-fotos-opcionales[hidden], #revision-resumen[hidden], #revision-bloqueos[hidden], #revision-siguiente[hidden], #form-revision-menu[hidden], #btn-terminar-revision[hidden] { display: none; }
     #revision-miniatura { background: var(--velox-page); }
     #reintentar-productos[hidden] { display: none; }
     #editor-producto {
@@ -418,7 +418,7 @@
         <input type="text" id="prod-descripcion" placeholder="Ej: Carne, queso y salsa especial" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
       </div>
       <details id="prod-opciones-panel" class="sm:col-span-2">
-        <summary class="cursor-pointer py-2 text-sm font-semibold text-white">Opciones del pedido</summary>
+        <summary class="cursor-pointer py-2 text-sm font-semibold text-white">Sabores y otras opciones</summary>
         <label for="prod-opciones">Una opción por línea</label>
         <textarea id="prod-opciones" rows="3" aria-describedby="prod-opciones-ayuda" placeholder="Proteína: ¼ de pollo&#10;Proteína: costilla churrasco" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></textarea>
         <p id="prod-opciones-ayuda" class="mt-1 text-xs text-slate-400">Escribe el grupo y la opción separados por dos puntos. El cliente elige una por grupo, al mismo precio.</p>
@@ -466,7 +466,7 @@
       <div class="min-w-0">
         <h2 id="revision-carta-ampliada-titulo" class="font-semibold">Revisa tu carta</h2>
         <p id="revision-carta-ayuda" class="velox-aviso-editar">Toca un producto para cambiarlo.</p>
-        <button id="revision-volver-carta" type="button" onclick="abrirCartaBorrador()" class="velox-volver" hidden>‹ Carta</button>
+        <button id="revision-volver-carta" type="button" onclick="terminarEdicionBorrador()" class="velox-volver" hidden>‹ Carta</button>
       </div>
       <button type="button" onclick="if (!generandoFotoBorradorMenu && !publicandoMenu) document.getElementById('revision-carta-ampliada').close()" class="min-h-11 min-w-11 shrink-0 px-2 text-lg" aria-label="Cerrar revisión" title="Cerrar" autofocus><svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
     </header>
@@ -487,6 +487,7 @@
           <button id="btn-completar-fotos" type="button" onclick="completarFotosBorrador()" class="min-h-11 rounded-lg border border-slate-600 px-3 text-sm disabled:opacity-50">Completar fotos con IA</button>
         </div>
       </details>
+      <button id="btn-terminar-revision" type="button" onclick="terminarEdicionBorrador()" class="min-h-11 w-full rounded-lg bg-red-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50" hidden>Listo, volver a la carta</button>
       <form id="form-revision-menu" onsubmit="publicarMenuRevisado(event)" class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
         <button id="btn-descartar-menu" type="button" onclick="descartarRevisionMenu()" class="velox-volver min-h-11 px-2 text-sm disabled:opacity-50">Descartar</button>
         <button id="btn-publicar-menu" type="submit" class="min-h-11 rounded-lg bg-red-600 px-2 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50">Publicar carta</button>
@@ -1921,6 +1922,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=revision-simple"></script>
+  <script src="/app.menu-import.js?v=editor-claro"></script>
 </body>
 </html>
