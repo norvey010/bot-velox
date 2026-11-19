@@ -291,6 +291,7 @@ async function syncAllProviderInvoices(supabaseAdmin, config) {
         if (existing.data) { omitidas++; continue; }
         const receivedAt = message.internalDate ? new Date(Number(message.internalDate)).toISOString() : null;
         const files = [];
+        let fileSha256 = null;
         let parseText = bodyText;
         const original = await gmailGet(accessToken, `messages/${encodeURIComponent(item.id)}`, { format: 'raw' });
         const originalBytes = Buffer.from(String(original.raw || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64');
@@ -305,6 +306,8 @@ async function syncAllProviderInvoices(supabaseAdmin, config) {
             const part = await gmailGet(accessToken, `messages/${encodeURIComponent(item.id)}/attachments/${encodeURIComponent(attachment.attachmentId)}`);
             const bytes = Buffer.from(String(part.data || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64');
             if (!bytes.length || bytes.length > MAX_PDF_BYTES) continue;
+            const attachmentHash = crypto.createHash('sha256').update(bytes).digest('hex');
+            if (!fileSha256) fileSha256 = attachmentHash;
             const fileName = attachment.filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120) || 'factura.pdf';
             const filePath = `${provider}/${new Date().getUTCFullYear()}/${item.id}/${fileName}`;
             const upload = await supabaseAdmin.storage.from(BUCKET).upload(filePath, bytes, { contentType: 'application/pdf', upsert: true });
@@ -326,10 +329,15 @@ async function syncAllProviderInvoices(supabaseAdmin, config) {
             invoice_number: parsed.invoiceNumber, invoice_date: parsed.invoiceDate, status: parsed.status,
             amount: parsed.amount, paid_amount: parsed.paidAmount, currency: parsed.currency,
             description: `Factura o comprobante de ${provider}`, email_subject: subject, email_from: from,
-            source_received_at: receivedAt, file_paths: files, extraction_note: parsed.extractionNote
+            source_received_at: receivedAt, file_paths: files, file_sha256: fileSha256, extraction_note: parsed.extractionNote
         };
         const { error } = await supabaseAdmin.from('velox_platform_invoices').upsert(row, { onConflict: 'provider,source_message_id', ignoreDuplicates: true });
-        if (error?.code === '23505') { omitidas++; continue; }
+        if (error?.code === '23505') {
+            const paths = files.map(file => file.path).filter(Boolean);
+            if (paths.length) await supabaseAdmin.storage.from(BUCKET).remove(paths);
+            omitidas++;
+            continue;
+        }
         if (error) throw error;
         importadas++;
     }
@@ -434,6 +442,14 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                 const allowedProviders = new Set(['railway', 'supabase', 'openai', 'meta', 'claro', 'otro']);
                 if (!allowedProviders.has(provider)) return res.status(400).json({ error: 'Selecciona el proveedor de la factura.' });
 
+                const fileSha256 = crypto.createHash('sha256').update(file.buffer).digest('hex');
+                const { data: duplicateFile, error: duplicateFileError } = await supabaseAdmin.from('velox_platform_invoices')
+                    .select('id, provider, invoice_date').eq('file_sha256', fileSha256).maybeSingle();
+                if (duplicateFileError) throw duplicateFileError;
+                if (duplicateFile) {
+                    return res.status(409).json({ error: 'Este mismo PDF ya está guardado. No se volvió a sumar el gasto.' });
+                }
+
                 const amountInput = String(req.body.amount || '').trim();
                 const amount = parseAmount(amountInput);
                 if (!Number.isFinite(amount) || amount <= 0) {
@@ -480,6 +496,7 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                     provider,
                     source_message_id: 'manual:' + id,
                     source_external_id: externalId,
+                    file_sha256: fileSha256,
                     invoice_number: invoiceNumber,
                     invoice_date: invoiceDate,
                     status,
@@ -506,6 +523,7 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                 if (filePath) {
                     try { await supabaseAdmin.storage.from(BUCKET).remove([filePath]); } catch {}
                 }
+                if (error.code === '23505') return res.status(409).json({ error: 'Este comprobante ya se guardó. No se volvió a sumar el gasto.' });
                 console.error('No se pudo guardar la factura manual:', error.message);
                 res.status(503).json({ error: 'No se pudo guardar la factura. Verifica que el PDF sea legible y vuelve a intentarlo.' });
             }
