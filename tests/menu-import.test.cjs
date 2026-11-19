@@ -594,7 +594,9 @@ test('un plato sin descripción ni foto cuenta como listo si se puede vender', a
    {nombre:'Porción francesa',categoria:'Papas',precio:6000,descripcion:'',opciones:[]},
    {nombre:'Especial',categoria:'Otros',precio:0,descripcion:'',opciones:[]}
  ]; actualizarResumenRevision();`);
- assert.equal(n.el('revision-resumen').textContent, '1 listo para publicar · 1 por corregir · 1 con precio pendiente · 2 sin foto (opcional)');
+ assert.equal(n.el('revision-resumen').textContent, '1 producto por corregir');
+ assert.equal(n.el('revision-bloqueos').textContent, '1 precio pendiente');
+ assert.equal(n.el('revision-fotos-resumen').textContent, '2 productos sin foto · Añadir fotos (opcional)');
  assert.equal(n.el('revision-siguiente').textContent, 'Revisar correcciones');
  const {revisarDatosFotoMenu} = require('../app.menu-categorias');
  assert.equal(revisarDatosFotoMenu({nombre:'Porción francesa',categoria:'Papas'}),'');
@@ -643,4 +645,23 @@ test('al recuperar desde Mi carta anuncia el borrador sin sacar al usuario del i
  assert.match(html, /id="sec-pedidos" class="hidden space-y-4"/);
  assert.match(html, /if \(borradorMenu\) abrirCartaBorrador\(\)/);
  assert.match(html, /<details class="text-xs text-slate-400"><summary[^>]*>Formatos y límites/);
+});
+
+test('las fotos opcionales no bloquean publicar ni llenan el resumen de advertencias', async () => {
+ const n=navegador();
+ await n.context.enviarMenuConIA({preventDefault(){}});
+ n.run(`borradorMenu.productos=[{nombre:'Porción',categoria:'Pizzas',precio:8500,descripcion:'',opciones:[]}]; indiceRevisionActual=null; actualizarAccionesBorrador();`);
+ assert.equal(n.el('revision-resumen').hidden,true);
+ assert.equal(n.el('revision-bloqueos').hidden,true);
+ assert.equal(n.el('revision-siguiente').hidden,true);
+ assert.equal(n.el('btn-publicar-menu').disabled,false);
+ assert.equal(n.el('revision-fotos-opcionales').hidden,false);
+ assert.match(n.el('revision-fotos-resumen').textContent,/1 producto sin foto/);
+ n.run(`borradorMenu.productos[0].precio=0; actualizarAccionesBorrador();`);
+ assert.equal(n.el('revision-resumen').hidden,false);
+ assert.equal(n.el('revision-siguiente').hidden,false);
+ assert.equal(n.el('btn-publicar-menu').disabled,true);
+ n.run(`borradorMenu.productos[0].precio=8500; borradorMenu.productos[0].imagen_url='https://velox.test/foto.webp'; actualizarAccionesBorrador();`);
+ assert.equal(n.el('revision-fotos-opcionales').hidden,true);
+ assert.equal(n.el('btn-publicar-menu').disabled,false);
 });
