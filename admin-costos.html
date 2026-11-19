@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261118-auth-fix"></script>
+  <script type="module" src="admin-costos.js?v=20261118-expense-documents"></script>
 </head>
 <body class="min-h-screen">
   <main class="mx-auto max-w-6xl p-4 sm:p-8">
@@ -93,7 +93,7 @@
         <div class="grid gap-4 lg:grid-cols-2">
           <section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
             <h2 class="text-lg font-semibold">Registrar ingreso o gasto</h2>
-            <p class="mb-3 text-xs text-[#69544A]">Registra suscripciones cobradas y facturas de Railway, Supabase, Meta o Claro. Los gastos compartidos se prorratean por días activos entre todos los restaurantes del mes, incluidos los de prueba.</p>
+            <p class="mb-3 text-xs text-[#69544A]">Aquí registras el movimiento y su importe; aparecerá en Movimientos del período y en Gastos por plataforma. Para guardar el PDF de una factura usa “Subir factura”. No registres el mismo cobro en ambos lugares.</p>
             <form id="movimiento-form" class="grid gap-3 sm:grid-cols-2">
               <label class="text-sm">Tipo<select id="mov-tipo" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="ingreso">Ingreso recibido</option><option value="gasto">Gasto</option></select></label>
               <label class="text-sm">Categoría<select id="mov-categoria" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></select></label>
@@ -155,7 +155,7 @@
       <section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
         <div>
           <h2 class="font-semibold">Subir factura y registrar costo</h2>
-          <p class="mt-1 text-xs text-[#69544A]">Sin IA: Velox lee el PDF y te propone los datos; revísalos antes de guardar. Si no puede leerlos, complétalos. El comprobante queda privado y el gasto va al mes de la factura. OpenAI no se suma otra vez porque su consumo real ya aparece en el panel.</p>
+          <p class="mt-1 text-xs text-[#69544A]">Sube aquí el PDF para archivarlo y registrar el gasto en un solo paso. Sin IA: Velox lee el archivo y propone los datos; revísalos antes de guardar. Si ya registraste ese cobro arriba, no lo subas aquí porque sumaría el gasto otra vez. OpenAI no se duplica: su consumo real ya aparece en el panel.</p>
         </div>
         <form id="manual-invoice-form" class="grid gap-2 sm:grid-cols-2">
           <label class="block text-xs text-[#69544A]">Programa
@@ -190,9 +190,9 @@
         <p id="manual-invoice-message" class="text-sm text-[#69544A]" role="status" aria-live="polite"></p>
       </section>
       <section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
-  <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-semibold">Facturas y comprobantes · historial completo</h2><p class="mt-1 text-xs text-[#69544A]">Activas, Anuladas y Todas solo filtran la lista; no borran registros. Las anuladas se conservan y no cuentan en el gasto.</p></div><div class="flex gap-2"><button id="connect-gmail" class="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white">Conectar correo</button><button id="sync-invoices" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-sm">Sincronizar</button></div></div>
+  <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-semibold">Archivos de facturas · historial completo</h2><p class="mt-1 text-xs text-[#69544A]">Solo aparecen PDF subidos o comprobantes de Gmail. Los gastos guardados sin archivo se consultan en Movimientos y Gastos por plataforma. No vuelvas a registrar un gasto si ya lo guardaste al subir su factura.</p></div><div class="flex gap-2"><button id="connect-gmail" class="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white">Conectar correo</button><button id="sync-invoices" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-sm">Sincronizar</button></div></div>
   <p id="gmail-status" class="rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-3 text-sm text-[#69544A]" role="status">Revisando conexión de facturas…</p>
-  <div class="flex flex-wrap items-center justify-between gap-2"><p id="invoice-summary" class="text-xs text-[#69544A]">Los totales aparecerán cuando se importen comprobantes.</p><label class="text-xs text-[#69544A]">Mostrar <select id="invoice-filter" class="ml-1 rounded-lg border border-[#D7C2AD] bg-white p-1.5"><option value="active">Activas</option><option value="void">Anuladas</option><option value="all">Todas</option></select></label></div><div id="invoice-list" class="space-y-2"></div>
+  <div class="flex flex-wrap items-center justify-between gap-2"><p id="invoice-summary" class="text-xs text-[#69544A]">Los documentos aparecerán agrupados por servicio.</p><div class="flex flex-wrap gap-2"><label class="text-xs text-[#69544A]">Servicio <select id="invoice-provider-filter" class="ml-1 rounded-lg border border-[#D7C2AD] bg-white p-1.5"><option value="all">Todos</option><option value="railway">Railway</option><option value="supabase">Supabase</option><option value="openai">OpenAI</option><option value="meta">Meta</option><option value="claro">Claro</option><option value="otro">Otros</option></select></label><label class="text-xs text-[#69544A]">Estado <select id="invoice-filter" class="ml-1 rounded-lg border border-[#D7C2AD] bg-white p-1.5"><option value="active">Activas</option><option value="void">Anuladas</option><option value="all">Todas</option></select></label></div></div><div id="invoice-list" class="space-y-2"></div>
 </section>
       <dialog id="invoice-edit-dialog" class="w-[min(94vw,32rem)] rounded-2xl border border-[#D7C2AD] bg-[#FFFBF5] p-0 text-[#241A15] shadow-2xl backdrop:bg-black/50">
         <form id="invoice-edit-form" class="space-y-3 p-5">
