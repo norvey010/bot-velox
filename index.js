@@ -552,6 +552,85 @@ app.get('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
         nota: 'Ingresos, gastos directos y gastos compartidos se suman desde el libro financiero. Cuando está conectado, OpenAI se consulta en dinero y en vivo; su asignación a restaurantes se estima con la telemetría de Velox. Sin conexión, se muestra el estimado interno. El reparto compartido incluye restaurantes en prueba por días activos.'
     });
 });
+app.get('/api/admin/finanzas/acumulado', autenticarAdminPlataforma, async (_req, res) => {
+    try {
+        const movimientos = [];
+        const pageSize = 1000;
+        for (let offset = 0; ; offset += pageSize) {
+            const { data, error } = await supabaseAdmin.from('velox_financial_entries')
+                .select('id, tipo, categoria, monto, moneda, fecha, anulado_en, factura_id')
+                .order('fecha', { ascending: true })
+                .range(offset, offset + pageSize - 1);
+            if (error) throw error;
+            movimientos.push(...(data || []));
+            if (!data || data.length < pageSize) break;
+        }
+        const [{ data: fxRows, error: fxError }, { data: restaurantRows, error: restaurantError }] = await Promise.all([
+            supabaseAdmin.from('velox_financial_fx').select('periodo, cop_por_usd').order('periodo', { ascending: true }).limit(10000),
+            supabaseAdmin.from('restaurantes').select('created_at').not('created_at', 'is', null).order('created_at', { ascending: true }).limit(1)
+        ]);
+        if (fxError) throw fxError;
+        if (restaurantError) throw restaurantError;
+
+        const primeraFechaGasto = movimientos.map(row => String(row.fecha || '').slice(0, 10)).filter(Boolean).sort()[0] || null;
+        const primeraFechaRestaurante = restaurantRows?.[0]?.created_at ? new Date(restaurantRows[0].created_at).toISOString().slice(0, 10) : null;
+        const fechasInicio = [primeraFechaGasto, primeraFechaRestaurante].filter(Boolean).sort();
+        const inicio = fechasInicio[0] || null;
+        const ahora = new Date();
+        const fechaHasta = ahora.toISOString();
+        const costosOpenAI = inicio ? await consultarCostosOpenAIPeriodo(new Date(inicio + 'T00:00:00.000Z').toISOString(), fechaHasta) : {
+            disponible: false, configurado: Boolean(process.env.OPENAI_ADMIN_KEY && process.env.OPENAI_PROJECT_ID),
+            monto_usd: null, por_dia: {}, mensaje: 'Aún no hay una fecha inicial registrada para consultar el acumulado de OpenAI.'
+        };
+        const tasas = new Map((fxRows || []).map(row => [String(row.periodo).slice(0, 7), Number(row.cop_por_usd)]));
+        const servicios = {};
+        const totales = { COP: 0, USD: 0, equivalente_cop: 0, usd_sin_tasa: 0 };
+        const inicializar = nombre => { if (!servicios[nombre]) servicios[nombre] = { COP: 0, USD: 0, equivalente_cop: 0, usd_sin_tasa: 0 }; return servicios[nombre]; };
+        const sumar = (nombre, monto, moneda, fecha) => {
+            const valor = Number(monto) || 0;
+            const divisa = moneda === 'USD' ? 'USD' : 'COP';
+            const servicio = inicializar(nombre);
+            servicio[divisa] += valor;
+            totales[divisa] += valor;
+            if (divisa === 'COP') {
+                servicio.equivalente_cop += valor;
+                totales.equivalente_cop += valor;
+            } else {
+                const tasa = tasas.get(String(fecha || '').slice(0, 7));
+                if (Number.isFinite(tasa) && tasa > 0) {
+                    servicio.equivalente_cop += valor * tasa;
+                    totales.equivalente_cop += valor * tasa;
+                } else {
+                    servicio.usd_sin_tasa += valor;
+                    totales.usd_sin_tasa += valor;
+                }
+            }
+        };
+        const nombres = { railway: 'Railway', supabase: 'Supabase', meta: 'Meta', claro: 'Claro', openai: 'OpenAI', otro: 'Otros servicios' };
+        for (const row of movimientos) {
+            if (row.tipo !== 'gasto' || row.anulado_en) continue;
+            const categoria = row.categoria || 'otro';
+            sumar(nombres[categoria] || nombres.otro, row.monto, row.moneda, row.fecha);
+        }
+        if (costosOpenAI.disponible) {
+            for (const [dia, valor] of Object.entries(costosOpenAI.por_dia || {})) sumar('OpenAI', valor, 'USD', dia);
+        }
+        const filas = Object.entries(servicios).map(([servicio, montos]) => ({ servicio, ...montos }))
+            .sort((a, b) => b.equivalente_cop - a.equivalente_cop);
+        return res.json({
+            inicio, actualizado_en: fechaHasta, monedas: totales, servicios: filas,
+            movimientos_contados: movimientos.filter(row => row.tipo === 'gasto' && !row.anulado_en).length,
+            costos_openai_disponibles: Boolean(costosOpenAI.disponible),
+            nota_openai: costosOpenAI.disponible
+                ? 'OpenAI incluye el costo real reportado por su API en el rango consultado.'
+                : (costosOpenAI.mensaje || 'Costo real de OpenAI no disponible; no se inventó ni se estimó en este acumulado.'),
+            nota: 'Acumulado de gastos registrados en el libro financiero desde la primera fecha disponible. Incluye facturas cargadas y movimientos manuales; excluye facturas y movimientos anulados. Las facturas pendientes se cuentan como costo registrado, no necesariamente como dinero ya pagado. Las conversiones USD→COP usan la tasa mensual que guardaste; los USD sin tasa se muestran aparte.'
+        });
+    } catch (error) {
+        console.error('No se pudo calcular el acumulado de costos:', error.message);
+        return res.status(503).json({ error: 'No se pudo cargar el acumulado histórico de gastos.' });
+    }
+});
 app.post('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const tipo = String(body.tipo || '');
