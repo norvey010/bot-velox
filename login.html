@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#F6EFE5">
     <title>Iniciar sesión | Velox Bot</title>
+    <style>#nueva-clave[hidden] { display: none; }</style>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/velox-theme.css?v=crema-terracota">
 </head>
@@ -23,7 +24,7 @@
                 <li class="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5">Comandas</li>
             </ul>
         </section>
-        <section class="p-7 sm:p-10 md:p-12">
+        <section class="min-w-0 p-7 sm:p-10 md:p-12">
             <a href="index.html" class="inline-flex items-center gap-2 text-sm font-bold text-white md:hidden"><span class="velox-marca flex h-9 w-9 items-center justify-center" aria-hidden="true">V</span><span class="velox-nombre-marca">Velox Bot</span></a>
             <div class="mt-7 md:mt-4">
                 <p class="velox-ceja">Acceso a Velox Bot</p>
@@ -42,18 +43,18 @@
                 </div>
                 <button id="login-btn" type="button" class="w-full rounded-xl bg-red-600 py-3.5 font-bold text-white shadow-lg shadow-red-950/30 transition hover:bg-red-700">Entrar a mi panel <span aria-hidden="true">→</span></button>
             </form>
+            <div class="mt-4 text-center">
+                <button id="recuperar-acceso" type="button" class="min-h-11 text-sm text-red-400 underline">Olvidé mi contraseña</button>
+            </div>
+            <form id="nueva-clave" class="mt-4 space-y-3" hidden>
+                <label for="clave-recuperada" class="block text-sm font-semibold">Nueva contraseña</label>
+                <input id="clave-recuperada" type="password" autocomplete="new-password" minlength="6" required class="w-full rounded-xl border border-[#D7C2AD] bg-[#F6EFE5] px-4 py-3 text-sm">
+                <button class="min-h-11 w-full rounded-xl bg-red-600 px-3 py-3 font-bold text-white">Guardar contraseña</button>
+            </form>
+            <p id="estado-acceso" class="mt-3 break-words text-center text-sm" role="status" aria-live="polite"></p>
             <p class="mt-7 text-center text-sm text-slate-400">¿Aún no tienes cuenta? <a href="index.html" class="font-bold text-slate-200 hover:text-white">Crea tu restaurante</a></p>
         </section>
     </main>
-    <div class="mx-auto mb-4 max-w-md text-center">
-      <button id="recuperar-acceso" type="button" class="min-h-11 text-red-400 underline">Olvidé mi contraseña</button>
-      <form id="nueva-clave" hidden>
-        <label for="clave-recuperada">Nueva contraseña</label>
-        <input id="clave-recuperada" type="password" autocomplete="new-password" minlength="6" required class="rounded border bg-white p-2">
-        <button class="min-h-11 px-2 text-red-400">Guardar contraseña</button>
-      </form>
-      <p id="estado-acceso" role="status"></p>
-    </div>
     <script type="module" src="app.login.js?v=claridad"></script>
     <script>
         function togglePasswordVisibility() {
