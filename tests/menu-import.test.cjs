@@ -730,3 +730,17 @@ test('la vista de elecciones muestra datos reales, escapa texto y se actualiza a
  assert.match(n.el('revision-elecciones-previa-0').innerHTML,/Criolla/);
  assert.doesNotMatch(n.el('revision-elecciones-previa-0').innerHTML,/Hawaiana/);
 });
+
+test('el acceso al borrador desaparece al publicar y solo vuelve con otro borrador',async()=>{
+ const n=navegador();
+ assert.match(read('dashboard.html'),/id="carta-borrador-acceso"[^>]* hidden/);
+ await n.context.enviarMenuConIA({preventDefault(){}});
+ assert.equal(n.el('carta-borrador-acceso').hidden,false);
+ await n.context.publicarMenuRevisado({preventDefault(){}});
+ assert.equal(n.run('borradorMenu'),null);
+ assert.equal(n.el('carta-borrador-acceso').hidden,true);
+ n.context.mostrarBorradorMenu({version:'a'.repeat(32),productos:[producto()]},'otro-borrador');
+ assert.equal(n.el('carta-borrador-acceso').hidden,false);
+ n.context.olvidarBorradorMenu();
+ assert.equal(n.el('carta-borrador-acceso').hidden,true);
+});
