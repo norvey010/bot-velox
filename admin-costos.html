@@ -61,9 +61,10 @@
         </div>
       </div>
 
-      <nav class="flex gap-2 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-1" aria-label="Secciones financieras">
-        <button id="tab-resumen" type="button" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white" aria-selected="true">Resumen</button>
+      <nav class="flex flex-wrap gap-2 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-1" aria-label="Secciones financieras">
+        <button id="tab-resumen" type="button" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white" aria-selected="true">Resumen del mes</button>
         <button id="tab-restaurantes" type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Por restaurante</button>
+        <button id="tab-acumulado" type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Acumulado por servicio</button>
       </nav>
 
       <section id="vista-resumen" class="space-y-4">
@@ -125,6 +126,19 @@
           <div class="overflow-x-auto"><table class="w-full min-w-[680px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Operaciones</th><th class="p-3">Costo OpenAI (USD)</th><th class="p-3">Equivalente (COP)</th></tr></thead><tbody id="ia-restaurantes-body"></tbody></table></div>
         </section>
       </section>
+      <section id="vista-acumulado" class="hidden space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-lg font-semibold">Inversión acumulada por servicio</h2><p class="text-sm text-[#69544A]">Suma histórica registrada desde la primera fecha disponible.</p></div><button id="actualizar-acumulado" type="button" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Actualizar acumulado</button></div>
+        <div class="grid gap-3 sm:grid-cols-3">
+          <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Gastos registrados en COP</p><strong id="acumulado-cop" class="mt-1 block text-xl">—</strong></article>
+          <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Gastos registrados en USD</p><strong id="acumulado-usd" class="mt-1 block text-xl">—</strong></article>
+          <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Equivalente COP con tasas guardadas</p><strong id="acumulado-equivalente" class="mt-1 block text-xl">—</strong><p id="acumulado-sin-tasa" class="mt-1 text-xs text-[#69544A]"></p></article>
+        </div>
+        <p id="acumulado-nota" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] p-3 text-sm text-[#69544A]" role="status"></p>
+        <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
+          <div class="border-b border-[#D7C2AD] p-4"><h3 class="font-semibold">Costo acumulado por servicio</h3><p id="acumulado-fecha" class="text-xs text-[#69544A]"></p></div>
+          <div class="overflow-x-auto"><table class="w-full min-w-[620px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Servicio</th><th class="p-3">COP</th><th class="p-3">USD</th><th class="p-3">Equivalente COP</th></tr></thead><tbody id="servicios-acumulado-body"></tbody></table></div>
+        </section>
+      </section>
       <section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
         <div>
           <h2 class="font-semibold">Subir factura y registrar costo</h2>
@@ -165,7 +179,7 @@
       <section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
   <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-semibold">Facturas y comprobantes</h2><p class="mt-1 text-xs text-[#69544A]">Conecta Gmail más adelante si quieres automatizar la importación. Los comprobantes subidos se guardan en privado.</p></div><div class="flex gap-2"><button id="connect-gmail" class="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white">Conectar correo</button><button id="sync-invoices" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-sm">Sincronizar</button></div></div>
   <p id="gmail-status" class="rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-3 text-sm text-[#69544A]" role="status">Revisando conexión de facturas…</p>
-  <p id="invoice-summary" class="text-xs text-[#69544A]">Los totales aparecerán cuando se importen comprobantes.</p><div id="invoice-list" class="space-y-2"></div>
+  <div class="flex flex-wrap items-center justify-between gap-2"><p id="invoice-summary" class="text-xs text-[#69544A]">Los totales aparecerán cuando se importen comprobantes.</p><label class="text-xs text-[#69544A]">Mostrar <select id="invoice-filter" class="ml-1 rounded-lg border border-[#D7C2AD] bg-white p-1.5"><option value="active">Activas</option><option value="void">Anuladas</option><option value="all">Todas</option></select></label></div><div id="invoice-list" class="space-y-2"></div>
 </section>
       <dialog id="invoice-edit-dialog" class="w-[min(94vw,32rem)] rounded-2xl border border-[#D7C2AD] bg-[#FFFBF5] p-0 text-[#241A15] shadow-2xl backdrop:bg-black/50">
         <form id="invoice-edit-form" class="space-y-3 p-5">
