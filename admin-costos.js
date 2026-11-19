@@ -55,6 +55,9 @@ async function solicitar(url, opciones) {
     await supabase.auth.signOut();
     throw new Error('La sesión venció. Inicia sesión de nuevo.');
   }
+  if (respuesta.status === 403 || respuesta.status === 404) {
+    throw new Error('Iniciaste sesión, pero esta cuenta no está autorizada para el panel privado. Confirma que estás usando el correo administrador.');
+  }
   if (!respuesta.ok) throw new Error(cuerpo.error || 'No se pudo completar la solicitud.');
   return cuerpo;
 }
@@ -502,19 +505,40 @@ supabase.auth.onAuthStateChange((event, session) => {
   mostrarVista(session);
 });
 
+document.querySelectorAll('[data-toggle-password]').forEach(button => {
+  button.addEventListener('click', () => {
+    const input = $(button.dataset.togglePassword);
+    const mostrar = input.type === 'password';
+    input.type = mostrar ? 'text' : 'password';
+    button.textContent = mostrar ? 'Ocultar' : 'Mostrar';
+    button.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    button.setAttribute('aria-pressed', String(mostrar));
+  });
+});
+
 $('login-form').addEventListener('submit', async event => {
   event.preventDefault();
-  $('login-message').textContent = '';
+  mensaje('login-message', 'Verificando acceso…', false);
   $('login-btn').disabled = true;
+  $('login-btn').textContent = 'Verificando…';
   try {
     const { error } = await supabase.auth.signInWithPassword({
       email: $('email').value.trim(), password: $('password').value
     });
     if (error) throw error;
   } catch (error) {
-    $('login-message').textContent = 'No se pudo iniciar sesión. Revisa el correo y la contraseña.';
+    if (error.code === 'invalid_credentials' || /invalid login credentials/i.test(error.message || '')) {
+      mensaje('login-message', 'El correo o la contraseña son incorrectos. Revísalos e inténtalo de nuevo.', true);
+    } else if (error.code === 'email_not_confirmed') {
+      mensaje('login-message', 'Ese correo todavía no está confirmado. Revisa tu bandeja de entrada.', true);
+    } else if (error.status === 429) {
+      mensaje('login-message', 'Hubo varios intentos seguidos. Espera un momento y vuelve a intentarlo.', true);
+    } else {
+      mensaje('login-message', 'No se pudo iniciar sesión. Revisa tu conexión e inténtalo de nuevo.', true);
+    }
   } finally {
     $('login-btn').disabled = false;
+    $('login-btn').textContent = 'Entrar';
   }
 });
 $('show-recovery').addEventListener('click', () => {
@@ -529,18 +553,32 @@ $('back-to-login').addEventListener('click', () => {
 });
 $('recovery-form').addEventListener('submit', async event => {
   event.preventDefault();
-  $('recovery-message').textContent = '';
+  mensaje('recovery-message', 'Enviando solicitud a Supabase…', false);
   $('recovery-btn').disabled = true;
+  $('recovery-btn').textContent = 'Enviando…';
+  let timeoutId;
   try {
-    const { error } = await supabase.auth.resetPasswordForEmail($('recovery-email').value.trim(), {
+    const solicitud = supabase.auth.resetPasswordForEmail($('recovery-email').value.trim(), {
       redirectTo: window.location.origin + '/admin-costos'
     });
+    const timeout = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('timeout')), 20000);
+    });
+    const { error } = await Promise.race([solicitud, timeout]);
     if (error) throw error;
     mensaje('recovery-message', 'Si ese correo está autorizado, recibirás un enlace para cambiar la contraseña. Revisa también el correo no deseado.', false);
   } catch (error) {
-    mensaje('recovery-message', 'No se pudo enviar el enlace ahora. Inténtalo de nuevo.', true);
+    if (error.message === 'timeout') {
+      mensaje('recovery-message', 'La solicitud está tardando. Revisa tu conexión; el botón ya quedará disponible para volver a intentar.', true);
+    } else if (error.status === 429) {
+      mensaje('recovery-message', 'Se solicitaron varios enlaces hace poco. Espera un momento antes de volver a intentarlo.', true);
+    } else {
+      mensaje('recovery-message', 'No se pudo enviar el enlace. Revisa tu conexión e inténtalo de nuevo.', true);
+    }
   } finally {
+    clearTimeout(timeoutId);
     $('recovery-btn').disabled = false;
+    $('recovery-btn').textContent = 'Enviar enlace';
   }
 });
 $('password-form').addEventListener('submit', async event => {
