@@ -288,9 +288,17 @@ async function cargarFacturas(auto = true) {
   $('invoice-filter').options[1].textContent = 'Anuladas (' + anuladas + ')';
   $('invoice-filter').options[2].textContent = 'Todas (' + facturas.length + ')';
   const filtroFactura = $('invoice-filter').value || 'active';
-  const facturasFiltradas = facturas.filter(invoice => filtroFactura === 'all'
-    || (filtroFactura === 'void' ? ['void', 'refunded'].includes(invoice.status) : !['void', 'refunded'].includes(invoice.status)));
-  $('invoice-summary').textContent = `Historial completo · ${activas} activas, ${anuladas} anuladas. Los filtros solo cambian la lista; no cambian el período ni los totales.`;
+  const filtroProveedor = $('invoice-provider-filter').value || 'all';
+  const facturasFiltradas = facturas.filter(invoice => {
+    const estadoCoincide = filtroFactura === 'all'
+      || (filtroFactura === 'void' ? ['void', 'refunded'].includes(invoice.status) : !['void', 'refunded'].includes(invoice.status));
+    const proveedorCoincide = filtroProveedor === 'all'
+      || (filtroProveedor === 'otro'
+        ? !['railway', 'supabase', 'openai', 'meta', 'claro'].includes(invoice.provider)
+        : invoice.provider === filtroProveedor);
+    return estadoCoincide && proveedorCoincide;
+  });
+  $('invoice-summary').textContent = `Historial completo · ${activas} activas, ${anuladas} anuladas · mostrando ${facturasFiltradas.length} comprobantes. Los filtros solo ordenan la lista; no cambian los gastos.`;
   const list = $('invoice-list'); list.replaceChildren();
   if (!facturasFiltradas.length) {
     const vacio = document.createElement('p'); vacio.className = 'text-sm text-[#69544A]';
@@ -474,6 +482,8 @@ function mostrarVista(session) {
     if (!$('periodo').value) $('periodo').value = localStorage.getItem('velox-finance-period') || periodoBogota();
     const filtroGuardado = localStorage.getItem('velox-invoice-filter');
     if (filtroGuardado && ['active', 'void', 'all'].includes(filtroGuardado)) $('invoice-filter').value = filtroGuardado;
+    const servicioGuardado = localStorage.getItem('velox-invoice-provider-filter');
+    if (servicioGuardado && [...$('invoice-provider-filter').options].some(option => option.value === servicioGuardado)) $('invoice-provider-filter').value = servicioGuardado;
     localStorage.setItem('velox-finance-period', $('periodo').value);
     cargar();
     cargarAcumulado();
@@ -658,6 +668,10 @@ $('actualizar-acumulado').addEventListener('click', cargarAcumulado);
 $('refresh-lifetime-top').addEventListener('click', cargarAcumulado);
 $('invoice-filter').addEventListener('change', () => {
   localStorage.setItem('velox-invoice-filter', $('invoice-filter').value);
+  cargarFacturas(false);
+});
+$('invoice-provider-filter').addEventListener('change', () => {
+  localStorage.setItem('velox-invoice-provider-filter', $('invoice-provider-filter').value);
   cargarFacturas(false);
 });
 $('logout').addEventListener('click', () => supabase.auth.signOut());
