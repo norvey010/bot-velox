@@ -707,9 +707,13 @@ function renderizarRevisionMenu(i) {
             <button type="button" onclick="generarFotoBorradorMenu(${i}, this)" class="block min-h-11 rounded-lg bg-slate-700 px-3 text-sm text-white">Crear foto con IA</button>
           </div>
           <details class="velox-opciones-panel" id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
-            <summary><span>Sabores y otras opciones <small>(${cantidadOpciones})</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
-            <p class="mb-2 text-xs text-slate-400">Ej.: grupo «Sabor» y opciones «Hawaiana», «Criolla».</p>
+            <summary><span>Lo que el cliente puede elegir <small>(${cantidadOpciones})</small><small class="mt-1 block text-xs font-normal text-slate-400">Sabores, tamaños o acompañamientos al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+            <section class="m-2 rounded-lg border border-slate-700 p-3" aria-label="Vista previa de las elecciones del cliente">
+              <h4 class="mb-2 text-sm font-semibold">Así lo verá tu cliente</h4>
+              <div id="revision-elecciones-previa-${i}">${crearVistaEleccionesCliente(p.opciones,`borrador-${i}`)}</div>
+            </section>
             ${p.revision_opciones ? '<p class="mb-2 text-xs text-amber-300">Compara con la descripción. Agrega las opciones de precio fijo que se eligen de una en una. Si hay precios distintos, revisa si deben ser productos separados.</p>' : ''}
+            <p class="mt-3 px-2 text-sm font-semibold">Editar opciones</p>
             <div class="space-y-2">${opciones}</div>
             <button type="button" onclick="cambiarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-white">${cantidadOpciones ? '+ Añadir otro grupo' : '+ Añadir sabores u opciones'}</button>
             ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
@@ -790,6 +794,10 @@ function editarDatoBorrador(i,key,value,opcion) {
     const resumen = document.getElementById(`revision-${key}-${i}`);
     if (resumen) resumen.textContent = key === 'precio' ? precioProductoBorrador(producto)
       : key === 'categoria' ? categoriaProductoBorrador(producto) : value || 'Producto sin nombre';
+  }
+  if (opcion !== undefined) {
+    const previa = document.getElementById(`revision-elecciones-previa-${i}`);
+    if (previa) previa.innerHTML = crearVistaEleccionesCliente(borradorMenu.productos[i].opciones,`borrador-${i}`);
   }
   if (borradorMenu.lectura_id) {
     clearTimeout(guardadoBorradorMenu);

@@ -673,8 +673,8 @@ test('Listo vuelve a la carta y conserva la edición sin publicar el borrador', 
  n.context.abrirCartaBorrador(0);
  assert.equal(n.el('form-revision-menu').hidden,true);
  assert.equal(n.el('btn-terminar-revision').hidden,false);
- assert.match(n.el('revision-menu-lista').innerHTML,/Sabores y otras opciones/);
- assert.match(n.el('revision-menu-lista').innerHTML,/grupo «Sabor»/);
+ assert.match(n.el('revision-menu-lista').innerHTML,/Lo que el cliente puede elegir/);
+ assert.match(n.el('revision-menu-lista').innerHTML,/Así lo verá tu cliente/);
  assert.match(n.el('revision-menu-lista').innerHTML,/Eliminar del borrador/);
  assert.doesNotMatch(n.el('revision-menu-lista').innerHTML,/Quitar de esta carga/);
  n.context.editarDatoBorrador(0,'descripcion','Tomate y queso');
@@ -713,4 +713,20 @@ test('las opciones se agrupan sin repetir sus formularios y conservan los índic
  n.context.cambiarOpcionesBorrador(0,2);
  assert.equal(n.run('borradorMenu.productos[0].opciones[1].grupo'),'__velox_combo_family__');
  assert.equal(n.run('borradorMenu.productos[0].opciones[2].nombre'),'Pollo');
+});
+
+test('la vista de elecciones muestra datos reales, escapa texto y se actualiza al editar',async()=>{
+ const {crearVistaEleccionesCliente}=require('../app.menu-categorias');
+ const html=crearVistaEleccionesCliente([{grupo:'Sabor',nombre:'Hawaiana <especial>',descripcion:'Piña & queso'},{grupo:'__velox_combo_family__',nombre:'Oculto'},{grupo:'Sabor',nombre:''}],'prueba');
+ assert.match(html,/Elige un sabor/);
+ assert.match(html,/type="radio"/);
+ assert.match(html,/Hawaiana &lt;especial&gt;/);
+ assert.match(html,/Piña &amp; queso/);
+ assert.doesNotMatch(html,/Oculto|<especial>/);
+ const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});
+ n.run(`borradorMenu.productos[0].opciones=[{grupo:'Sabor',nombre:'Hawaiana',descripcion:'Piña'}]; renderizarRevisionMenu(0);`);
+ assert.match(n.el('revision-menu-lista').innerHTML,/Así lo verá tu cliente/);
+ n.context.editarDatoBorrador(0,'nombre','Criolla',0);
+ assert.match(n.el('revision-elecciones-previa-0').innerHTML,/Criolla/);
+ assert.doesNotMatch(n.el('revision-elecciones-previa-0').innerHTML,/Hawaiana/);
 });
