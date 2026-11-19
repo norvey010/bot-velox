@@ -400,13 +400,13 @@ function actualizarResumenRevision() {
   const fotosPendientes = borradorMenu.productos.filter(p => !p.imagen_url && !fotosBorradorMenu.has(p)).length;
   const precios = borradorMenu.productos.filter(p => !Number.isSafeInteger(Number(p.precio)) || Number(p.precio) <= 0 || Number(p.precio) > 100000000).length;
   const resumen = document.getElementById('revision-resumen');
-  resumen.hidden = !obligatorios;
+  resumen.hidden = !obligatorios || indiceRevisionActual !== null;
   resumen.textContent = obligatorios ? `${obligatorios} ${obligatorios === 1 ? 'producto por corregir' : 'productos por corregir'}` : '';
   const aviso = document.getElementById('revision-bloqueos');
-  aviso.hidden = !obligatorios;
+  aviso.hidden = !obligatorios || indiceRevisionActual !== null;
   aviso.textContent = precios ? `${precios} ${precios === 1 ? 'precio pendiente' : 'precios pendientes'}` : 'Completa los datos para publicar.';
   const siguiente = document.getElementById('revision-siguiente');
-  siguiente.hidden = !obligatorios;
+  siguiente.hidden = !obligatorios || indiceRevisionActual !== null;
   siguiente.textContent = 'Revisar correcciones';
   const fotos = document.getElementById('revision-fotos-opcionales');
   fotos.hidden = !fotosPendientes || indiceRevisionActual !== null;
@@ -447,7 +447,7 @@ function abrirCartaBorrador(indice = null) {
   const dialogo = document.getElementById('revision-carta-ampliada');
   const marco = document.getElementById('revision-carta-frame');
   indiceRevisionActual = indice;
-  actualizarResumenRevision();
+  actualizarAccionesBorrador();
   const editar = indice !== null;
   marco.hidden = editar;
   document.getElementById('revision-edicion').hidden = !editar;
@@ -467,6 +467,12 @@ function abrirCartaBorrador(indice = null) {
   } else {
     cargarVistaClientesBorrador(marco);
   }
+}
+
+function terminarEdicionBorrador() {
+  if (!borradorMenu || publicandoMenu || generandoFotoBorradorMenu || completandoFotosMenu) return;
+  guardarEdicionBorradorMenu();
+  abrirCartaBorrador();
 }
 
 function estadoProductoBorrador(mensaje, tipo) {
@@ -673,13 +679,14 @@ function renderizarRevisionMenu(i) {
             <button type="button" onclick="generarFotoBorradorMenu(${i}, this)" class="block min-h-11 rounded-lg bg-slate-700 px-3 text-sm text-white">Crear foto con IA</button>
           </div>
           <details id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
-            <summary class="cursor-pointer py-2 text-sm text-slate-200">Opciones del pedido</summary>
+            <summary class="cursor-pointer py-2 text-sm text-slate-200">Sabores y otras opciones</summary>
+            <p class="mb-2 text-xs text-slate-400">Ej.: grupo «Sabor» y opciones «Hawaiana», «Criolla».</p>
             ${p.revision_opciones ? '<p class="mb-2 text-xs text-amber-300">Compara con la descripción. Agrega las opciones de precio fijo que se eligen de una en una. Si hay precios distintos, revisa si deben ser productos separados.</p>' : ''}
             <div class="space-y-2">${opciones}</div>
             <button type="button" onclick="cambiarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-white">+ Agregar opción</button>
             ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
           </details>
-          <button type="button" onclick="quitarProductoBorrador(${i})" class="min-h-11 px-2 text-xs text-red-300">Quitar de esta carga</button>
+          <button type="button" onclick="quitarProductoBorrador(${i})" class="min-h-11 px-2 text-xs text-red-300">Eliminar del borrador</button>
         </div>
     </article>`;
 }
@@ -740,6 +747,11 @@ function quitarProductoBorrador(i) {
 function actualizarAccionesBorrador(accion) {
   if (borradorMenu) actualizarResumenRevision();
   const ocupado = publicandoMenu || generandoFotoBorradorMenu || completandoFotosMenu;
+  const editando = indiceRevisionActual !== null;
+  document.getElementById('form-revision-menu').hidden = editando;
+  const listo = document.getElementById('btn-terminar-revision');
+  listo.hidden = !editando;
+  listo.disabled = ocupado;
   const publicar = document.getElementById('btn-publicar-menu');
   const descartar = document.getElementById('btn-descartar-menu');
   document.getElementById('btn-completar-fotos').disabled = ocupado || !borradorMenu?.productos.length;

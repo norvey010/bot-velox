@@ -665,3 +665,24 @@ test('las fotos opcionales no bloquean publicar ni llenan el resumen de adverten
  assert.equal(n.el('revision-fotos-opcionales').hidden,true);
  assert.equal(n.el('btn-publicar-menu').disabled,false);
 });
+
+test('Listo vuelve a la carta y conserva la edición sin publicar el borrador', async () => {
+ const n=navegador();
+ await n.context.enviarMenuConIA({preventDefault(){}});
+ const peticiones=n.requests.length;
+ n.context.abrirCartaBorrador(0);
+ assert.equal(n.el('form-revision-menu').hidden,true);
+ assert.equal(n.el('btn-terminar-revision').hidden,false);
+ assert.match(n.el('revision-menu-lista').innerHTML,/Sabores y otras opciones/);
+ assert.match(n.el('revision-menu-lista').innerHTML,/grupo «Sabor»/);
+ assert.match(n.el('revision-menu-lista').innerHTML,/Eliminar del borrador/);
+ assert.doesNotMatch(n.el('revision-menu-lista').innerHTML,/Quitar de esta carga/);
+ n.context.editarDatoBorrador(0,'descripcion','Tomate y queso');
+ n.context.terminarEdicionBorrador();
+ assert.equal(n.run('borradorMenu.productos[0].descripcion'),'Tomate y queso');
+ assert.equal(n.run('indiceRevisionActual'),null);
+ assert.equal(n.el('form-revision-menu').hidden,false);
+ assert.equal(n.el('btn-terminar-revision').hidden,true);
+ assert.equal(n.el('revision-carta-frame').hidden,false);
+ assert.equal(n.requests.length,peticiones);
+});
