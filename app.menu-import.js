@@ -398,35 +398,41 @@ function actualizarResumenRevision() {
   const pendientes = pendientesRevisionBorrador();
   const obligatorios = pendientes.filter(p => p.obligatorio).length;
   const fotosPendientes = borradorMenu.productos.filter(p => !p.imagen_url && !fotosBorradorMenu.has(p)).length;
-  const listos = borradorMenu.productos.length - obligatorios;
   const precios = borradorMenu.productos.filter(p => !Number.isSafeInteger(Number(p.precio)) || Number(p.precio) <= 0 || Number(p.precio) > 100000000).length;
-  const resumen = [`${listos} ${listos === 1 ? 'listo' : 'listos'} para publicar`];
-  if (obligatorios) resumen.push(`${obligatorios} por corregir${precios ? ' · ' + precios + ' con precio pendiente' : ''}`);
-  if (fotosPendientes) resumen.push(`${fotosPendientes} sin foto (opcional)`);
-  document.getElementById('revision-resumen').textContent = resumen.join(' · ');
+  const resumen = document.getElementById('revision-resumen');
+  resumen.hidden = !obligatorios;
+  resumen.textContent = obligatorios ? `${obligatorios} ${obligatorios === 1 ? 'producto por corregir' : 'productos por corregir'}` : '';
   const aviso = document.getElementById('revision-bloqueos');
-  aviso.hidden = !pendientes.length;
-  aviso.textContent = obligatorios
-    ? `${obligatorios} por corregir antes de publicar.`
-    : 'Puedes publicar y completar las fotos después.';
+  aviso.hidden = !obligatorios;
+  aviso.textContent = precios ? `${precios} ${precios === 1 ? 'precio pendiente' : 'precios pendientes'}` : 'Completa los datos para publicar.';
   const siguiente = document.getElementById('revision-siguiente');
-  siguiente.hidden = !pendientes.length;
-  siguiente.textContent = obligatorios ? 'Revisar correcciones' : 'Revisar fotos opcionales';
+  siguiente.hidden = !obligatorios;
+  siguiente.textContent = 'Revisar correcciones';
+  const fotos = document.getElementById('revision-fotos-opcionales');
+  fotos.hidden = !fotosPendientes || indiceRevisionActual !== null;
+  if (!fotosPendientes) fotos.open = false;
+  document.getElementById('revision-fotos-resumen').textContent = fotosPendientes
+    ? `${fotosPendientes} ${fotosPendientes === 1 ? 'producto sin foto' : 'productos sin foto'} · Añadir fotos (opcional)` : '';
+
 }
 
 let indiceRevisionActual = null;
-function revisarSiguienteProducto() {
+function revisarSiguienteProducto(soloFotos = false) {
   if (!borradorMenu) return;
   const todos = pendientesRevisionBorrador();
   const correcciones = todos.filter(p => p.obligatorio);
-  const pendientes = correcciones.length ? correcciones : todos;
+  const pendientes = soloFotos
+    ? borradorMenu.productos.flatMap((p,indice)=>!p.imagen_url && !fotosBorradorMenu.has(p) ? [{indice,obligatorio:false}] : [])
+    : correcciones.length ? correcciones : todos;
   const actual = pendientes.findIndex(p => p.indice === indiceRevisionActual);
   const siguiente = pendientes[(actual + 1) % pendientes.length];
   if (!siguiente) return;
   abrirCartaBorrador(siguiente.indice);
   const p = borradorMenu.productos[siguiente.indice];
   const editor = document.getElementById(`revision-producto-${siguiente.indice}`);
-  if (p.revision_opciones || opcionesBorradorIncompletas(p)) {
+  if (soloFotos) {
+    document.getElementById('revision-foto-archivo').focus();
+  } else if (p.revision_opciones || opcionesBorradorIncompletas(p)) {
     const opciones = document.getElementById(`revision-opciones-${siguiente.indice}`);
     opciones.open = true;
     opciones.querySelector?.('input, summary')?.focus();
@@ -445,10 +451,9 @@ function abrirCartaBorrador(indice = null) {
   const editar = indice !== null;
   marco.hidden = editar;
   document.getElementById('revision-edicion').hidden = !editar;
-  document.getElementById('btn-completar-fotos').hidden = editar;
   document.getElementById('revision-carta-ayuda').hidden = editar;
   document.getElementById('revision-volver-carta').hidden = !editar;
-  document.getElementById('revision-carta-ampliada-titulo').textContent = editar ? 'Editar producto' : 'Carta del borrador';
+  document.getElementById('revision-carta-ampliada-titulo').textContent = editar ? 'Editar producto' : 'Revisa tu carta';
   if (!dialogo.open) {
     document.getElementById('revision-accion-status').classList.add('hidden');
     dialogo.showModal();
@@ -738,10 +743,10 @@ function actualizarAccionesBorrador(accion) {
   const publicar = document.getElementById('btn-publicar-menu');
   const descartar = document.getElementById('btn-descartar-menu');
   document.getElementById('btn-completar-fotos').disabled = ocupado || !borradorMenu?.productos.length;
-  publicar.disabled = ocupado || !borradorMenu?.productos.length;
+  publicar.disabled = ocupado || !borradorMenu?.productos.length || borradorMenu.productos.some(productoBloqueaPublicacion);
   descartar.disabled = ocupado || !borradorMenu;
   publicar.textContent = accion === 'publicar' ? 'Publicando…' : 'Publicar carta';
-  descartar.textContent = accion === 'descartar' ? 'Descartando…' : 'Descartar borrador';
+  descartar.textContent = accion === 'descartar' ? 'Descartando…' : 'Descartar';
   for (const id of ['revision-carta-frame', 'revision-edicion']) {
     const vista = document.getElementById(id);
     if (publicandoMenu) vista.setAttribute('inert', '');

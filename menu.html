@@ -437,7 +437,8 @@ function renderizarProductos(listaProds, mensajeVacio = 'Aún no hay productos e
             const editar = window.VELOX_EDICION_BORRADOR
                 ? `<button type="button" data-editar-borrador="${escaparHtml(producto.id)}" class="tarjeta-borrador-editar" aria-label="Editar ${nombre}"></button>`
                 : '';
-            const precio = window.VELOX_VISTA_BORRADOR && !(Number(producto.precio) > 0)
+            const precioPendiente = !Number.isSafeInteger(Number(producto.precio)) || Number(producto.precio) <= 0 || Number(producto.precio) > 100000000;
+            const precio = window.VELOX_VISTA_BORRADOR && precioPendiente
                 ? 'Precio pendiente' : `$${Number(producto.precio).toLocaleString('es-CO')}`;
 
             html += `
@@ -450,8 +451,8 @@ function renderizarProductos(listaProds, mensajeVacio = 'Aún no hay productos e
                         </div>
                         <div class="mt-2 sm:mt-5 flex flex-col gap-2 sm:gap-3">
                             <span class="font-extrabold text-white text-base sm:text-xl">${precio}</span>
-                            ${editar && (producto.revisionFoto || producto.revision_opciones || !(Number(producto.precio) > 0))
-                                ? `<button type="button" data-editar-borrador="${escaparHtml(producto.id)}" class="relative z-10 min-h-11 self-start rounded-lg border border-amber-400/50 px-2 text-left text-xs font-semibold text-amber-300">Revisar${!(Number(producto.precio) > 0) ? ' precio' : producto.revision_opciones ? ' opciones' : ' · ' + escaparHtml(producto.revisionFoto)}</button>` : ''}
+                            ${editar && (producto.revision_opciones || !producto.nombre?.trim() || !producto.categoria?.trim() || precioPendiente)
+                                ? `<button type="button" data-editar-borrador="${escaparHtml(producto.id)}" class="relative z-10 min-h-11 self-start rounded-lg border border-amber-400/50 px-2 text-left text-xs font-semibold text-amber-300">Revisar${precioPendiente ? ' precio' : producto.revision_opciones ? ' opciones' : ' datos'}</button>` : ''}
                             ${accionHtml}
                         </div>
                     </div>
