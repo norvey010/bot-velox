@@ -282,15 +282,14 @@ async function cargarFacturas(auto = true) {
     }
   }
   const { facturas = [] } = await solicitarAdmin('/api/admin/facturas');
-  const confirmados = new Map(), porRevisar = new Map();
-  let anuladas = 0;
-  for (const invoice of facturas) {
-    if (invoice.status === 'void' || invoice.status === 'refunded') { anuladas++; continue; }
-    const moneda = invoice.currency || 'USD';
-    if (invoice.status === 'paid' && invoice.paid_amount != null) confirmados.set(moneda, (confirmados.get(moneda) || 0) + Number(invoice.paid_amount));
-    else if (invoice.amount != null) porRevisar.set(moneda, (porRevisar.get(moneda) || 0) + Number(invoice.amount));
-  }
-  const resumen = mapa => [...mapa].map(([moneda, valor]) => dineroFactura(valor, moneda)).join(' · ') || '—';
+  const anuladas = facturas.filter(invoice => ['void', 'refunded'].includes(invoice.status)).length;
+  const activas = facturas.length - anuladas;
+  $('invoice-filter').options[0].textContent = 'Activas (' + activas + ')';
+  $('invoice-filter').options[1].textContent = 'Anuladas (' + anuladas + ')';
+  $('invoice-filter').options[2].textContent = 'Todas (' + facturas.length + ')';
+  const filtroFactura = $('invoice-filter').value || 'active';
+  const facturasFiltradas = facturas.filter(invoice => filtroFactura === 'all'
+    || (filtroFactura === 'void' ? ['void', 'refunded'].includes(invoice.status) : !['void', 'refunded'].includes(invoice.status)));
   $('invoice-summary').textContent = `Historial completo · ${activas} activas, ${anuladas} anuladas. Los filtros solo cambian la lista; no cambian el período ni los totales.`;
   const list = $('invoice-list'); list.replaceChildren();
   if (!facturasFiltradas.length) {
@@ -301,14 +300,6 @@ async function cargarFacturas(auto = true) {
     list.append(vacio); return;
   }
   const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
-  const anuladas = facturas.filter(invoice => ['void', 'refunded'].includes(invoice.status)).length;
-  const activas = facturas.length - anuladas;
-  $('invoice-filter').options[0].textContent = 'Activas (' + activas + ')';
-  $('invoice-filter').options[1].textContent = 'Anuladas (' + anuladas + ')';
-  $('invoice-filter').options[2].textContent = 'Todas (' + facturas.length + ')';
-  const filtroFactura = $('invoice-filter').value || 'active';
-  const facturasFiltradas = facturas.filter(invoice => filtroFactura === 'all'
-    || (filtroFactura === 'void' ? ['void', 'refunded'].includes(invoice.status) : !['void', 'refunded'].includes(invoice.status)));
   for (const invoice of facturasFiltradas) {
     const fila = document.createElement('article'); fila.className = 'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E6D8C9] p-3';
     const info = document.createElement('div'); info.className = 'min-w-0';
@@ -510,7 +501,8 @@ document.querySelectorAll('[data-toggle-password]').forEach(button => {
     const input = $(button.dataset.togglePassword);
     const mostrar = input.type === 'password';
     input.type = mostrar ? 'text' : 'password';
-    button.textContent = mostrar ? 'Ocultar' : 'Mostrar';
+    button.querySelector('[data-icon-show]')?.classList.toggle('hidden', mostrar);
+    button.querySelector('[data-icon-hide]')?.classList.toggle('hidden', !mostrar);
     button.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
     button.setAttribute('aria-pressed', String(mostrar));
   });
