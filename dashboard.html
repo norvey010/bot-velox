@@ -41,6 +41,7 @@
     .velox-opciones-panel { border: 1px solid var(--velox-border); border-radius: 10px; padding: .15rem; }
     .velox-opciones-panel > summary { background: var(--velox-raised); border-radius: 8px; font-size: .875rem; font-weight: 600; }
     .velox-opcion-fila { border: 1px solid var(--velox-border); border-radius: 8px; }
+    .velox-elecciones-vista { max-height: 12rem; overflow-y: auto; overscroll-behavior: contain; }
     .velox-opcion-flecha { flex-shrink: 0; transition: transform .2s; }
     details[open] > summary > .velox-opcion-flecha { transform: rotate(180deg); }
     @media (prefers-reduced-motion: reduce) { .velox-opcion-flecha { transition: none; } }
@@ -426,9 +427,13 @@
         <input type="text" id="prod-descripcion" placeholder="Ej: Carne, queso y salsa especial" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
       </div>
       <details id="prod-opciones-panel" class="velox-opciones-panel sm:col-span-2">
-        <summary><span>Sabores y otras opciones</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <summary><span>Lo que el cliente puede elegir<small class="mt-1 block text-xs font-normal text-slate-400">Sabores, tamaños o acompañamientos al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <section class="m-2 rounded-lg border border-slate-700 p-3" aria-label="Vista previa de las elecciones del cliente">
+          <h4 class="mb-2 text-sm font-semibold">Así lo verá tu cliente</h4>
+          <div id="producto-elecciones-previa"></div>
+        </section>
         <label for="prod-opciones">Una opción por línea</label>
-        <textarea id="prod-opciones" rows="3" aria-describedby="prod-opciones-ayuda" placeholder="Proteína: ¼ de pollo&#10;Proteína: costilla churrasco" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></textarea>
+        <textarea id="prod-opciones" oninput="actualizarVistaEleccionesProducto()" rows="3" aria-describedby="prod-opciones-ayuda" placeholder="Proteína: ¼ de pollo&#10;Proteína: costilla churrasco" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></textarea>
         <p id="prod-opciones-ayuda" class="mt-1 text-xs text-slate-400">Escribe el grupo y la opción separados por dos puntos. El cliente elige una por grupo, al mismo precio.</p>
       </details>
       <div class="sm:col-span-2">
@@ -503,7 +508,7 @@
     </footer>
   </dialog>
 
-  <script src="/app.menu-categorias.js?v=carta-organizada"></script>
+  <script src="/app.menu-categorias.js?v=elecciones-cliente"></script>
   <script>
     let RESTAURANTE_ID = null;
     let ANCHO_PAPEL_IMPRESORA = 80;
@@ -1207,6 +1212,18 @@
     let opcionesGuardadasProducto = [];
     let textoOpcionesGuardadas = '';
 
+    function actualizarVistaEleccionesProducto() {
+      const opciones = document.getElementById('prod-opciones').value.split(/\r?\n/).flatMap(linea => {
+        const separador = linea.indexOf(':');
+        if (separador < 1) return [];
+        const grupo = linea.slice(0,separador).trim();
+        const nombre = linea.slice(separador+1).trim();
+        const anterior = opcionesGuardadasProducto.find(o=>o?.grupo===grupo && o.nombre===nombre);
+        return [{grupo,nombre,descripcion:anterior?.descripcion || ''}];
+      });
+      document.getElementById('producto-elecciones-previa').innerHTML = crearVistaEleccionesCliente(opciones,'producto');
+    }
+
     function leerOpcionesEditadasProducto() {
       const texto = document.getElementById('prod-opciones').value.trim();
       if (texto === textoOpcionesGuardadas) return null;
@@ -1405,6 +1422,7 @@
           : `${opcion.grupo || 'Variante'}: ${opcion.nombre || ''}`)
         .join('\n').trim();
       document.getElementById('prod-opciones').value = textoOpcionesGuardadas;
+      actualizarVistaEleccionesProducto();
       prepararCategoriaProducto(data.categoria || 'General');
       imagenGuardadaProducto = data.imagen_url || '';
       mostrarMiniaturaProducto();
@@ -1473,6 +1491,7 @@
       document.getElementById('prod-opciones-panel').open = false;
       opcionesGuardadasProducto = [];
       textoOpcionesGuardadas = '';
+      actualizarVistaEleccionesProducto();
       limpiarMiniaturaProducto();
       document.getElementById('prod-id').value = '';
       document.getElementById('producto-edicion-acciones').classList.add('hidden');
@@ -1930,6 +1949,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=opciones-grupos"></script>
+  <script src="/app.menu-import.js?v=elecciones-cliente"></script>
 </body>
 </html>

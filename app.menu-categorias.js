@@ -147,4 +147,17 @@ function revisarDatosFotoMenu(producto) {
     return 'Añade ingredientes para preparar una foto fiel al plato.';
 }
 
-if (typeof module !== 'undefined') module.exports = { revisarDatosFotoMenu };
+function crearVistaEleccionesCliente(opciones, prefijo) {
+    const escapar = valor => String(valor ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const grupos = new Map();
+    for (const o of Array.isArray(opciones) ? opciones : []) {
+        if (!o || typeof o !== 'object' || String(o.grupo || '').startsWith('__') || !String(o.nombre || '').trim() || !String(o.grupo || '').trim()) continue;
+        const grupo = o.grupo.trim();
+        if (!grupos.has(grupo)) grupos.set(grupo,[]);
+        grupos.get(grupo).push(o);
+    }
+    if (!grupos.size) return '<p class="text-xs text-slate-400">Añade opciones abajo para ver cómo las elegirá tu cliente.</p>';
+    return `<div class="velox-elecciones-vista">${[...grupos].map(([grupo,lista],g)=>`<fieldset class="mb-3 last:mb-0"><legend class="mb-2 text-sm font-semibold">${/^(sabor|sabores|especialidad|especialidades)$/.test(normalizarTexto(grupo)) ? 'Elige un sabor' : 'Elige '+escapar(grupo.toLowerCase())}</legend>${lista.map((o,j)=>`<label class="mb-2 flex min-h-11 cursor-pointer items-start gap-2 rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm"><input type="radio" name="${escapar(prefijo)}-grupo-${g}" value="${j}" class="mt-1 shrink-0 accent-red-600"><span class="min-w-0 break-words"><strong class="block">${escapar(o.nombre)}</strong>${o.descripcion ? `<small class="block text-xs text-slate-400">${escapar(o.descripcion)}</small>` : ''}</span></label>`).join('')}</fieldset>`).join('')}</div>`;
+}
+
+if (typeof module !== 'undefined') module.exports = { revisarDatosFotoMenu, crearVistaEleccionesCliente };
