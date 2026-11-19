@@ -37,6 +37,14 @@
     .velox-volver:focus-visible { outline: none; }
     summary { list-style: none; }
     summary::-webkit-details-marker { display: none; }
+    .velox-opciones-panel > summary, .velox-opcion-fila > summary { display: flex; align-items: center; justify-content: space-between; gap: .7rem; min-height: 44px; padding: .7rem .8rem; cursor: pointer; list-style: none; }
+    .velox-opciones-panel { border: 1px solid var(--velox-border); border-radius: 10px; padding: .15rem; }
+    .velox-opciones-panel > summary { background: var(--velox-raised); border-radius: 8px; font-size: .875rem; font-weight: 600; }
+    .velox-opcion-fila { border: 1px solid var(--velox-border); border-radius: 8px; }
+    .velox-opcion-flecha { flex-shrink: 0; transition: transform .2s; }
+    details[open] > summary > .velox-opcion-flecha { transform: rotate(180deg); }
+    @media (prefers-reduced-motion: reduce) { .velox-opcion-flecha { transition: none; } }
+
     #revision-menu[hidden], #revision-carta-frame[hidden], #revision-edicion[hidden], #revision-volver-carta[hidden], #revision-fotos-opcionales[hidden], #revision-resumen[hidden], #revision-bloqueos[hidden], #revision-siguiente[hidden], #form-revision-menu[hidden], #btn-terminar-revision[hidden] { display: none; }
     #revision-miniatura { background: var(--velox-page); }
     #reintentar-productos[hidden] { display: none; }
@@ -417,8 +425,8 @@
         <label for="prod-descripcion">Descripción (opcional)</label>
         <input type="text" id="prod-descripcion" placeholder="Ej: Carne, queso y salsa especial" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-red-400 focus:outline-none">
       </div>
-      <details id="prod-opciones-panel" class="sm:col-span-2">
-        <summary class="cursor-pointer py-2 text-sm font-semibold text-white">Sabores y otras opciones</summary>
+      <details id="prod-opciones-panel" class="velox-opciones-panel sm:col-span-2">
+        <summary><span>Sabores y otras opciones</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
         <label for="prod-opciones">Una opción por línea</label>
         <textarea id="prod-opciones" rows="3" aria-describedby="prod-opciones-ayuda" placeholder="Proteína: ¼ de pollo&#10;Proteína: costilla churrasco" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></textarea>
         <p id="prod-opciones-ayuda" class="mt-1 text-xs text-slate-400">Escribe el grupo y la opción separados por dos puntos. El cliente elige una por grupo, al mismo precio.</p>
@@ -1922,6 +1930,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=editor-claro"></script>
+  <script src="/app.menu-import.js?v=opciones-grupos"></script>
 </body>
 </html>

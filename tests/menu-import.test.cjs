@@ -686,3 +686,31 @@ test('Listo vuelve a la carta y conserva la edición sin publicar el borrador', 
  assert.equal(n.el('revision-carta-frame').hidden,false);
  assert.equal(n.requests.length,peticiones);
 });
+
+test('las opciones se agrupan sin repetir sus formularios y conservan los índices originales',async()=>{
+ const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});
+ n.run(`borradorMenu.productos[0].opciones=[
+ {grupo:'Sabores',nombre:'Hawaiana',descripcion:'Piña'},
+ {grupo:'__velox_combo_family__',nombre:'Pizzas',descripcion:''},
+ {grupo:' SABORES ',nombre:'Criolla',descripcion:'Maíz'},
+ {grupo:'Proteína',nombre:'Pollo',descripcion:''}
+ ]; renderizarRevisionMenu(0);`);
+ const html=n.el('revision-menu-lista').innerHTML;
+ assert.equal((html.match(/data-grupo-opciones/g)||[]).length,2);
+ assert.match(html,/Sabores \(2\)/);
+ assert.match(html,/velox-opciones-panel/);
+ assert.match(html,/renombrarGrupoBorrador\(0,0,this.value\)/);
+ assert.doesNotMatch(html,/__velox_combo_family__/);
+ assert.match(html,/editarDatoBorrador\(0, 'nombre', this.value, 2\)/);
+ n.context.editarDatoBorrador(0,'nombre','Criolla especial',2);
+ assert.equal(n.run('borradorMenu.productos[0].opciones[2].nombre'),'Criolla especial');
+ n.context.renombrarGrupoBorrador(0,0,'Sabor');
+ assert.equal(n.run('borradorMenu.productos[0].opciones[0].grupo'),'Sabor');
+ assert.equal(n.run('borradorMenu.productos[0].opciones[2].grupo'),'Sabor');
+ assert.equal(n.run('borradorMenu.productos[0].opciones[1].grupo'),'__velox_combo_family__');
+ n.context.cambiarOpcionesBorrador(0,undefined,0);
+ assert.equal(n.run('borradorMenu.productos[0].opciones[4].grupo'),'Sabor');
+ n.context.cambiarOpcionesBorrador(0,2);
+ assert.equal(n.run('borradorMenu.productos[0].opciones[1].grupo'),'__velox_combo_family__');
+ assert.equal(n.run('borradorMenu.productos[0].opciones[2].nombre'),'Pollo');
+});
