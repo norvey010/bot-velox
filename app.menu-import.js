@@ -479,6 +479,10 @@ function estadoProductoBorrador(mensaje, tipo) {
   mostrarAviso(document.getElementById('revision-producto-status'), mensaje, tipo);
 }
 
+function actualizarAccesoBorradorCarta() {
+  document.getElementById('carta-borrador-acceso').hidden = !borradorMenu;
+}
+
 function olvidarBorradorMenu() {
   clearTimeout(guardadoBorradorMenu);
   if (borradorMenu?.lectura_id) {
@@ -486,6 +490,7 @@ function olvidarBorradorMenu() {
   }
   for (const producto of fotosBorradorMenu.keys()) liberarFotoBorradorMenu(producto);
   borradorMenu = null;
+  actualizarAccesoBorradorCarta();
   const dialogo = document.getElementById('revision-carta-ampliada');
   if (dialogo.open) dialogo.close();
   document.getElementById('cargar-carta-ayuda').textContent = '';
@@ -496,6 +501,7 @@ function olvidarBorradorMenu() {
 
 function mostrarBorradorMenu(resultado, lecturaId) {
   borradorMenu = { restaurante_id: RESTAURANTE_ID, version: resultado.version, productos: resultado.productos };
+  actualizarAccesoBorradorCarta();
   if (lecturaId) {
     borradorMenu.lectura_id = lecturaId;
     try {

@@ -46,7 +46,7 @@
     details[open] > summary > .velox-opcion-flecha { transform: rotate(180deg); }
     @media (prefers-reduced-motion: reduce) { .velox-opcion-flecha { transition: none; } }
 
-    #revision-menu[hidden], #revision-carta-frame[hidden], #revision-edicion[hidden], #revision-volver-carta[hidden], #revision-fotos-opcionales[hidden], #revision-resumen[hidden], #revision-bloqueos[hidden], #revision-siguiente[hidden], #form-revision-menu[hidden], #btn-terminar-revision[hidden] { display: none; }
+    #carta-borrador-acceso[hidden], #revision-menu[hidden], #revision-carta-frame[hidden], #revision-edicion[hidden], #revision-volver-carta[hidden], #revision-fotos-opcionales[hidden], #revision-resumen[hidden], #revision-bloqueos[hidden], #revision-siguiente[hidden], #form-revision-menu[hidden], #btn-terminar-revision[hidden] { display: none; }
     #revision-miniatura { background: var(--velox-page); }
     #reintentar-productos[hidden] { display: none; }
     #editor-producto {
@@ -468,9 +468,9 @@
       <button type="button" onclick="document.getElementById('carta-ampliada').close()" class="rounded-lg bg-slate-700 px-4 py-2 text-sm" autofocus>Cerrar ✕</button>
     </div>
     <iframe id="carta-ampliada-frame" title="Carta del restaurante en tamaño completo"></iframe>
-    <footer class="shrink-0 border-t border-slate-700 bg-slate-900 p-3">
+    <footer id="carta-borrador-acceso" class="shrink-0 border-t border-slate-700 bg-slate-900 p-3" hidden>
       <button type="button" class="min-h-11 w-full rounded-lg border border-slate-600 px-3 py-2 text-sm text-white"
-        onclick="irAlBorradorDesdeCarta()">Ir al borrador de Subir menú con IA</button>
+        onclick="irAlBorradorDesdeCarta()">Revisar borrador pendiente</button>
     </footer>
   </dialog>
 
@@ -1561,6 +1561,7 @@
 
     function abrirMenuEnVivo() {
       if (!urlVistaPreviaCarta) return;
+      if (typeof actualizarAccesoBorradorCarta === 'function') actualizarAccesoBorradorCarta();
       const dialogo = document.getElementById('carta-ampliada');
       if (dialogo.open) return;
       document.getElementById('carta-ampliada-frame').src = urlVistaPreviaCarta;
@@ -1569,6 +1570,7 @@
     }
 
     async function irAlBorradorDesdeCarta() {
+      if (!borradorMenu) { actualizarAccesoBorradorCarta(); return; }
       const dialogo = document.getElementById('carta-ampliada');
       dialogo.addEventListener('close', async () => {
         mostrarPantallaMenu('importar-menu-fotos', false);
@@ -1949,6 +1951,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=elecciones-cliente"></script>
+  <script src="/app.menu-import.js?v=acceso-borrador"></script>
 </body>
 </html>
