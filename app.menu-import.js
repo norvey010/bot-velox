@@ -655,7 +655,35 @@ function renderizarRevisionMenu(i) {
   const categoria = categoriaProductoBorrador(p);
   const foto = fotosBorradorMenu.get(p)?.previa || p.imagen_url;
     const campo=(key,label,valor,extra='')=>`<label class="block text-xs text-slate-300">${label}<input ${extra} value="${escaparHtmlUI(valor)}" oninput="editarDatoBorrador(${i}, '${key}', this.value)" data-campo-revision="${key}" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`;
-    const opciones=(p.opciones||[]).map((o,j)=>o.grupo==='__velox_combo_family__'?'':`<div class="grid gap-2 rounded-lg border border-slate-700 p-2">${['grupo','nombre','descripcion'].map(key=>`<label class="text-xs text-slate-300">${({grupo:'Grupo',nombre:'Opción',descripcion:'Descripción'})[key]}<input value="${escaparHtmlUI(o[key]||'')}" oninput="editarDatoBorrador(${i}, '${key}', this.value, ${j})" maxlength="${key==='descripcion'?5000:key==='grupo'?120:200}" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`).join('')}<button type="button" onclick="cambiarOpcionesBorrador(${i}, ${j})" class="min-h-11 justify-self-start text-xs text-red-300">Quitar opción</button></div>`).join('');
+    const gruposOpciones = new Map();
+    (p.opciones || []).forEach((opcion,j) => {
+      if (opcion.grupo === '__velox_combo_family__') return;
+      const clave = String(opcion.grupo || '').trim().toLocaleLowerCase('es');
+      if (!gruposOpciones.has(clave)) gruposOpciones.set(clave,[]);
+      gruposOpciones.get(clave).push({opcion,j});
+    });
+    const cantidadOpciones = [...gruposOpciones.values()].reduce((n,lista)=>n+lista.length,0);
+    const opciones = [...gruposOpciones.values()].map(lista => {
+      const primero = lista[0];
+      const grupo = String(primero.opcion.grupo || '').trim();
+      return `<section class="mt-3 space-y-2" data-grupo-opciones>
+        <h4 class="text-sm font-semibold">${escaparHtmlUI(grupo || 'Nuevo grupo')} (${lista.length})</h4>
+        <details${grupo ? '' : ' open'}>
+          <summary class="cursor-pointer py-2 text-xs text-slate-400">${grupo ? 'Cambiar nombre del grupo' : 'Ponle un nombre al grupo'}</summary>
+          <label class="block text-xs">Nombre del grupo<input value="${escaparHtmlUI(grupo)}" placeholder="Ej.: Sabor" maxlength="120" onchange="renombrarGrupoBorrador(${i},${primero.j},this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm"></label>
+        </details>
+        ${lista.map(({opcion:o,j})=>`<details class="velox-opcion-fila"${o.nombre?.trim() ? '' : ' open'}>
+          <summary><span id="revision-opcion-nombre-${i}-${j}">${escaparHtmlUI(o.nombre || 'Nueva opción')}</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+          <div class="grid gap-2 p-3">${['nombre','descripcion'].map(key=>`<label class="text-xs text-slate-300">${key==='nombre'?'Nombre':'Descripción'}<input value="${escaparHtmlUI(o[key]||'')}" oninput="editarDatoBorrador(${i}, '${key}', this.value, ${j})" maxlength="${key==='descripcion'?5000:200}" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white"></label>`).join('')}
+            <details><summary class="cursor-pointer py-2 text-xs text-slate-400">Mover a otro grupo</summary>
+              <label class="block text-xs">Grupo<input value="${escaparHtmlUI(o.grupo || '')}" maxlength="120" onchange="moverOpcionBorrador(${i},${j},this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm"></label>
+            </details>
+            <button type="button" onclick="cambiarOpcionesBorrador(${i},${j})" class="min-h-11 justify-self-start text-xs text-red-300">Eliminar opción</button>
+          </div>
+        </details>`).join('')}
+        <button type="button" onclick="cambiarOpcionesBorrador(${i},undefined,${primero.j})" class="velox-volver min-h-11 px-2 text-sm">+ Añadir opción</button>
+      </section>`;
+    }).join('');
     document.getElementById('revision-menu-lista').innerHTML = `<article id="revision-producto-${i}" tabindex="-1" class="rounded-lg border border-slate-700 bg-slate-900 p-3">
           <div class="min-w-0">
             <strong id="revision-nombre-${i}" class="block break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre || 'Producto sin nombre')}</strong>
@@ -678,24 +706,54 @@ function renderizarRevisionMenu(i) {
             </div>
             <button type="button" onclick="generarFotoBorradorMenu(${i}, this)" class="block min-h-11 rounded-lg bg-slate-700 px-3 text-sm text-white">Crear foto con IA</button>
           </div>
-          <details id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
-            <summary class="cursor-pointer py-2 text-sm text-slate-200">Sabores y otras opciones</summary>
+          <details class="velox-opciones-panel" id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
+            <summary><span>Sabores y otras opciones <small>(${cantidadOpciones})</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
             <p class="mb-2 text-xs text-slate-400">Ej.: grupo «Sabor» y opciones «Hawaiana», «Criolla».</p>
             ${p.revision_opciones ? '<p class="mb-2 text-xs text-amber-300">Compara con la descripción. Agrega las opciones de precio fijo que se eligen de una en una. Si hay precios distintos, revisa si deben ser productos separados.</p>' : ''}
             <div class="space-y-2">${opciones}</div>
-            <button type="button" onclick="cambiarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-white">+ Agregar opción</button>
+            <button type="button" onclick="cambiarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-white">${cantidadOpciones ? '+ Añadir otro grupo' : '+ Añadir sabores u opciones'}</button>
             ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
           </details>
           <button type="button" onclick="quitarProductoBorrador(${i})" class="min-h-11 px-2 text-xs text-red-300">Eliminar del borrador</button>
         </div>
     </article>`;
 }
-function cambiarOpcionesBorrador(indice, opcion) {
+function cambiarOpcionesBorrador(indice, opcion, indiceGrupo) {
   const producto = borradorMenu?.productos[indice];
   if (publicandoMenu || generandoFotoBorradorMenu || !producto) return;
   producto.opciones ??= [];
-  if (opcion === undefined) producto.opciones.push({ grupo: '', nombre: '', descripcion: '' });
+  if (opcion === undefined) producto.opciones.push({ grupo: producto.opciones[indiceGrupo]?.grupo || '', nombre: '', descripcion: '' });
   else if (producto.opciones[opcion]?.grupo !== '__velox_combo_family__') producto.opciones.splice(opcion, 1);
+  guardarEdicionBorradorMenu();
+  renderizarRevisionMenu(indice);
+  document.getElementById(`revision-opciones-${indice}`).open = true;
+}
+
+function moverOpcionBorrador(indice, indiceOpcion, nombre) {
+  const opcion = borradorMenu?.productos[indice]?.opciones?.[indiceOpcion];
+  if (publicandoMenu || generandoFotoBorradorMenu || !opcion || opcion.grupo === '__velox_combo_family__') return;
+  const grupo = nombre.trim();
+  if (!grupo || grupo.length > 120 || grupo.startsWith('__')) {
+    estadoProductoBorrador('Escribe un nombre para el grupo, por ejemplo Sabor.', 'error');
+    return;
+  }
+  opcion.grupo = grupo;
+  guardarEdicionBorradorMenu();
+  renderizarRevisionMenu(indice);
+  document.getElementById(`revision-opciones-${indice}`).open = true;
+}
+
+function renombrarGrupoBorrador(indice, indiceOpcion, nombre) {
+  const producto = borradorMenu?.productos[indice];
+  const original = producto?.opciones?.[indiceOpcion];
+  if (publicandoMenu || generandoFotoBorradorMenu || !original || original.grupo === '__velox_combo_family__') return;
+  const nuevo = nombre.trim();
+  if (!nuevo || nuevo.length > 120 || nuevo.startsWith('__')) {
+    estadoProductoBorrador('Escribe un nombre para el grupo, por ejemplo Sabor.', 'error');
+    return;
+  }
+  const clave = String(original.grupo || '').trim().toLocaleLowerCase('es');
+  producto.opciones.forEach(o=>{if(String(o.grupo || '').trim().toLocaleLowerCase('es') === clave) o.grupo=nuevo;});
   guardarEdicionBorradorMenu();
   renderizarRevisionMenu(indice);
   document.getElementById(`revision-opciones-${indice}`).open = true;
@@ -722,6 +780,10 @@ function editarDatoBorrador(i,key,value,opcion) {
   if(publicandoMenu || !borradorMenu?.productos[i]) return;
   if(opcion!==undefined) {
     if(['grupo','nombre','descripcion'].includes(key) && borradorMenu.productos[i].opciones[opcion]) borradorMenu.productos[i].opciones[opcion][key]=value;
+    if (key === 'nombre') {
+      const rotulo = document.getElementById(`revision-opcion-nombre-${i}-${opcion}`);
+      if (rotulo) rotulo.textContent = value || 'Nueva opción';
+    }
   } else if(['nombre','categoria','precio','descripcion'].includes(key)) {
     const producto = borradorMenu.productos[i];
     producto[key] = key === 'precio' ? Number(value.replace(/\D/g,'')) : value;
