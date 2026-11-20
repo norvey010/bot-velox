@@ -919,6 +919,23 @@ app.post('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
         !['COP', 'USD'].includes(moneda) || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
         return res.status(400).json({ error: 'Revisa el tipo, categoría, descripción, fecha, moneda e importe.' });
     }
+    if (tipo === 'gasto') {
+        const textoClasificacion = `${descripcion} ${referencia || ''}`;
+        const proveedoresEnTexto = [
+            ['railway', /\\brailway\\b/i],
+            ['supabase', /\\bsupabase\\b/i],
+            ['openai', /\\bopenai\\b|\\bchatgpt\\b/i],
+            ['meta', /\\bmeta\\b|\\bfacebook\\b/i],
+            ['claro', /\\bclaro\\b|\\bcomcel\\b/i]
+        ].filter(([, patron]) => patron.test(textoClasificacion)).map(([proveedor]) => proveedor);
+        if (proveedoresEnTexto.length === 1 && proveedoresEnTexto[0] !== categoria) {
+            const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
+            const detectado = proveedoresEnTexto[0];
+            return res.status(422).json({ error: detectado === 'openai'
+                ? 'La descripción menciona OpenAI. Ese consumo se carga automáticamente; evita duplicarlo.'
+                : `La descripción menciona ${nombres[detectado]}. Cambia la categoría de gasto antes de guardarlo.` });
+        }
+    }
     if ((tipo === 'ingreso' && !['suscripcion', 'otro'].includes(categoria)) ||
         (tipo === 'gasto' && categoria === 'suscripcion') ||
         (tipo === 'ingreso' && !restauranteId)) {
