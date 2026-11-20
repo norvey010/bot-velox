@@ -349,6 +349,274 @@ async function consultarCostosOpenAIPeriodo(desde, hasta) {
         return { disponible: false, configurado: true, monto_usd: null, por_dia: {}, sin_asignar_usd: 0, error: true, mensaje: error.response?.status === 401 || error.response?.status === 403 ? 'OpenAI rechazó el acceso. Revisa que OPENAI_ADMIN_KEY sea una clave Admin y que OPENAI_PROJECT_ID sea el proyecto correcto.' : 'OpenAI no respondió. Se conserva la estimación local y se puede actualizar más tarde.' };
     }
 }
+
+app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res) => {
+    try {
+        const rangos = new Set(['1D', '1S', '1M', '6M', 'YTD', '1A', '5A', 'MAX']);
+        const rango = String(req.query.rango || 'MAX').toUpperCase();
+        if (!rangos.has(rango)) return res.status(400).json({ error: 'Selecciona un rango de tiempo válido.' });
+
+        const fechaBogota = valor => {
+            const parts = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit'
+            }).formatToParts(new Date(valor));
+            return parts.find(p => p.type === 'year').value + '-' +
+                parts.find(p => p.type === 'month').value + '-' +
+                parts.find(p => p.type === 'day').value;
+        };
+        const hoy = fechaBogota(new Date());
+        const desplazar = (fecha, dias, meses, anos) => {
+            const [y, m, d] = fecha.split('-').map(Number);
+            const base = new Date(Date.UTC(y - anos, m - 1 - meses, d + dias));
+            return base.toISOString().slice(0, 10);
+        };
+        let desde = hoy;
+        if (rango === '1S') desde = desplazar(hoy, -6, 0, 0);
+        if (rango === '1M') desde = desplazar(hoy, 0, 1, 0);
+        if (rango === '6M') desde = desplazar(hoy, 0, 6, 0);
+        if (rango === 'YTD') desde = hoy.slice(0, 4) + '-01-01';
+        if (rango === '1A') desde = desplazar(hoy, 0, 0, 1);
+        if (rango === '5A') desde = desplazar(hoy, 0, 0, 5);
+        if (rango === 'MAX') {
+            const [primeroMovimiento, primerRestaurante] = await Promise.all([
+                supabaseAdmin.from('velox_financial_entries').select('fecha').order('fecha', { ascending: true }).limit(1),
+                supabaseAdmin.from('restaurantes').select('created_at').not('created_at', 'is', null).order('created_at', { ascending: true }).limit(1)
+            ]);
+            if (primeroMovimiento.error || primerRestaurante.error) throw primeroMovimiento.error || primerRestaurante.error;
+            const fechas = [
+                primeroMovimiento.data?.[0]?.fecha || null,
+                primerRestaurante.data?.[0]?.created_at ? fechaBogota(primerRestaurante.data[0].created_at) : null
+            ].filter(Boolean).sort();
+            desde = fechas[0] || hoy;
+        }
+        const desdeUtc = new Date(desde + 'T05:00:00.000Z').toISOString();
+        const hastaUtc = new Date(desplazar(hoy, 1, 0, 0) + 'T05:00:00.000Z').toISOString();
+        const pageSize = 1000;
+        const cargarPaginas = async construir => {
+            const filas = [];
+            for (let offset = 0; ; offset += pageSize) {
+                const { data, error } = await construir().range(offset, offset + pageSize - 1);
+                if (error) throw error;
+                filas.push(...(data || []));
+                if (!data || data.length < pageSize) break;
+            }
+            return filas;
+        };
+        const [restaurantesRes, movimientos, usos, fxRes] = await Promise.all([
+            supabaseAdmin.from('restaurantes')
+                .select('id, nombre_restaurante, created_at')
+                .order('created_at', { ascending: true }).limit(10000),
+            cargarPaginas(() => supabaseAdmin.from('velox_financial_entries')
+                .select('id, tipo, categoria, restaurante_id, descripcion, monto, moneda, fecha, periodo, referencia, creado_en')
+                .gte('fecha', desde).lte('fecha', hoy).is('anulado_en', null)
+                .order('fecha', { ascending: false })),
+            cargarPaginas(() => supabaseAdmin.from('velox_ai_usage')
+                .select('restaurante_id, input_tokens, output_tokens, total_tokens, costo_estimado_usd, created_at')
+                .gte('created_at', desdeUtc).lt('created_at', hastaUtc)
+                .order('created_at', { ascending: true })),
+            supabaseAdmin.from('velox_financial_fx').select('periodo, cop_por_usd')
+                .gte('periodo', desde.slice(0, 7) + '-01')
+                .lte('periodo', hoy.slice(0, 7) + '-01')
+                .order('periodo', { ascending: true }).limit(10000)
+        ]);
+        if (restaurantesRes.error || fxRes.error) throw restaurantesRes.error || fxRes.error;
+
+        const tasasPorMes = Object.fromEntries((fxRes.data || []).map(row => [
+            String(row.periodo).slice(0, 7), Number(row.cop_por_usd) || 0
+        ]));
+        const convertirCop = (monto, moneda, fecha) => {
+            if (moneda !== 'USD') return Number(monto) || 0;
+            const tasa = tasasPorMes[String(fecha || '').slice(0, 7)];
+            return tasa > 0 ? (Number(monto) || 0) * tasa : null;
+        };
+        const diaNumero = fecha => Math.floor(Date.parse(fecha + 'T00:00:00Z') / 86400000);
+        const diasRango = diaNumero(hoy) - diaNumero(desde) + 1;
+        const categorias = {};
+        const totales = {
+            ingresos: { COP: 0, USD: 0 }, gastos: { COP: 0, USD: 0 },
+            compartidos: { COP: 0, USD: 0 }, gastos_por_categoria: {},
+            operaciones_ia: 0, tokens_entrada: 0, tokens_salida: 0,
+            ia_usd: 0, ia_sin_tarifa: 0, restaurantes_en_reparto: 0,
+            compartidos_sin_asignar: { COP: 0, USD: 0 }
+        };
+        const copTotals = {
+            ingresos: 0, gastosRegistrados: 0, gastosCompartidos: 0,
+            ingresosSinTasa: false, gastosSinTasa: false, compartidosSinTasa: false
+        };
+        const restaurantMap = new Map();
+        const pesoRestaurante = new Map();
+        for (const item of restaurantesRes.data || []) {
+            const creado = item.created_at ? fechaBogota(item.created_at) : desde;
+            const inicioActivo = creado > desde ? creado : desde;
+            const diasActivos = inicioActivo > hoy ? 0 : diaNumero(hoy) - diaNumero(inicioActivo) + 1;
+            const restaurante = {
+                restaurante_id: item.id, restaurante: item.nombre_restaurante || 'Sin nombre',
+                ingresos: { COP: 0, USD: 0 }, gastos_directos: { COP: 0, USD: 0 },
+                gastos_compartidos: { COP: 0, USD: 0 }, ia_usd: 0, ia_estimado_usd: 0,
+                ia_real_asignado_usd: 0, ia_sin_tarifa: 0, operaciones_ia: 0,
+                tokens_entrada: 0, tokens_salida: 0,
+                ingresos_cop_calc: 0, gastos_directos_cop_calc: 0, ia_cop_calc: 0,
+                ingresos_tasa_faltante: false, gastos_tasa_faltante: false, ia_tasa_faltante: false
+            };
+            restaurantMap.set(item.id, restaurante);
+            if (diasActivos > 0) pesoRestaurante.set(item.id, diasActivos);
+        }
+        for (const mov of movimientos) {
+            const monto = Number(mov.monto) || 0;
+            const moneda = mov.moneda === 'USD' ? 'USD' : 'COP';
+            const restaurante = mov.restaurante_id ? restaurantMap.get(mov.restaurante_id) : null;
+            const equivalente = convertirCop(monto, moneda, mov.fecha);
+            if (mov.tipo === 'ingreso') {
+                totales.ingresos[moneda] += monto;
+                if (equivalente == null) copTotals.ingresosSinTasa = true;
+                else copTotals.ingresos += equivalente;
+                if (restaurante) {
+                    restaurante.ingresos[moneda] += monto;
+                    if (equivalente == null) restaurante.ingresos_tasa_faltante = true;
+                    else restaurante.ingresos_cop_calc += equivalente;
+                }
+                continue;
+            }
+            if (mov.tipo !== 'gasto') continue;
+            totales.gastos[moneda] += monto;
+            const categoria = mov.categoria || 'otro';
+            if (!totales.gastos_por_categoria[categoria]) totales.gastos_por_categoria[categoria] = { COP: 0, USD: 0 };
+            totales.gastos_por_categoria[categoria][moneda] += monto;
+            if (equivalente == null) copTotals.gastosSinTasa = true;
+            else copTotals.gastosRegistrados += equivalente;
+            if (restaurante) {
+                restaurante.gastos_directos[moneda] += monto;
+                if (equivalente == null) restaurante.gastos_tasa_faltante = true;
+                else restaurante.gastos_directos_cop_calc += equivalente;
+            } else {
+                totales.compartidos[moneda] += monto;
+                if (equivalente == null) copTotals.compartidosSinTasa = true;
+                else copTotals.gastosCompartidos += equivalente;
+            }
+        }
+        const pesosTotales = [...pesoRestaurante.values()].reduce((sum, value) => sum + value, 0);
+        if (pesosTotales > 0) {
+            for (const id of pesoRestaurante.keys()) {
+                const restaurante = restaurantMap.get(id);
+                if (restaurante) restaurante.gastos_compartidos.COP += copTotals.gastosCompartidos * pesoRestaurante.get(id) / pesosTotales;
+            }
+        } else {
+            totales.compartidos_sin_asignar.COP = copTotals.gastosCompartidos;
+        }
+
+        const usoPorDia = new Map();
+        let iaEstimadoCop = 0, iaEstimadoSinTasa = false;
+        for (const uso of usos) {
+            totales.operaciones_ia++;
+            const entrada = Number(uso.input_tokens) || 0;
+            const salida = Number(uso.output_tokens) || 0;
+            const tokens = Number(uso.total_tokens) || entrada + salida;
+            const estimado = Number(uso.costo_estimado_usd) || 0;
+            const fecha = new Date(uso.created_at).toISOString().slice(0, 10);
+            if (uso.costo_estimado_usd == null) totales.ia_sin_tarifa++;
+            else {
+                totales.ia_usd += estimado;
+                const equivalente = convertirCop(estimado, 'USD', fecha);
+                if (equivalente == null) iaEstimadoSinTasa = true;
+                else iaEstimadoCop += equivalente;
+            }
+            const id = uso.restaurante_id;
+            const restaurante = id ? restaurantMap.get(id) : null;
+            if (restaurante) {
+                restaurante.operaciones_ia++;
+                restaurante.tokens_entrada += entrada;
+                restaurante.tokens_salida += salida;
+                restaurante.ia_estimado_usd += estimado;
+                const equivalente = uso.costo_estimado_usd == null ? 0 : convertirCop(estimado, 'USD', fecha);
+                if (equivalente == null) restaurante.ia_tasa_faltante = true;
+                else restaurante.ia_cop_calc += equivalente;
+                if (!usoPorDia.has(fecha)) usoPorDia.set(fecha, new Map());
+                const pesos = usoPorDia.get(fecha);
+                const peso = pesos.get(id) || { estimado: 0, tokens: 0 };
+                peso.estimado += estimado;
+                peso.tokens += tokens;
+                pesos.set(id, peso);
+            }
+        }
+
+        const costosOpenAI = await consultarCostosOpenAIPeriodo(desdeUtc, hastaUtc);
+        const aplicadoUsd = costosOpenAI.disponible ? Number(costosOpenAI.monto_usd) || 0 : totales.ia_usd;
+        let iaRealCop = 0, iaRealSinTasa = false, iaSinAsignarUsd = 0;
+        const costosPorDia = costosOpenAI.por_dia || {};
+        if (costosOpenAI.disponible) {
+            for (const [dia, monto] of Object.entries(costosPorDia)) {
+                const usd = Number(monto) || 0;
+                const equivalente = convertirCop(usd, 'USD', dia);
+                if (equivalente == null) iaRealSinTasa = true;
+                else iaRealCop += equivalente;
+                const pesos = usoPorDia.get(dia);
+                if (!pesos || !pesos.size) { iaSinAsignarUsd += usd; continue; }
+                let divisor = [...pesos.values()].reduce((sum, item) => sum + item.estimado, 0);
+                const porEstimacion = divisor > 0;
+                if (!porEstimacion) divisor = [...pesos.values()].reduce((sum, item) => sum + item.tokens, 0);
+                if (!divisor) { iaSinAsignarUsd += usd; continue; }
+                for (const [id, peso] of pesos) {
+                    const restaurante = restaurantMap.get(id);
+                    if (!restaurante) continue;
+                    const share = usd * ((porEstimacion ? peso.estimado : peso.tokens) / divisor);
+                    restaurante.ia_real_asignado_usd += share;
+                    const shareCop = convertirCop(share, 'USD', dia);
+                    if (shareCop == null) restaurante.ia_tasa_faltante = true;
+                    else restaurante.ia_cop_calc += shareCop;
+                }
+            }
+        }
+        const iaAplicadoCop = costosOpenAI.disponible ? (iaRealSinTasa ? null : iaRealCop) : (iaEstimadoSinTasa ? null : iaEstimadoCop);
+        const categoriaOpenAI = { COP: iaAplicadoCop || 0, USD: aplicadoUsd };
+        if (aplicadoUsd > 0) totales.gastos_por_categoria.openai = categoriaOpenAI;
+        for (const restaurante of restaurantMap.values()) {
+            restaurante.ia_usd = costosOpenAI.disponible ? restaurante.ia_real_asignado_usd : restaurante.ia_estimado_usd;
+            restaurante.ia_cop = restaurante.ia_tasa_faltante ? null : restaurante.ia_cop_calc;
+        }
+        const gastosConIAcop = copTotals.gastosSinTasa || iaAplicadoCop == null ? null : copTotals.gastosRegistrados + iaAplicadoCop;
+        const ingresosCop = copTotals.ingresosSinTasa ? null : copTotals.ingresos;
+        const gastosRegistradosCop = copTotals.gastosSinTasa ? null : copTotals.gastosRegistrados;
+        const netoCop = ingresosCop == null || gastosConIAcop == null ? null : ingresosCop - gastosConIAcop;
+        const restaurantes = [...restaurantMap.values()].map(item => {
+            item.ingresos_cop = item.ingresos_tasa_faltante ? null : item.ingresos_cop_calc;
+            item.gastos_directos_cop = item.gastos_tasa_faltante ? null : item.gastos_directos_cop_calc;
+            item.gastos_compartidos_cop = copTotals.compartidosSinTasa ? null : item.gastos_compartidos.COP;
+            item.neto_cop = item.ingresos_cop == null || item.gastos_directos_cop == null ||
+                item.gastos_compartidos_cop == null || item.ia_cop == null ? null :
+                item.ingresos_cop - item.gastos_directos_cop - item.gastos_compartidos_cop - item.ia_cop;
+            delete item.ingresos_cop_calc; delete item.gastos_directos_cop_calc; delete item.ia_cop_calc;
+            delete item.ingresos_tasa_faltante; delete item.gastos_tasa_faltante; delete item.ia_tasa_faltante;
+            return item;
+        }).sort((a, b) => ((b.gastos_directos_cop || 0) + (b.gastos_compartidos_cop || 0) + (b.ia_cop || 0)) -
+            ((a.gastos_directos_cop || 0) + (a.gastos_compartidos_cop || 0) + (a.ia_cop || 0)));
+        const fechaPeriodo = rango + ' · ' + desde + ' — ' + hoy;
+        return res.json({
+            rango, desde, hasta: hoy, periodo: fechaPeriodo, tasa_cop_por_usd: null, tasas_por_mes: tasasPorMes,
+            resumen: {
+                ingresos_cop: ingresosCop, gastos_registrados_cop: gastosRegistradosCop, gastos_cop: gastosConIAcop,
+                gastos_usd: totales.gastos.USD + aplicadoUsd, ia_estimado_usd: totales.ia_usd,
+                ia_real_usd: costosOpenAI.disponible ? Number(costosOpenAI.monto_usd) || 0 : null,
+                ia_real_disponible: Boolean(costosOpenAI.disponible), ia_real_sin_asignar_usd: iaSinAsignarUsd,
+                ia_costo_aplicado_usd: aplicadoUsd, ia_costo_aplicado_cop: iaAplicadoCop,
+                utilidad_neta_cop: netoCop,
+                utilidad_parcial: ingresosCop == null || gastosConIAcop == null || totales.ia_sin_tarifa > 0 || Boolean(costosOpenAI.error),
+                operaciones_ia: totales.operaciones_ia, ia_sin_tarifa: totales.ia_sin_tarifa,
+                gastos_compartidos_cop: copTotals.compartidosSinTasa ? null : copTotals.gastosCompartidos,
+                compartidos_sin_asignar_cop: pesosTotales > 0 ? 0 : copTotals.gastosCompartidos,
+                restaurantes_en_reparto: pesoRestaurante.size,
+                ingresos_usd: totales.ingresos.USD, gastos_registrados_usd: totales.gastos.USD
+            },
+            gastos_por_categoria: totales.gastos_por_categoria,
+            restaurantes, movimientos,
+            costos_openai: costosOpenAI,
+            nota: 'Resumen de movimientos dentro del rango elegido. Los gastos se agrupan por la categoría guardada; MAX recorre todo el historial. Los valores en USD se convierten con la tasa guardada para el mes de cada movimiento. Los gastos compartidos se reparten por días activos durante el rango seleccionado.'
+        });
+    } catch (error) {
+        console.error('No se pudo consultar finanzas por rango:', error.message);
+        return res.status(503).json({ error: 'No se pudo cargar el período. Intenta actualizar el panel.' });
+    }
+});
+
 app.get('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
     const periodo = periodoFinancieroValido(req.query.periodo)
         ? req.query.periodo
