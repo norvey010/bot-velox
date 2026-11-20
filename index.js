@@ -922,11 +922,11 @@ app.post('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
     if (tipo === 'gasto') {
         const textoClasificacion = `${descripcion} ${referencia || ''}`;
         const proveedoresEnTexto = [
-            ['railway', /\\brailway\\b/i],
-            ['supabase', /\\bsupabase\\b/i],
-            ['openai', /\\bopenai\\b|\\bchatgpt\\b/i],
-            ['meta', /\\bmeta\\b|\\bfacebook\\b/i],
-            ['claro', /\\bclaro\\b|\\bcomcel\\b/i]
+            ['railway', /\brailway\b/i],
+            ['supabase', /\bsupabase\b/i],
+            ['openai', /\bopenai\b|\bchatgpt\b/i],
+            ['meta', /\bmeta\b|\bfacebook\b/i],
+            ['claro', /\bclaro\b|\bcomcel\b/i]
         ].filter(([, patron]) => patron.test(textoClasificacion)).map(([proveedor]) => proveedor);
         if (proveedoresEnTexto.length === 1 && proveedoresEnTexto[0] !== categoria) {
             const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
