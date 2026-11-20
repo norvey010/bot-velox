@@ -673,7 +673,7 @@ test('Listo vuelve a la carta y conserva la edición sin publicar el borrador', 
  n.context.abrirCartaBorrador(0);
  assert.equal(n.el('form-revision-menu').hidden,true);
  assert.equal(n.el('btn-terminar-revision').hidden,false);
- assert.match(n.el('revision-menu-lista').innerHTML,/Lo que el cliente puede elegir/);
+ assert.match(n.el('revision-menu-lista').innerHTML,/Personalizar este producto/);
  assert.match(n.el('revision-menu-lista').innerHTML,/Así lo verá tu cliente/);
  assert.match(n.el('revision-menu-lista').innerHTML,/Eliminar del borrador/);
  assert.doesNotMatch(n.el('revision-menu-lista').innerHTML,/Quitar de esta carga/);

@@ -714,7 +714,7 @@ function renderizarRevisionMenu(i) {
             <button type="button" onclick="generarFotoBorradorMenu(${i}, this)" class="block min-h-11 rounded-lg bg-slate-700 px-3 text-sm text-white">Crear foto con IA</button>
           </div>
           <details class="velox-opciones-panel" id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
-            <summary><span>Lo que el cliente puede elegir <small>(${cantidadOpciones})</small><small class="mt-1 block text-xs font-normal text-slate-400">Sabores, tamaños o acompañamientos al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+            <summary><span>Personalizar este producto${cantidadOpciones ? ` · ${cantidadOpciones} ${cantidadOpciones === 1 ? 'opción' : 'opciones'}` : ''}<small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
             <section class="m-2 rounded-lg border border-slate-700 p-3" aria-label="Vista previa de las elecciones del cliente">
               <h4 class="mb-2 text-sm font-semibold">Así lo verá tu cliente</h4>
               <div id="revision-elecciones-previa-${i}">${crearVistaEleccionesCliente(p.opciones,`borrador-${i}`)}</div>

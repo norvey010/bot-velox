@@ -443,7 +443,7 @@
         </div>
       </div>
       <details id="prod-opciones-panel" class="velox-opciones-panel sm:col-span-2">
-        <summary><span>Lo que el cliente puede elegir<small class="mt-1 block text-xs font-normal text-slate-400">Sabores, tamaños o acompañamientos al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <summary><span>Personalizar este producto<span id="prod-personalizar-cantidad"></span><small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
         <section class="m-2 rounded-lg border border-slate-700 p-3" aria-label="Vista previa de las elecciones del cliente">
           <h4 class="mb-2 text-sm font-semibold">Así lo verá tu cliente</h4>
           <div id="producto-elecciones-previa"></div>
@@ -1218,6 +1218,8 @@
         const anterior = opcionesGuardadasProducto.find(o=>o?.grupo===grupo && o.nombre===nombre);
         return [{grupo,nombre,descripcion:anterior?.descripcion || ''}];
       });
+      const cantidad = opciones.filter(o=>o.grupo && o.nombre && !o.grupo.startsWith('__')).length;
+      document.getElementById('prod-personalizar-cantidad').textContent = cantidad ? ` · ${cantidad} ${cantidad === 1 ? 'opción' : 'opciones'}` : '';
       document.getElementById('producto-elecciones-previa').innerHTML = crearVistaEleccionesCliente(opciones,'producto');
     }
 
@@ -1948,6 +1950,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=orden-campos"></script>
+  <script src="/app.menu-import.js?v=personalizar-producto"></script>
 </body>
 </html>
