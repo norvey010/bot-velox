@@ -160,4 +160,30 @@ function crearVistaEleccionesCliente(opciones, prefijo) {
     return `<div class="velox-elecciones-vista">${[...grupos].map(([grupo,lista],g)=>`<fieldset class="mb-3 last:mb-0"><legend class="mb-2 text-sm font-semibold">${/^(sabor|sabores|especialidad|especialidades)$/.test(normalizarTexto(grupo)) ? 'Elige un sabor' : 'Elige '+escapar(grupo.toLowerCase())}</legend>${lista.map((o,j)=>`<label class="mb-2 flex min-h-11 cursor-pointer items-start gap-2 rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm"><input type="radio" name="${escapar(prefijo)}-grupo-${g}" value="${j}" class="mt-1 shrink-0 accent-red-600"><span class="min-w-0 break-words"><strong class="block">${escapar(o.nombre)}</strong>${o.descripcion ? `<small class="block text-xs text-slate-400">${escapar(o.descripcion)}</small>` : ''}</span></label>`).join('')}</fieldset>`).join('')}</div>`;
 }
 
-if (typeof module !== 'undefined') module.exports = { revisarDatosFotoMenu, crearVistaEleccionesCliente };
+function crearVistaProductoCliente(producto, prefijo) {
+    const escapar = valor => String(valor ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const opciones = (Array.isArray(producto.opciones) ? producto.opciones : []).filter(o=>o && typeof o==='object' && o.grupo && o.nombre && !String(o.grupo).startsWith('__'));
+    const grupos = [...new Set(opciones.map(o=>String(o.grupo).trim()))];
+    const boton = grupos.length && grupos.every(g=>/^(sabor|sabores|especialidad|especialidades)$/.test(normalizarTexto(g))) ? 'Elegir sabores'
+      : grupos.length===1 && /^(proteina|acompanamiento|bebida)$/.test(normalizarTexto(grupos[0])) ? 'Elegir '+grupos[0].toLowerCase() : 'Elegir opciones';
+    let foto = '';
+    try { const url = new URL(producto.imagen_url); if (['https:','http:','blob:'].includes(url.protocol)) foto=url.href; } catch {}
+    const precio = Number(producto.precio);
+    return `<article class="velox-producto-ejemplo" aria-label="Ejemplo del producto en tu carta">
+      <div class="velox-producto-ejemplo-foto">${foto ? `<img src="${escapar(foto)}" alt="${escapar(producto.nombre)}">` : '<span>Sin foto</span>'}</div>
+      <div class="velox-producto-ejemplo-datos"><h3>${escapar(producto.nombre || 'Nombre del producto')}</h3>
+      ${producto.descripcion ? `<p>${escapar(producto.descripcion)}</p>` : ''}
+      <strong class="velox-producto-ejemplo-precio">${Number.isFinite(precio) && precio>0 ? '$'+precio.toLocaleString('es-CO') : 'Precio pendiente'}</strong>
+      ${producto.disponible===false ? '<span>Agotado</span>' : opciones.length ? `<details data-ejemplo-opciones><summary>${escapar(boton)}</summary><div class="velox-producto-ejemplo-opciones">${crearVistaEleccionesCliente(opciones,prefijo)}</div></details>` : '<button type="button" onclick="this.nextElementSibling.hidden=false">+ Agregar</button><small hidden role="status">Es una prueba. No se creó ningún pedido.</small>'}
+      </div></article>`;
+}
+
+function actualizarEjemploProductoCliente(contenedor, producto, prefijo) {
+    if (!contenedor) return;
+    const abierto = contenedor.querySelector?.('[data-ejemplo-opciones]')?.open;
+    contenedor.innerHTML = crearVistaProductoCliente(producto,prefijo);
+    const opciones = contenedor.querySelector?.('[data-ejemplo-opciones]');
+    if (opciones && abierto) opciones.open = true;
+}
+
+if (typeof module !== 'undefined') module.exports = { revisarDatosFotoMenu, crearVistaEleccionesCliente, crearVistaProductoCliente };
