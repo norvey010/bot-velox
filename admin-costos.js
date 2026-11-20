@@ -19,6 +19,7 @@ let autoRefreshFacturas = null;
 let cargando = false;
 let cargandoAcumulado = false;
 let rangoActual = 'MAX';
+let rangoInicializado = false;
 let datos = null;
 
 function periodoBogota() {
@@ -493,7 +494,7 @@ function mostrarVista(session) {
   $('password-card').classList.toggle('hidden', !enRecuperacion);
   $('dashboard').classList.toggle('hidden', !session || enRecuperacion);
   if (session && !enRecuperacion) {
-    activarRango('MAX');
+    if (!rangoInicializado) { activarRango('MAX'); rangoInicializado = true; }
     const filtroGuardado = localStorage.getItem('velox-invoice-filter');
     if (filtroGuardado && ['active', 'void', 'all'].includes(filtroGuardado)) $('invoice-filter').value = filtroGuardado;
     const servicioGuardado = localStorage.getItem('velox-invoice-provider-filter');
@@ -515,7 +516,7 @@ function mostrarVista(session) {
 supabase.auth.getSession().then(({ data }) => mostrarVista(data.session));
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'PASSWORD_RECOVERY') recoveryMode = true;
-  if (event === 'SIGNED_OUT') recoveryMode = false;
+  if (event === 'SIGNED_OUT') { recoveryMode = false; rangoInicializado = false; }
   mostrarVista(session);
 });
 
