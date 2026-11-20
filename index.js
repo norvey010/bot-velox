@@ -951,11 +951,39 @@ app.post('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
             ['meta', /\bmeta\b|\bfacebook\b/i],
             ['claro', /\bclaro\b|\bcomcel\b/i]
         ].filter(([, patron]) => patron.test(textoClasificacion)).map(([proveedor]) => proveedor);
-        if (proveedoresEnTexto.length === 1 && proveedoresEnTexto[0] !== categoria) {
+        const esSuscripcionCodex = /
+\
+bcodex
+\
+b/i.test(textoClasificacion) ||
+            ((/
+\
+bopenai
+\
+b|
+\
+bchatgpt
+\
+b/i.test(textoClasificacion)) &&
+            /suscripci[oó]n|subscription|mensual|monthly|
+\
+bplus
+\
+b|
+\
+bpro
+\
+b|
+\
+bplan
+\
+b/i.test(textoClasificacion));
+        if (proveedoresEnTexto.length === 1 && proveedoresEnTexto[0] !== categoria &&
+            !(proveedoresEnTexto[0] === 'openai' && categoria === 'otro' && esSuscripcionCodex)) {
             const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
             const detectado = proveedoresEnTexto[0];
             return res.status(422).json({ error: detectado === 'openai'
-                ? 'La descripción menciona OpenAI. Ese consumo se carga automáticamente; evita duplicarlo.'
+                ? 'El consumo de API de OpenAI se registra automáticamente. Las suscripciones Codex/ChatGPT sí se pueden guardar como Otro gasto.'
                 : `La descripción menciona ${nombres[detectado]}. Cambia la categoría de gasto antes de guardarlo.` });
         }
     }
