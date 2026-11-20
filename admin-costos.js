@@ -18,6 +18,7 @@ let autoRefresh = null;
 let autoRefreshFacturas = null;
 let cargando = false;
 let cargandoAcumulado = false;
+let rangoActual = 'MAX';
 let datos = null;
 
 function periodoBogota() {
@@ -133,7 +134,7 @@ function renderizar(data) {
     (r.compartidos_sin_asignar_cop > 0
       ? ' Hay gastos compartidos sin repartir porque ningún restaurante tiene días activos en este mes.'
       : '');
-  $('tasa-usd-cop').value = data.tasa_cop_por_usd || '';
+  $('tasa-usd-cop').value = data.tasas_por_mes?.[$('tasa-periodo').value] || '';
   $('ai-period-note').textContent = data.costos_openai?.disponible
     ? 'Período ' + data.periodo + '. Costo monetario real de OpenAI; el reparto por restaurante es estimado según la telemetría de Velox.'
     : 'Período ' + data.periodo + '. Se muestra el costo OpenAI estimado localmente hasta conectar el reporte monetario del proveedor.';
@@ -226,11 +227,9 @@ async function cargar() {
   cargando = true;
   $('data-message').textContent = '';
   try {
-    const periodo = $('periodo').value || localStorage.getItem('velox-finance-period') || periodoBogota();
-    $('periodo').value = periodo;
-    localStorage.setItem('velox-finance-period', periodo);
-    const data = await solicitar('/api/admin/finanzas?periodo=' + encodeURIComponent(periodo));
+    const data = await solicitar('/api/admin/finanzas/rango?rango=' + encodeURIComponent(rangoActual));
     renderizar(data);
+    $('rango-actual').textContent = data.periodo;
   } catch (error) {
     $('data-message').textContent = error.message;
   } finally {
@@ -471,6 +470,21 @@ $('sync-invoices').addEventListener('click', async () => {
   finally { $('sync-invoices').disabled = false; }
 });
 
+function activarRango(rango) {
+  rangoActual = rango;
+  const etiquetas = {
+    '1D': 'Hoy', '1S': 'Últimos 7 días', '1M': 'Último mes', '6M': 'Últimos 6 meses',
+    YTD: 'Desde enero de este año', '1A': 'Últimos 12 meses', '5A': 'Últimos 5 años', MAX: 'Todo el historial'
+  };
+  document.querySelectorAll('[data-rango]').forEach(button => {
+    const activo = button.dataset.rango === rango;
+    button.className = activo
+      ? 'rounded-lg bg-red-700 px-3 py-2 text-xs font-semibold text-white'
+      : 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs font-semibold text-[#69544A]';
+    button.setAttribute('aria-pressed', String(activo));
+  });
+  $('rango-actual').textContent = etiquetas[rango] || rango;
+}
 function mostrarVista(session) {
   token = session && session.access_token ? session.access_token : null;
   const enRecuperacion = recoveryMode;
@@ -479,12 +493,11 @@ function mostrarVista(session) {
   $('password-card').classList.toggle('hidden', !enRecuperacion);
   $('dashboard').classList.toggle('hidden', !session || enRecuperacion);
   if (session && !enRecuperacion) {
-    if (!$('periodo').value) $('periodo').value = localStorage.getItem('velox-finance-period') || periodoBogota();
+    activarRango('MAX');
     const filtroGuardado = localStorage.getItem('velox-invoice-filter');
     if (filtroGuardado && ['active', 'void', 'all'].includes(filtroGuardado)) $('invoice-filter').value = filtroGuardado;
     const servicioGuardado = localStorage.getItem('velox-invoice-provider-filter');
     if (servicioGuardado && [...$('invoice-provider-filter').options].some(option => option.value === servicioGuardado)) $('invoice-provider-filter').value = servicioGuardado;
-    localStorage.setItem('velox-finance-period', $('periodo').value);
     cargar();
     cargarAcumulado();
     cargarFacturas(true).catch(error => estadoFacturas(error.message));
@@ -659,9 +672,11 @@ async function cargarAcumulado() {
     $('vida-nota').textContent = error.message;
   }
 }
-$('periodo').addEventListener('change', () => {
-  localStorage.setItem('velox-finance-period', $('periodo').value || periodoBogota());
-  cargar();
+document.querySelectorAll('[data-rango]').forEach(button => {
+  button.addEventListener('click', () => {
+    activarRango(button.dataset.rango);
+    cargar();
+  });
 });
 $('refresh').addEventListener('click', cargar);
 $('actualizar-acumulado').addEventListener('click', cargarAcumulado);
@@ -679,6 +694,7 @@ $('logout').addEventListener('click', () => supabase.auth.signOut());
 $('mov-tipo').addEventListener('change', () => actualizarCategorias(true));
 actualizarCategorias();
 $('mov-fecha').value = hoyBogota();
+$('tasa-periodo').value = periodoBogota();
 $('movimiento-form').addEventListener('submit', async event => {
   event.preventDefault();
   $('mov-guardar').disabled = true;
@@ -712,6 +728,9 @@ $('movimiento-form').addEventListener('submit', async event => {
     $('mov-guardar').disabled = false;
   }
 });
+$('tasa-periodo').addEventListener('change', () => {
+  $('tasa-usd-cop').value = datos?.tasas_por_mes?.[$('tasa-periodo').value] || '';
+});
 $('tasa-form').addEventListener('submit', async event => {
   event.preventDefault();
   $('tasa-guardar').disabled = true;
@@ -719,9 +738,9 @@ $('tasa-form').addEventListener('submit', async event => {
     await solicitar('/api/admin/finanzas/tasa', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ periodo: $('periodo').value, cop_por_usd: Number($('tasa-usd-cop').value) })
+      body: JSON.stringify({ periodo: $('tasa-periodo').value, cop_por_usd: Number($('tasa-usd-cop').value) })
     });
-    mensaje('tasa-mensaje', 'Tasa guardada para ' + $('periodo').value + '.', false);
+    mensaje('tasa-mensaje', 'Tasa guardada para ' + $('tasa-periodo').value + '.', false);
     await cargar();
   } catch (error) {
     mensaje('tasa-mensaje', error.message, true);
