@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261120-rangos"></script>
+  <script type="module" src="admin-costos.js?v=20261120-secciones"></script>
 </head>
 <body class="min-h-screen">
   <main class="mx-auto max-w-6xl p-4 sm:p-8">
@@ -103,10 +103,15 @@
 
         <p id="finance-note" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] p-3 text-sm text-[#69544A]" role="status"></p>
 
+            <div class="mt-4 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
+              <h3 class="font-semibold">Gastos por servicio</h3>
+              <div id="gastos-categorias" class="mt-2 space-y-2 text-sm text-[#69544A]"></div>
+            </div>
+
 
 
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Movimientos del rango seleccionado</h2><p class="text-xs text-[#69544A]">Puedes anular un registro; queda conservado como historial.</p></div>
+          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Movimientos del rango seleccionado</h2></div>
           <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Fecha</th><th class="p-3">Tipo</th><th class="p-3">Detalle</th><th class="p-3">Restaurante</th><th class="p-3">Valor</th><th class="p-3">Acción</th></tr></thead><tbody id="movimientos-body"></tbody></table></div>
         </section>
       </section>
@@ -138,10 +143,7 @@
               <button id="tasa-guardar" class="rounded-lg border border-[#D7C2AD] bg-[#F0E3D5] px-4 py-2.5 font-semibold">Guardar tasa</button>
             </form>
             <p id="tasa-mensaje" class="mt-2 text-sm" role="status" aria-live="polite"></p>
-            <div class="mt-4 border-t border-[#D7C2AD] pt-3">
-              <h3 class="font-semibold">Gastos por plataforma</h3>
-              <div id="gastos-categorias" class="mt-2 space-y-2 text-sm text-[#69544A]"></div>
-            </div>
+
           </section>
         </div>
       </section>
