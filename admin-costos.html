@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261120-secciones"></script>
+  <script type="module" src="admin-costos.js?v=20261120-facturas-por-servicio"></script>
 </head>
 <body class="min-h-screen">
   <main class="mx-auto max-w-6xl p-4 sm:p-8">
@@ -111,7 +111,7 @@
 
 
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Movimientos del rango seleccionado</h2></div>
+          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Movimientos del rango seleccionado</h2><div class="mt-3"><p class="mb-2 text-xs font-medium text-[#69544A]">Ver facturas por servicio</p><div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar facturas por servicio"><button type="button" data-factura-shortcut="claro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Claro</button><button type="button" data-factura-shortcut="railway" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Railway</button><button type="button" data-factura-shortcut="supabase" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Supabase</button><button type="button" data-factura-shortcut="openai" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">OpenAI</button><button type="button" data-factura-shortcut="meta" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Meta</button><button type="button" data-factura-shortcut="otro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Otros</button></div></div></div>
           <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Fecha</th><th class="p-3">Tipo</th><th class="p-3">Detalle</th><th class="p-3">Restaurante</th><th class="p-3">Valor</th><th class="p-3">Acción</th></tr></thead><tbody id="movimientos-body"></tbody></table></div>
         </section>
       </section>
