@@ -122,7 +122,7 @@ function renderizar(data) {
     : 'Estimación local · ' + numero.format(r.operaciones_ia) + ' operaciones';
   if (r.utilidad_neta_cop == null) {
     $('neto-cop').textContent = 'Falta tasa USD';
-    $('neto-nota').textContent = 'Guarda la tasa del período para convertir todos los valores.';
+    $('neto-nota').textContent = 'Guarda la tasa mensual que falta usando el selector de tasa de cambio.';
   } else {
     $('neto-cop').textContent = mostrarMoneda(r.utilidad_neta_cop, 'COP');
     $('neto-nota').textContent = r.ia_real_disponible
