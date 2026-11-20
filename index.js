@@ -878,6 +878,21 @@ app.get('/api/admin/finanzas/acumulado', autenticarAdminPlataforma, async (_req,
                 }
             }
         };
+        const ingresosBrutos = { COP: 0, USD: 0, equivalente_cop: 0, usd_sin_tasa: 0 };
+        for (const row of movimientos) {
+            if (row.tipo !== 'ingreso' || row.categoria !== 'suscripcion' || row.anulado_en) continue;
+            const valor = Number(row.monto) || 0;
+            if (row.moneda === 'USD') {
+                ingresosBrutos.USD += valor;
+                const tasa = tasas.get(String(row.fecha || '').slice(0, 7));
+                if (Number.isFinite(tasa) && tasa > 0) ingresosBrutos.equivalente_cop += valor * tasa;
+                else ingresosBrutos.usd_sin_tasa += valor;
+            } else {
+                ingresosBrutos.COP += valor;
+                ingresosBrutos.equivalente_cop += valor;
+            }
+        }
+
         const nombres = { railway: 'Railway', supabase: 'Supabase', meta: 'Meta', claro: 'Claro', openai: 'OpenAI', otro: 'Otros servicios' };
         for (const row of movimientos) {
             if (row.tipo !== 'gasto' || row.anulado_en) continue;
@@ -887,11 +902,19 @@ app.get('/api/admin/finanzas/acumulado', autenticarAdminPlataforma, async (_req,
         if (costosOpenAI.disponible) {
             for (const [dia, valor] of Object.entries(costosOpenAI.por_dia || {})) sumar('OpenAI', valor, 'USD', dia);
         }
+        const netoCop = ingresosBrutos.usd_sin_tasa === 0 && totales.usd_sin_tasa === 0
+            ? ingresosBrutos.equivalente_cop - totales.equivalente_cop
+            : null;
+        const netoNota = netoCop == null
+            ? 'Faltan tasas de cambio mensuales para convertir todos los movimientos en USD.'
+            : 'Ingresos brutos por suscripción menos costos totales registrados.';
         const filas = Object.entries(servicios).map(([servicio, montos]) => ({ servicio, ...montos }))
             .sort((a, b) => b.equivalente_cop - a.equivalente_cop);
         return res.json({
             inicio, actualizado_en: fechaHasta, monedas: totales, servicios: filas,
+            ingresos_brutos: ingresosBrutos, neto_cop: netoCop, neto_nota: netoNota,
             movimientos_contados: movimientos.filter(row => row.tipo === 'gasto' && !row.anulado_en).length,
+            ingresos_suscripcion_contados: movimientos.filter(row => row.tipo === 'ingreso' && row.categoria === 'suscripcion' && !row.anulado_en).length,
             costos_openai_disponibles: Boolean(costosOpenAI.disponible),
             nota_openai: costosOpenAI.disponible
                 ? 'OpenAI incluye el costo real reportado por su API en el rango consultado.'
