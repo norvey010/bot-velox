@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261118-expense-documents"></script>
+  <script type="module" src="admin-costos.js?v=20261119-rangos"></script>
 </head>
 <body class="min-h-screen">
   <main class="mx-auto max-w-6xl p-4 sm:p-8">
@@ -51,11 +51,22 @@
     </section>
 
     <section id="dashboard" class="hidden space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <label class="text-sm font-semibold">Desglose mensual
-          <input id="periodo" type="month" aria-describedby="periodo-help" class="ml-2 rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 font-normal">
-          <span id="periodo-help" class="mt-1 block text-xs font-normal text-[#69544A]">Elige cualquier mes para el desglose; la selección se recuerda. Las facturas se ubican según su fecha. El acumulado de toda la vida permanece visible.</span>
-        </label>
+      <div class="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-3">
+        <div class="min-w-0">
+          <p class="mb-2 text-sm font-semibold">Período del análisis</p>
+          <div id="rango-selector" class="flex flex-wrap gap-1" role="group" aria-label="Rango de tiempo">
+            <button type="button" data-rango="1D" aria-pressed="false" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs font-semibold">1D</button>
+            <button type="button" data-rango="1S" aria-pressed="false" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs font-semibold">1S</button>
+            <button type="button" data-rango="1M" aria-pressed="false" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs font-semibold">1M</button>
+            <button type="button" data-rango="6M" aria-pressed="false" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs font-semibold">6M</button>
+            <button type="button" data-rango="YTD" aria-pressed="false" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs font-semibold">YTD</button>
+            <button type="button" data-rango="1A" aria-pressed="false" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs font-semibold">1A</button>
+            <button type="button" data-rango="5A" aria-pressed="false" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs font-semibold">5A</button>
+            <button type="button" data-rango="MAX" aria-pressed="true" class="rounded-lg bg-red-700 px-3 py-2 text-xs font-semibold text-white">MAX</button>
+          </div>
+          <p id="rango-actual" class="mt-2 text-xs text-[#69544A]" aria-live="polite">MAX · Desde el primer registro</p>
+          <p class="mt-1 text-xs text-[#69544A]">1D hoy · 1S semana · 1M mes · 6M seis meses · YTD año en curso · 1A año · 5A cinco años · MAX todo el historial</p>
+        </div>
         <div class="flex gap-2">
           <button id="refresh" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Actualizar</button>
           <button id="logout" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Salir</button>
@@ -109,9 +120,10 @@
           </section>
 
           <section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
-            <h2 class="text-lg font-semibold">Tasa del período</h2>
-            <p class="mb-3 text-xs text-[#69544A]">Se usa para convertir costos en USD a COP en la utilidad. Ingresa la tasa que quieres usar para este mes; se guarda como referencia financiera.</p>
+            <h2 class="text-lg font-semibold">Tasa de cambio por mes</h2>
+            <p class="mb-3 text-xs text-[#69544A]">Los gastos en USD se convierten con la tasa guardada para el mes de cada movimiento. Elige el mes que quieres registrar o corregir.</p>
             <form id="tasa-form" class="flex flex-wrap items-end gap-3">
+              <label class="text-sm">Mes<input id="tasa-periodo" type="month" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
               <label class="min-w-48 flex-1 text-sm">COP por 1 USD<input id="tasa-usd-cop" type="number" min="1" step="0.01" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Ej: tasa usada en tu extracto"></label>
               <button id="tasa-guardar" class="rounded-lg border border-[#D7C2AD] bg-[#F0E3D5] px-4 py-2.5 font-semibold">Guardar tasa</button>
             </form>
@@ -124,7 +136,7 @@
         </div>
 
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Movimientos del período</h2><p class="text-xs text-[#69544A]">Puedes anular un registro; queda conservado como historial.</p></div>
+          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Movimientos del rango seleccionado</h2><p class="text-xs text-[#69544A]">Puedes anular un registro; queda conservado como historial.</p></div>
           <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Fecha</th><th class="p-3">Tipo</th><th class="p-3">Detalle</th><th class="p-3">Restaurante</th><th class="p-3">Valor</th><th class="p-3">Acción</th></tr></thead><tbody id="movimientos-body"></tbody></table></div>
         </section>
       </section>
