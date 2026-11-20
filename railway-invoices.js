@@ -248,20 +248,8 @@ function detectarProveedor(fromDomain, content) {
 }
 function detectarProveedorDocumento(text) {
     const cabecera = String(text || '').slice(0, 6000);
-    const suscripcionCodex = /
-\
-bcodex
-\
-b/i.test(cabecera) ||
-        (/
-\
-bchatgpt
-\
-b/i.test(cabecera) && /
-\
-b(plus|pro|subscription|suscripci[oó]n|monthly|mensual|plan)
-\
-b/i.test(cabecera));
+    const suscripcionCodex = /\bcodex\b/i.test(cabecera) ||
+        (/\bchatgpt\b/i.test(cabecera) && /\b(plus|pro|subscription|suscripci[oó]n|monthly|mensual|plan)\b/i.test(cabecera));
     if (suscripcionCodex) return 'otro';
     const coincidencias = Object.entries(PROVIDER_RULES)
         .filter(([, rule]) => rule.names.test(cabecera))
