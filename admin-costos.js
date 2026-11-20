@@ -620,18 +620,21 @@ $('password-form').addEventListener('submit', async event => {
 });
 
 function activarPestana(nombre) {
-  for (const [id, vista] of [['resumen', 'vista-resumen'], ['restaurantes', 'vista-restaurantes'], ['acumulado', 'vista-acumulado']]) {
+  for (const id of ['resumen', 'registro', 'facturas', 'restaurantes', 'acumulado']) {
     const activa = id === nombre;
     $(`vista-${id}`).classList.toggle('hidden', !activa);
     const boton = $(`tab-${id}`);
     boton.className = activa
-      ? 'rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white'
-      : 'rounded-lg px-4 py-2 text-sm font-semibold text-[#69544A]';
+      ? 'rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white'
+      : 'rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]';
     boton.setAttribute('aria-selected', String(activa));
   }
   if (nombre === 'acumulado') cargarAcumulado();
+  if (nombre === 'facturas') cargarFacturas(false).catch(error => estadoFacturas(error.message));
 }
 $('tab-resumen').addEventListener('click', () => activarPestana('resumen'));
+$('tab-registro').addEventListener('click', () => activarPestana('registro'));
+$('tab-facturas').addEventListener('click', () => activarPestana('facturas'));
 $('tab-restaurantes').addEventListener('click', () => activarPestana('restaurantes'));
 $('tab-acumulado').addEventListener('click', () => activarPestana('acumulado'));
 async function cargarAcumulado() {
