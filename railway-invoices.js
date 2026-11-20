@@ -180,6 +180,7 @@ async function leerDatosFactura(file, provider) {
         currency: detectarMonedaFactura(text),
         invoice_date: detectarFechaFactura(text),
         invoice_number: parsed.invoiceNumber,
+        proveedor_detectado: detectarProveedorDocumento(text),
         texto_detectado: Boolean(text.trim())
     };
 }
@@ -244,6 +245,13 @@ function detectarProveedor(fromDomain, content) {
         if ((fromDomain === 'stripe.com' || fromDomain.endsWith('.stripe.com')) && rule.names.test(content)) return provider;
     }
     return null;
+}
+function detectarProveedorDocumento(text) {
+    const cabecera = String(text || '').slice(0, 6000);
+    const coincidencias = Object.entries(PROVIDER_RULES)
+        .filter(([, rule]) => rule.names.test(cabecera))
+        .map(([provider]) => provider);
+    return coincidencias.length === 1 ? coincidencias[0] : null;
 }
 
 function dominiosRemitentesConfigurados() {
@@ -441,6 +449,12 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                 const provider = String(req.body.provider || '').trim().toLowerCase();
                 const allowedProviders = new Set(['railway', 'supabase', 'openai', 'meta', 'claro', 'otro']);
                 if (!allowedProviders.has(provider)) return res.status(400).json({ error: 'Selecciona el proveedor de la factura.' });
+                const pdfText = await pdfParse(file.buffer);
+                const proveedorDetectado = detectarProveedorDocumento(pdfText.text);
+                if (proveedorDetectado && proveedorDetectado !== provider) {
+                    const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
+                    return res.status(422).json({ error: `El PDF parece ser de ${nombres[proveedorDetectado]}. Cambia el proveedor seleccionado antes de guardarlo.` });
+                }
 
                 const fileSha256 = crypto.createHash('sha256').update(file.buffer).digest('hex');
                 const { data: duplicateFile, error: duplicateFileError } = await supabaseAdmin.from('velox_platform_invoices')
