@@ -1222,7 +1222,9 @@
       if (id) eliminarProducto(id);
     }
 
-    document.getElementById('form-producto').addEventListener('input', actualizarVistaEleccionesProducto);
+    document.getElementById('form-producto').addEventListener('input', event => {
+      if (['prod-nombre','prod-precio','prod-descripcion'].includes(event.target.id)) actualizarVistaEleccionesProducto();
+    });
 
     let opcionesGuardadasProducto = [];
     let textoOpcionesGuardadas = '';
