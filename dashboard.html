@@ -448,14 +448,14 @@
 
       </div>
       <details id="prod-opciones-panel" class="velox-opciones-panel sm:col-span-2">
-        <summary><span>Personalizar este producto<span id="prod-personalizar-cantidad"></span><small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <summary><span>Personalizar este producto<small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+        <label for="prod-opciones">Una opción por línea</label>
+        <textarea id="prod-opciones" oninput="actualizarVistaEleccionesProducto()" rows="3" aria-describedby="prod-opciones-ayuda" placeholder="Proteína: ¼ de pollo&#10;Proteína: costilla churrasco" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></textarea>
+        <p id="prod-opciones-ayuda" class="mt-1 text-xs text-slate-400">Escribe el grupo y la opción separados por dos puntos. El cliente elige una por grupo, al mismo precio.</p>
         <details class="velox-opcion-fila m-2" aria-label="Ejemplo de las elecciones del cliente">
           <summary><span>Ver ejemplo en mi carta</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
           <div id="producto-elecciones-previa" class="p-3"></div>
         </details>
-        <label for="prod-opciones">Una opción por línea</label>
-        <textarea id="prod-opciones" oninput="actualizarVistaEleccionesProducto()" rows="3" aria-describedby="prod-opciones-ayuda" placeholder="Proteína: ¼ de pollo&#10;Proteína: costilla churrasco" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></textarea>
-        <p id="prod-opciones-ayuda" class="mt-1 text-xs text-slate-400">Escribe el grupo y la opción separados por dos puntos. El cliente elige una por grupo, al mismo precio.</p>
       </details>
       <div id="producto-edicion-acciones" class="hidden sm:col-span-2 flex flex-wrap gap-2">
         <button type="button" onclick="eliminarProductoDesdeEditor()" class="rounded-lg px-3 py-2 text-sm text-red-300">Eliminar producto</button>
@@ -1223,8 +1223,6 @@
         const anterior = opcionesGuardadasProducto.find(o=>o?.grupo===grupo && o.nombre===nombre);
         return [{grupo,nombre,descripcion:anterior?.descripcion || ''}];
       });
-      const cantidad = opciones.filter(o=>o.grupo && o.nombre && !o.grupo.startsWith('__')).length;
-      document.getElementById('prod-personalizar-cantidad').textContent = cantidad ? ` · ${cantidad} ${cantidad === 1 ? 'opción' : 'opciones'}` : '';
       document.getElementById('producto-elecciones-previa').innerHTML = crearVistaEleccionesCliente(opciones,'producto');
     }
 
@@ -1955,6 +1953,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=foto-unida"></script>
+  <script src="/app.menu-import.js?v=personalizar-orden"></script>
 </body>
 </html>
