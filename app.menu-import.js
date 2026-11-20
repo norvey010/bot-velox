@@ -717,16 +717,16 @@ function renderizarRevisionMenu(i) {
             </div>
           </div>
           <details class="velox-opciones-panel" id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
-            <summary><span>Personalizar este producto${cantidadOpciones ? ` · ${cantidadOpciones} ${cantidadOpciones === 1 ? 'opción' : 'opciones'}` : ''}<small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
-            <details class="velox-opcion-fila m-2" aria-label="Ejemplo de las elecciones del cliente">
-              <summary><span>Ver ejemplo en mi carta</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
-              <div id="revision-elecciones-previa-${i}" class="p-3">${crearVistaEleccionesCliente(p.opciones,`borrador-${i}`)}</div>
-            </details>
+            <summary><span>Personalizar este producto<small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
             ${p.revision_opciones ? '<p class="mb-2 text-xs text-amber-300">Compara con la descripción. Agrega las opciones de precio fijo que se eligen de una en una. Si hay precios distintos, revisa si deben ser productos separados.</p>' : ''}
             <p class="mt-3 px-2 text-sm font-semibold">Editar opciones</p>
             <div class="space-y-2">${opciones}</div>
             <button type="button" onclick="cambiarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-white">${cantidadOpciones ? '+ Añadir otro grupo' : '+ Añadir sabores u opciones'}</button>
             ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
+            <details class="velox-opcion-fila m-2" aria-label="Ejemplo de las elecciones del cliente">
+              <summary><span>Ver ejemplo en mi carta</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+              <div id="revision-elecciones-previa-${i}" class="p-3">${crearVistaEleccionesCliente(p.opciones,`borrador-${i}`)}</div>
+            </details>
           </details>
           <button type="button" onclick="quitarProductoBorrador(${i})" class="min-h-11 px-2 text-xs text-red-300">Eliminar del borrador</button>
         </div>
