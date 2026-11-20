@@ -214,6 +214,7 @@ function seleccionarFotoBorradorMenu(i, archivo) {
   const miniatura = document.getElementById('revision-foto-previa');
   miniatura.src = previa;
   document.getElementById('revision-foto-controles').hidden = false;
+  actualizarEjemploBorrador(i);
   actualizarResumenRevision();
   document.getElementById('revision-producto-status').classList.add('hidden');
 }
@@ -227,6 +228,7 @@ function quitarFotoBorradorMenu(i) {
   guardarEdicionBorradorMenu();
   document.getElementById('revision-foto-previa').removeAttribute('src');
   document.getElementById('revision-foto-controles').hidden = true;
+  actualizarEjemploBorrador(i);
   const selector = document.getElementById('revision-foto-archivo');
   selector.value = '';
   selector.focus({ preventScroll: true });
@@ -725,7 +727,7 @@ function renderizarRevisionMenu(i) {
             ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
             <details class="velox-opcion-fila m-2" aria-label="Ejemplo de las elecciones del cliente">
               <summary><span>Ver ejemplo en mi carta</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
-              <div id="revision-elecciones-previa-${i}" class="p-3">${crearVistaEleccionesCliente(p.opciones,`borrador-${i}`)}</div>
+              <div id="revision-elecciones-previa-${i}" class="p-3">${crearVistaProductoCliente({...p, imagen_url:foto},`borrador-${i}`)}</div>
             </details>
           </details>
           <button type="button" onclick="quitarProductoBorrador(${i})" class="min-h-11 px-2 text-xs text-red-300">Eliminar del borrador</button>
@@ -790,6 +792,12 @@ function confirmarOpcionesBorrador(indice) {
   estadoProductoBorrador('Opciones revisadas.', 'exito');
 }
 
+function actualizarEjemploBorrador(i) {
+  const p = borradorMenu?.productos[i];
+  if (p) actualizarEjemploProductoCliente(document.getElementById(`revision-elecciones-previa-${i}`),
+    {...p, imagen_url:fotosBorradorMenu.get(p)?.previa || p.imagen_url},`borrador-${i}`);
+}
+
 function editarDatoBorrador(i,key,value,opcion) {
   if(publicandoMenu || !borradorMenu?.productos[i]) return;
   if(opcion!==undefined) {
@@ -805,10 +813,7 @@ function editarDatoBorrador(i,key,value,opcion) {
     if (resumen) resumen.textContent = key === 'precio' ? precioProductoBorrador(producto)
       : key === 'categoria' ? categoriaProductoBorrador(producto) : value || 'Producto sin nombre';
   }
-  if (opcion !== undefined) {
-    const previa = document.getElementById(`revision-elecciones-previa-${i}`);
-    if (previa) previa.innerHTML = crearVistaEleccionesCliente(borradorMenu.productos[i].opciones,`borrador-${i}`);
-  }
+  actualizarEjemploBorrador(i);
   if (borradorMenu.lectura_id) {
     clearTimeout(guardadoBorradorMenu);
     guardadoBorradorMenu = setTimeout(guardarEdicionBorradorMenu, 350);

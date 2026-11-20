@@ -744,3 +744,25 @@ test('el acceso al borrador desaparece al publicar y solo vuelve con otro borrad
  n.context.olvidarBorradorMenu();
  assert.equal(n.el('carta-borrador-acceso').hidden,true);
 });
+
+test('el ejemplo vivo muestra el producto completo y actualiza datos sin guardar',async()=>{
+ const {crearVistaProductoCliente}=require('../app.menu-categorias');
+ const p={nombre:'Pizza <especial>',descripcion:'Piña & queso',precio:19000,imagen_url:'https://fotos.example/pizza.webp',opciones:[{grupo:'Sabor',nombre:'Hawaiana',descripcion:'Piña'}]};
+ const html=crearVistaProductoCliente(p,'producto');
+ assert.match(html,/Pizza &lt;especial&gt;/);
+ assert.match(html,/Piña &amp; queso/);
+ assert.match(html,/19\.000/);
+ assert.match(html,/src="https:\/\/fotos.example\/pizza.webp"/);
+ assert.match(html,/Elegir sabores/);
+ assert.match(html,/data-ejemplo-opciones/);
+ assert.match(html,/type="radio"/);
+ assert.doesNotMatch(crearVistaProductoCliente({...p,imagen_url:'javascript:alert(1)'},'x'),/src="javascript/);
+ assert.match(crearVistaProductoCliente({...p,opciones:[]},'x'),/\+ Agregar/);
+ const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});
+ n.run("borradorMenu.productos[0].opciones=[{grupo:'Sabor',nombre:'Hawaiana'}]; renderizarRevisionMenu(0);");
+ n.context.editarDatoBorrador(0,'nombre','Pizza nueva');
+ n.context.editarDatoBorrador(0,'descripcion','Carne y queso');
+ n.context.editarDatoBorrador(0,'precio','25.000');
+ const vista=n.el('revision-elecciones-previa-0').innerHTML;
+ assert.match(vista,/Pizza nueva/);assert.match(vista,/Carne y queso/);assert.match(vista,/25\.000/);assert.match(vista,/Elegir sabores/);
+});
