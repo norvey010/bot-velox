@@ -424,9 +424,14 @@ $('read-invoice').addEventListener('click', async () => {
     if (fields.amount != null) { formularioFactura.elements.amount.value = fields.amount; parsed.push('importe'); }
     if (fields.currency) { formularioFactura.elements.currency.value = fields.currency; parsed.push('moneda'); }
     if (fields.invoice_number) { formularioFactura.elements.invoice_number.value = fields.invoice_number; parsed.push('número'); }
+    const nombresProveedor = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
+    if (fields.proveedor_detectado && nombresProveedor[fields.proveedor_detectado]) {
+      formularioFactura.elements.provider.value = fields.proveedor_detectado;
+      parsed.push('proveedor ' + nombresProveedor[fields.proveedor_detectado]);
+    }
     message.textContent = parsed.length
-      ? 'Detecté ' + parsed.join(', ') + '. Revísalos, completa lo que falte y guarda.'
-      : (fields.texto_detectado ? 'El PDF tiene texto, pero no pude identificar esos datos con certeza. Complétalos y guarda.' : 'Este PDF parece escaneado. Escribe fecha, importe y moneda; se guardará sin IA.');
+      ? 'Detecté ' + parsed.join(', ') + '. Revisa los datos y guarda.'
+      : (fields.texto_detectado ? 'Revisa el proveedor y los datos del PDF antes de guardar.' : 'PDF escaneado: escribe los datos manualmente.');
     message.className = 'text-sm ' + (parsed.length ? 'text-[#256444]' : 'text-[#69544A]');
   } catch (error) {
     message.textContent = error.message;
