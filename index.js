@@ -844,9 +844,9 @@ app.get('/api/admin/finanzas/acumulado', autenticarAdminPlataforma, async (_req,
         if (fxError) throw fxError;
         if (restaurantError) throw restaurantError;
 
-        const primeraFechaGasto = movimientos.map(row => String(row.fecha || '').slice(0, 10)).filter(Boolean).sort()[0] || null;
+        const primeraFechaMovimiento = movimientos.map(row => String(row.fecha || '').slice(0, 10)).filter(Boolean).sort()[0] || null;
         const primeraFechaRestaurante = restaurantRows?.[0]?.created_at ? new Date(restaurantRows[0].created_at).toISOString().slice(0, 10) : null;
-        const fechasInicio = [primeraFechaGasto, primeraFechaRestaurante].filter(Boolean).sort();
+        const fechasInicio = [primeraFechaMovimiento, primeraFechaRestaurante].filter(Boolean).sort();
         const inicio = fechasInicio[0] || null;
         const ahora = new Date();
         const fechaHasta = ahora.toISOString();
