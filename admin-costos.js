@@ -106,6 +106,12 @@ function actualizarCategorias(reiniciarAtribucion = false) {
     ? 'El ingreso se asignará a este restaurante.'
     : 'Déjalo como gasto compartido para repartirlo entre restaurantes activos. Elige un restaurante solo si el gasto es exclusivo de ese negocio.';
   if (reiniciarAtribucion) selector.value = '';
+  const descripcion = $('mov-descripcion');
+  descripcion.disabled = false;
+  descripcion.readOnly = false;
+  descripcion.placeholder = tipo === 'ingreso'
+    ? (categoria.value === 'otro' ? 'Ej.: Ingreso por servicio adicional' : 'Ej.: Suscripción mensual Velox')
+    : (categoria.value === 'otro' ? 'Ej.: Suscripción Codex/ChatGPT (OpenAI)' : 'Ej.: Factura del servicio');
 }
 function renderizar(data) {
   datos = data;
@@ -307,7 +313,7 @@ async function cargarFacturas(auto = true) {
       : 'Aún no hay comprobantes. Súbelos arriba o conecta Gmail más adelante.';
     list.append(vacio); return;
   }
-  const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
+  const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro', otro: 'Otro / Codex' };
   for (const invoice of facturasFiltradas) {
     const fila = document.createElement('article'); fila.className = 'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E6D8C9] p-3';
     const info = document.createElement('div'); info.className = 'min-w-0';
@@ -424,7 +430,7 @@ $('read-invoice').addEventListener('click', async () => {
     if (fields.amount != null) { formularioFactura.elements.amount.value = fields.amount; parsed.push('importe'); }
     if (fields.currency) { formularioFactura.elements.currency.value = fields.currency; parsed.push('moneda'); }
     if (fields.invoice_number) { formularioFactura.elements.invoice_number.value = fields.invoice_number; parsed.push('número'); }
-    const nombresProveedor = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
+    const nombresProveedor = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro', otro: 'Otro / Codex' };
     if (fields.proveedor_detectado && nombresProveedor[fields.proveedor_detectado]) {
       formularioFactura.elements.provider.value = fields.proveedor_detectado;
       parsed.push('proveedor ' + nombresProveedor[fields.proveedor_detectado]);
