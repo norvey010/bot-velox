@@ -693,6 +693,14 @@ $('invoice-provider-filter').addEventListener('change', () => {
   localStorage.setItem('velox-invoice-provider-filter', $('invoice-provider-filter').value);
   cargarFacturas(false);
 });
+document.querySelectorAll('[data-factura-shortcut]').forEach(button => {
+  button.addEventListener('click', () => {
+    const proveedor = button.dataset.facturaShortcut;
+    $('invoice-provider-filter').value = proveedor;
+    localStorage.setItem('velox-invoice-provider-filter', proveedor);
+    activarPestana('facturas');
+  });
+});
 $('logout').addEventListener('click', () => supabase.auth.signOut());
 
 $('mov-tipo').addEventListener('change', () => actualizarCategorias(true));
