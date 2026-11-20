@@ -951,33 +951,9 @@ app.post('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
             ['meta', /\bmeta\b|\bfacebook\b/i],
             ['claro', /\bclaro\b|\bcomcel\b/i]
         ].filter(([, patron]) => patron.test(textoClasificacion)).map(([proveedor]) => proveedor);
-        const esSuscripcionCodex = /
-\
-bcodex
-\
-b/i.test(textoClasificacion) ||
-            ((/
-\
-bopenai
-\
-b|
-\
-bchatgpt
-\
-b/i.test(textoClasificacion)) &&
-            /suscripci[oó]n|subscription|mensual|monthly|
-\
-bplus
-\
-b|
-\
-bpro
-\
-b|
-\
-bplan
-\
-b/i.test(textoClasificacion));
+        const esSuscripcionCodex = /\bcodex\b/i.test(textoClasificacion) ||
+            ((/\bopenai\b|\bchatgpt\b/i.test(textoClasificacion)) &&
+            /suscripci[oó]n|subscription|mensual|monthly|\bplus\b|\bpro\b|\bplan\b/i.test(textoClasificacion));
         if (proveedoresEnTexto.length === 1 && proveedoresEnTexto[0] !== categoria &&
             !(proveedoresEnTexto[0] === 'openai' && categoria === 'otro' && esSuscripcionCodex)) {
             const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
