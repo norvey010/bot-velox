@@ -482,13 +482,7 @@ function activarRango(rango) {
     '1D': 'Hoy', '1S': 'Últimos 7 días', '1M': 'Último mes', '6M': 'Últimos 6 meses',
     YTD: 'Desde enero de este año', '1A': 'Últimos 12 meses', '5A': 'Últimos 5 años', MAX: 'Todo el historial'
   };
-  document.querySelectorAll('[data-rango]').forEach(button => {
-    const activo = button.dataset.rango === rango;
-    button.className = activo
-      ? 'rounded-lg bg-red-700 px-3 py-2 text-xs font-semibold text-white'
-      : 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs font-semibold text-[#69544A]';
-    button.setAttribute('aria-pressed', String(activo));
-  });
+  $('rango-selector').value = rango;
   $('rango-actual').textContent = etiquetas[rango] || rango;
 }
 function mostrarVista(session) {
@@ -504,11 +498,10 @@ function mostrarVista(session) {
     if (filtroGuardado && ['active', 'void', 'all'].includes(filtroGuardado)) $('invoice-filter').value = filtroGuardado;
     const servicioGuardado = localStorage.getItem('velox-invoice-provider-filter');
     if (servicioGuardado && [...$('invoice-provider-filter').options].some(option => option.value === servicioGuardado)) $('invoice-provider-filter').value = servicioGuardado;
-    cargar();
     cargarAcumulado();
     cargarFacturas(true).catch(error => estadoFacturas(error.message));
     if (!autoRefresh) autoRefresh = setInterval(() => {
-      if (document.visibilityState === 'visible') cargar();
+      if (document.visibilityState === 'visible' && !$('vista-analisis').classList.contains('hidden')) cargar();
     }, 15000);
     if (!autoRefreshFacturas) autoRefreshFacturas = setInterval(() => {
       if (token && document.visibilityState === 'visible') cargarFacturas(false).catch(error => estadoFacturas(error.message));
@@ -625,7 +618,8 @@ $('password-form').addEventListener('submit', async event => {
 });
 
 function activarPestana(nombre) {
-  for (const id of ['resumen', 'registro', 'facturas', 'restaurantes', 'acumulado']) {
+  const ids = ['historial', 'analisis', 'registro', 'facturas', 'restaurantes', 'acumulado'];
+  for (const id of ids) {
     const activa = id === nombre;
     $(`vista-${id}`).classList.toggle('hidden', !activa);
     const boton = $(`tab-${id}`);
@@ -634,10 +628,12 @@ function activarPestana(nombre) {
       : 'rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]';
     boton.setAttribute('aria-selected', String(activa));
   }
-  if (nombre === 'acumulado') cargarAcumulado();
+  if (nombre === 'analisis') cargar();
+  if (nombre === 'acumulado' || nombre === 'historial') cargarAcumulado();
   if (nombre === 'facturas') cargarFacturas(false).catch(error => estadoFacturas(error.message));
 }
-$('tab-resumen').addEventListener('click', () => activarPestana('resumen'));
+$('tab-historial').addEventListener('click', () => activarPestana('historial'));
+$('tab-analisis').addEventListener('click', () => activarPestana('analisis'));
 $('tab-registro').addEventListener('click', () => activarPestana('registro'));
 $('tab-facturas').addEventListener('click', () => activarPestana('facturas'));
 $('tab-restaurantes').addEventListener('click', () => activarPestana('restaurantes'));
@@ -655,11 +651,25 @@ async function cargarAcumulado() {
       ? mostrarMoneda(data.monedas.usd_sin_tasa, 'USD') + ' sin tasa mensual guardada'
       : 'No hay USD pendientes de conversión.';
     $('acumulado-sin-tasa').textContent = sinTasa;
-    $('vida-cop').textContent = mostrarMoneda(data.monedas?.COP, 'COP');
-    $('vida-usd').textContent = mostrarMoneda(data.monedas?.USD, 'USD');
-    $('vida-equivalente').textContent = mostrarMoneda(data.monedas?.equivalente_cop, 'COP');
-    $('vida-sin-tasa').textContent = sinTasa;
-    $('vida-nota').textContent = data.nota + ' ' + data.nota_openai;
+    const ingresos = data.ingresos_brutos || { COP: 0, USD: 0, equivalente_cop: 0, usd_sin_tasa: 0 };
+    const costoCOPCompleto = Number(data.monedas?.usd_sin_tasa || 0) === 0;
+    const ingresoCOPCompleto = Number(ingresos.usd_sin_tasa || 0) === 0;
+    $('vida-equivalente').textContent = costoCOPCompleto
+      ? mostrarMoneda(data.monedas?.equivalente_cop, 'COP') : 'Falta tasa USD';
+    $('vida-sin-tasa').textContent = mostrarMoneda(data.monedas?.COP, 'COP') + ' + ' +
+      mostrarMoneda(data.monedas?.USD, 'USD') + (costoCOPCompleto ? '' : ' · ' + sinTasa);
+    $('vida-ingresos-brutos').textContent = ingresoCOPCompleto
+      ? mostrarMoneda(ingresos.equivalente_cop, 'COP') : 'Falta tasa USD';
+    $('vida-ingresos-detalle').textContent = mostrarMoneda(ingresos.COP, 'COP') + ' + ' +
+      mostrarMoneda(ingresos.USD, 'USD') + (ingresoCOPCompleto ? '' : ' · ' + mostrarMoneda(ingresos.usd_sin_tasa, 'USD') + ' sin tasa');
+    $('vida-ingreso-neto').textContent = data.neto_cop == null
+      ? 'Falta tasa USD' : mostrarMoneda(data.neto_cop, 'COP');
+    $('vida-neto-nota').textContent = data.neto_cop == null
+      ? 'Guarda las tasas mensuales pendientes para calcularlo.' : 'Ingresos brutos menos costos totales.';
+    const fechaInicio = data.inicio ? fechaFactura(data.inicio) : 'sin registros';
+    $('vida-nota').textContent = 'Desde ' + fechaInicio + ' · ' + numero.format(data.movimientos_contados || 0) +
+      ' gastos contabilizados. ' + (data.costos_openai_disponibles
+        ? 'Incluye OpenAI real.' : 'OpenAI no disponible: excluido del total.');
     $('acumulado-nota').textContent = data.nota + ' ' + data.nota_openai;
     $('acumulado-fecha').textContent = data.inicio
       ? 'Desde ' + fechaFactura(data.inicio) + ' · actualizado ' + new Date(data.actualizado_en).toLocaleString('es-CO') + ' · ' + numero.format(data.movimientos_contados || 0) + ' gastos registrados.'
@@ -681,11 +691,9 @@ async function cargarAcumulado() {
     $('vida-nota').textContent = error.message;
   }
 }
-document.querySelectorAll('[data-rango]').forEach(button => {
-  button.addEventListener('click', () => {
-    activarRango(button.dataset.rango);
-    cargar();
-  });
+$('rango-selector').addEventListener('change', () => {
+  activarRango($('rango-selector').value);
+  cargar();
 });
 $('refresh').addEventListener('click', cargar);
 $('actualizar-acumulado').addEventListener('click', cargarAcumulado);
