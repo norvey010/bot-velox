@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261120-historial"></script>
+  <script type="module" src="admin-costos.js?v=20261120-historial-v2"></script>
 </head>
 <body class="min-h-screen">
   <main class="mx-auto max-w-6xl p-4 sm:p-8">
@@ -59,6 +59,7 @@
         <button id="tab-restaurantes" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Por restaurante</button>
         <button id="tab-acumulado" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Por servicio</button>
       </nav>
+      <div class="flex justify-end"><button id="logout" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Salir</button></div>
 
       <section id="vista-historial" class="space-y-4">
         <section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
@@ -67,9 +68,9 @@
             <button id="refresh-lifetime-top" type="button" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs">Actualizar historial</button>
           </div>
           <div class="mt-3 grid gap-3 sm:grid-cols-3">
-            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Costos totales</p><strong id="vida-equivalente" class="mt-1 block text-xl">—</strong><p id="vida-sin-tasa" class="mt-1 text-xs text-[#69544A]"></p></article>
-            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Ingresos brutos por suscripción</p><strong id="vida-ingresos-brutos" class="mt-1 block text-xl">—</strong><p id="vida-ingresos-detalle" class="mt-1 text-xs text-[#69544A]"></p></article>
-            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Ingreso neto</p><strong id="vida-ingreso-neto" class="mt-1 block text-xl">—</strong><p id="vida-neto-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
+            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Costos totales registrados</p><strong id="vida-equivalente" class="mt-1 block text-xl">—</strong><p id="vida-sin-tasa" class="mt-1 text-xs text-[#69544A]"></p></article>
+            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Ingresos brutos por suscripción registrados</p><strong id="vida-ingresos-brutos" class="mt-1 block text-xl">—</strong><p id="vida-ingresos-detalle" class="mt-1 text-xs text-[#69544A]"></p></article>
+            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Ingreso neto registrado</p><strong id="vida-ingreso-neto" class="mt-1 block text-xl">—</strong><p id="vida-neto-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
           </div>
           <p id="vida-nota" class="mt-3 text-xs text-[#69544A]" role="status">Cargando historial…</p>
         </section>
@@ -87,7 +88,7 @@
         </div>
         <div class="flex gap-2">
           <button id="refresh" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Actualizar</button>
-          <button id="logout" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Salir</button>
+          
         </div>
       </div>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
