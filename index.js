@@ -367,7 +367,11 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
         const hoy = fechaBogota(new Date());
         const desplazar = (fecha, dias, meses, anos) => {
             const [y, m, d] = fecha.split('-').map(Number);
-            const base = new Date(Date.UTC(y - anos, m - 1 - meses, d + dias));
+            const base = new Date(Date.UTC(y, m - 1, 1));
+            base.setUTCFullYear(y - anos);
+            base.setUTCMonth(base.getUTCMonth() - meses);
+            const ultimoDia = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 0)).getUTCDate();
+            base.setUTCDate(Math.min(d, ultimoDia) + dias);
             return base.toISOString().slice(0, 10);
         };
         let desde = hoy;
