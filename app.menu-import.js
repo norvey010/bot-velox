@@ -246,7 +246,7 @@ async function generarFotoBorradorMenu(i, boton) {
   const selector = document.getElementById('revision-foto-archivo');
   const cambiar = document.getElementById('revision-foto-cambiar');
   const quitar = document.getElementById('revision-foto-quitar');
-  selector.disabled = cambiar.disabled = quitar.disabled = boton.disabled = true;
+  selector.disabled = cambiar.disabled = quitar.disabled = boton.disabled = document.getElementById('revision-foto-subir').disabled = true;
   boton.textContent = 'Generando imagen…';
   document.getElementById('revision-producto-status').classList.add('hidden');
   try {
@@ -258,8 +258,8 @@ async function generarFotoBorradorMenu(i, boton) {
   } finally {
     generandoFotoBorradorMenu = false;
     actualizarAccionesBorrador();
-    selector.disabled = cambiar.disabled = quitar.disabled = boton.disabled = false;
-    boton.textContent = 'Crear foto con IA';
+    selector.disabled = cambiar.disabled = quitar.disabled = boton.disabled = document.getElementById('revision-foto-subir').disabled = false;
+    boton.textContent = 'Crear con IA';
   }
 }
 
@@ -431,7 +431,7 @@ function revisarSiguienteProducto(soloFotos = false) {
   const p = borradorMenu.productos[siguiente.indice];
   const editor = document.getElementById(`revision-producto-${siguiente.indice}`);
   if (soloFotos) {
-    document.getElementById('revision-foto-archivo').focus();
+    document.getElementById('revision-foto-subir').focus();
   } else if (p.revision_opciones || opcionesBorradorIncompletas(p)) {
     const opciones = document.getElementById(`revision-opciones-${siguiente.indice}`);
     opciones.open = true;
@@ -439,7 +439,7 @@ function revisarSiguienteProducto(soloFotos = false) {
   } else if (siguiente.obligatorio) {
     const campo = !p.nombre.trim() ? 'nombre' : !p.categoria.trim() ? 'categoria' : 'precio';
     editor.querySelector?.(`[data-campo-revision="${campo}"]`)?.focus();
-  } else document.getElementById('revision-foto-archivo').focus();
+  } else document.getElementById('revision-foto-subir').focus();
 }
 
 function abrirCartaBorrador(indice = null) {
@@ -702,16 +702,19 @@ function renderizarRevisionMenu(i) {
             <label class="block text-xs text-slate-300">Descripción e ingredientes<textarea maxlength="5000" oninput="editarDatoBorrador(${i}, 'descripcion', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white" rows="3">${escaparHtmlUI(p.descripcion||'')}</textarea></label>
             ${campo('categoria','Categoría',p.categoria,'maxlength="120"')}
           </div>
-          <div class="space-y-2">
-            <label for="revision-foto-archivo" class="block text-xs text-slate-300">Foto del producto (opcional)</label>
-            <input id="revision-foto-archivo" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" class="w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-xs text-white" onchange="seleccionarFotoBorradorMenu(${i}, this.files[0]); this.value = ''">
+          <div class="velox-foto-producto space-y-2" role="group" aria-labelledby="revision-foto-titulo">
+            <span id="revision-foto-titulo" class="block font-semibold">Foto del producto · Opcional</span>
+            <input id="revision-foto-archivo" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" hidden onchange="seleccionarFotoBorradorMenu(${i}, this.files[0]); this.value = ''">
+            <div class="velox-foto-acciones">
+              <button id="revision-foto-subir" type="button" onclick="document.getElementById('revision-foto-archivo').click()" aria-controls="revision-foto-archivo">Subir foto</button>
+              <button type="button" onclick="generarFotoBorradorMenu(${i}, this)">Crear con IA</button>
+            </div>
             <div id="revision-foto-controles"${foto ? '' : ' hidden'}>
               <button id="revision-foto-cambiar" type="button" aria-label="Cambiar foto" onclick="document.getElementById('revision-foto-archivo').click()" class="rounded-lg border border-slate-600 p-1">
                 <img id="revision-foto-previa"${foto ? ` src="${escaparHtmlUI(foto)}"` : ''} alt="Vista previa de la foto" width="76" height="76" class="h-[76px] w-[76px] rounded object-contain">
               </button>
               <button id="revision-foto-quitar" type="button" aria-label="Quitar foto" onclick="quitarFotoBorradorMenu(${i})" class="min-h-11 min-w-11 rounded-lg text-2xl">×</button>
             </div>
-            <button type="button" onclick="generarFotoBorradorMenu(${i}, this)" class="block min-h-11 rounded-lg bg-slate-700 px-3 text-sm text-white">Crear foto con IA</button>
           </div>
           <details class="velox-opciones-panel" id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
             <summary><span>Personalizar este producto${cantidadOpciones ? ` · ${cantidadOpciones} ${cantidadOpciones === 1 ? 'opción' : 'opciones'}` : ''}<small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
