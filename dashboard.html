@@ -120,6 +120,10 @@
     #revision-carta-ampliada > header { flex-shrink: 0; padding: .65rem .8rem; }
     #revision-carta-ayuda { font-size: .8rem; margin-top: .25rem; }
     #revision-carta-ampliada > footer { padding: .55rem .8rem; }
+      .velox-foto-producto { border: 1px solid var(--velox-border, #d1c2b0); border-radius: 12px; padding: 12px; min-width: 0; }
+    .velox-foto-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .velox-foto-acciones button { flex: 1 1 125px; min-height: 44px; border: 1px solid var(--velox-border, #d1c2b0); border-radius: 10px; padding: 8px 12px; font-size: 14px; font-weight: 600; }
+    .velox-foto-acciones button:disabled { opacity: .5; cursor: wait; }
   </style>
     <link rel="stylesheet" href="/velox-theme.css?v=crema-terracota">
 </head>
@@ -425,9 +429,13 @@
           <input id="prod-categoria-nueva" maxlength="120" placeholder="Ej: Postres" oninput="asignarCategoriaProducto(this.value)" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white">
         </div>
       </div>
-      <div class="sm:col-span-2">
-        <label for="prod-imagen-file">Foto del producto (opcional)</label>
-        <input type="file" id="prod-imagen-file" accept="image/*" aria-describedby="producto-foto-ayuda" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-2 file:py-1 file:text-xs file:text-white">
+      <div class="velox-foto-producto sm:col-span-2" role="group" aria-labelledby="producto-foto-titulo">
+        <span id="producto-foto-titulo" class="block font-semibold">Foto del producto · Opcional</span>
+        <input type="file" id="prod-imagen-file" accept="image/*" hidden>
+        <div class="velox-foto-acciones">
+          <button type="button" onclick="document.getElementById('prod-imagen-file').click()" aria-controls="prod-imagen-file">Subir foto</button>
+          <button type="button" id="btn-foto-ia-editor" onclick="generarImagenDesdeEditor()">Crear con IA</button>
+        </div>
         <figure id="producto-imagen-preview" class="mt-3" hidden>
           <div class="flex items-center gap-2">
             <button type="button" onclick="document.getElementById('prod-imagen-file').click()" aria-controls="prod-imagen-file" aria-label="Cambiar foto" class="inline-flex rounded-lg border border-slate-700 p-1 hover:border-red-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400">
@@ -437,10 +445,7 @@
           </div>
           <figcaption id="producto-imagen-estado" class="mt-1 text-xs text-slate-300" aria-live="polite"></figcaption>
         </figure>
-        <div class="mt-3 space-y-1">
-          <button type="button" id="btn-foto-ia-editor" onclick="generarImagenDesdeEditor()" class="min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700">✨ Crear foto con IA</button>
-          <p id="producto-foto-ayuda" class="text-xs text-slate-400">Los PDF de tu menú se suben en «Crear carta con IA».</p>
-        </div>
+
       </div>
       <details id="prod-opciones-panel" class="velox-opciones-panel sm:col-span-2">
         <summary><span>Personalizar este producto<span id="prod-personalizar-cantidad"></span><small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
@@ -1950,6 +1955,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=ejemplo-plegado"></script>
+  <script src="/app.menu-import.js?v=foto-unida"></script>
 </body>
 </html>
