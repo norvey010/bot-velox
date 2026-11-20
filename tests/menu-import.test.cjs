@@ -674,7 +674,7 @@ test('Listo vuelve a la carta y conserva la edición sin publicar el borrador', 
  assert.equal(n.el('form-revision-menu').hidden,true);
  assert.equal(n.el('btn-terminar-revision').hidden,false);
  assert.match(n.el('revision-menu-lista').innerHTML,/Personalizar este producto/);
- assert.match(n.el('revision-menu-lista').innerHTML,/Así lo verá tu cliente/);
+ assert.match(n.el('revision-menu-lista').innerHTML,/Ver ejemplo en mi carta/);
  assert.match(n.el('revision-menu-lista').innerHTML,/Eliminar del borrador/);
  assert.doesNotMatch(n.el('revision-menu-lista').innerHTML,/Quitar de esta carga/);
  n.context.editarDatoBorrador(0,'descripcion','Tomate y queso');
@@ -725,7 +725,7 @@ test('la vista de elecciones muestra datos reales, escapa texto y se actualiza a
  assert.doesNotMatch(html,/Oculto|<especial>/);
  const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});
  n.run(`borradorMenu.productos[0].opciones=[{grupo:'Sabor',nombre:'Hawaiana',descripcion:'Piña'}]; renderizarRevisionMenu(0);`);
- assert.match(n.el('revision-menu-lista').innerHTML,/Así lo verá tu cliente/);
+ assert.match(n.el('revision-menu-lista').innerHTML,/Ver ejemplo en mi carta/);
  n.context.editarDatoBorrador(0,'nombre','Criolla',0);
  assert.match(n.el('revision-elecciones-previa-0').innerHTML,/Criolla/);
  assert.doesNotMatch(n.el('revision-elecciones-previa-0').innerHTML,/Hawaiana/);
