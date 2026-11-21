@@ -624,7 +624,7 @@ $('password-form').addEventListener('submit', async event => {
 });
 
 function activarPestana(nombre) {
-  const ids = ['historial', 'analisis', 'registro', 'facturas', 'restaurantes', 'acumulado'];
+  const ids = ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado'];
   for (const id of ids) {
     const activa = id === nombre;
     $(`vista-${id}`).classList.toggle('hidden', !activa);
@@ -640,7 +640,6 @@ function activarPestana(nombre) {
 }
 $('tab-historial').addEventListener('click', () => activarPestana('historial'));
 $('tab-analisis').addEventListener('click', () => activarPestana('analisis'));
-$('tab-registro').addEventListener('click', () => activarPestana('registro'));
 $('tab-facturas').addEventListener('click', () => activarPestana('facturas'));
 $('tab-restaurantes').addEventListener('click', () => activarPestana('restaurantes'));
 $('tab-acumulado').addEventListener('click', () => activarPestana('acumulado'));
