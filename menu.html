@@ -128,7 +128,14 @@
         outline: 2px solid #A53D24;
         outline-offset: -3px;
     }
-</style>
+    html[data-ejemplo-producto] body { background:transparent !important; padding-bottom:0 !important; }
+    html[data-ejemplo-producto] body > header, html[data-ejemplo-producto] #barra-carrito { display:none !important; }
+    html[data-ejemplo-producto] #contenedor-menu { padding:0 !important; }
+    html[data-ejemplo-producto] #contenedor-menu > div { margin:0 !important; }
+    html[data-ejemplo-producto] #contenedor-menu h2 { display:none !important; }
+    html[data-ejemplo-producto] #contenedor-menu .grid { grid-template-columns:1fr !important; margin-bottom:0 !important; }
+    html[data-ejemplo-producto="opciones"] #contenedor-menu { display:none; }
+  </style>
     <link rel="stylesheet" href="/velox-theme.css?v=fotos-integradas">
 </head>
 
@@ -251,7 +258,7 @@
         <form method="dialog" class="mt-4"><button class="min-h-11 rounded-lg bg-red-600 px-4 text-white">Listo</button></form>
     </dialog>
 
-    <script src="/app.menu-categorias.js?v=elegir-variante-carta-organizada"></script>
+    <script src="/app.menu-categorias.js?v=ejemplo-real"></script>
     <script>
         var cart = [];
         var numeroWhatsAppRestaurante = '';
@@ -265,6 +272,9 @@
 
 window.VELOX_VISTA_BORRADOR = window.parent !== window
     && new URLSearchParams(window.location.search).get('vista') === 'borrador';
+
+const modoEjemploProducto = window.VELOX_VISTA_BORRADOR && new URLSearchParams(window.location.search).get('ejemplo');
+if(modoEjemploProducto) document.documentElement.dataset.ejemploProducto=modoEjemploProducto;
 
 async function cargarMenu() {
     if (window.VELOX_VISTA_BORRADOR) return;
@@ -672,6 +682,7 @@ function iniciarPersonalizacion(id) {
     const producto = todosLosProductos.find(p => String(p.id) === String(id));
     if (!producto || producto.disponible === false) return;
 
+    if(modoEjemploProducto==='tarjeta') { window.parent.postMessage({tipo:'velox-ejemplo-abrir'},window.location.origin); return; }
     const personalizacion = obtenerPersonalizacionProducto(producto);
     const requiereEleccion = personalizacion.selectores.length > 0;
 
@@ -709,11 +720,13 @@ function cerrarModalPersonalizar() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
     productoPersonalizacionActual = null;
+    if(modoEjemploProducto==='opciones') window.parent.postMessage({tipo:'velox-ejemplo-cerrar'},window.location.origin);
 }
 
 function confirmarPersonalizacion(event) {
     event.preventDefault();
     if (!productoPersonalizacionActual) return;
+    if(modoEjemploProducto) { cerrarModalPersonalizar(); return; }
 
     const { producto, selectores } = productoPersonalizacionActual;
     const selecciones = Array.from(document.querySelectorAll('#campos-personalizar input[type="radio"][required]:checked')).map(input => {
@@ -977,12 +990,19 @@ function eliminarItemCarrito(index) {
                     || datos?.tipo !== 'velox-borrador-carta' || !Array.isArray(datos.productos)) return;
 
                 window.VELOX_EDICION_BORRADOR = datos.editable === true;
-                cerrarModalPersonalizar();
+                if(!modoEjemploProducto) cerrarModalPersonalizar();
                 cerrarModalPedido();
                 cart = [];
                 actualizarBarraCarrito();
                 mostrarCartaMenu({ nombre_restaurante: datos.restaurante || 'Tu restaurante' },
                     datos.productos.map((producto, indice) => ({ ...producto, id: `borrador-${indice}` })));
+                if(modoEjemploProducto) {
+                    if(datos.abrirOpciones && modoEjemploProducto==='opciones') iniciarPersonalizacion('borrador-0');
+                    const avisarAltura=()=>window.parent.postMessage({tipo:'velox-ejemplo-altura',altura:document.getElementById('contenedor-menu').scrollHeight+4},window.location.origin);
+                    requestAnimationFrame(avisarAltura);
+                    document.querySelectorAll('#contenedor-menu img').forEach(img=>img.addEventListener('load',avisarAltura,{once:true}));
+                    if(window.ResizeObserver) { window.observadorEjemplo?.disconnect();window.observadorEjemplo=new ResizeObserver(avisarAltura);window.observadorEjemplo.observe(document.getElementById('contenedor-menu')); }
+                }
             });
         }
         window.cargarMenu = cargarMenu;

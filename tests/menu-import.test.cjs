@@ -674,7 +674,7 @@ test('Listo vuelve a la carta y conserva la edición sin publicar el borrador', 
  assert.equal(n.el('form-revision-menu').hidden,true);
  assert.equal(n.el('btn-terminar-revision').hidden,false);
  assert.match(n.el('revision-menu-lista').innerHTML,/Personalizar este producto/);
- assert.match(n.el('revision-menu-lista').innerHTML,/Ver ejemplo en mi carta/);
+ assert.match(n.el('revision-menu-lista').innerHTML,/Ver ejemplo si personalizas tu producto/);
  assert.match(n.el('revision-menu-lista').innerHTML,/Eliminar del borrador/);
  assert.doesNotMatch(n.el('revision-menu-lista').innerHTML,/Quitar de esta carga/);
  n.context.editarDatoBorrador(0,'descripcion','Tomate y queso');
@@ -719,13 +719,13 @@ test('la vista de elecciones muestra datos reales, escapa texto y se actualiza a
  const {crearVistaEleccionesCliente}=require('../app.menu-categorias');
  const html=crearVistaEleccionesCliente([{grupo:'Sabor',nombre:'Hawaiana <especial>',descripcion:'Piña & queso'},{grupo:'__velox_combo_family__',nombre:'Oculto'},{grupo:'Sabor',nombre:''}],'prueba');
  assert.match(html,/Elige un sabor/);
- assert.match(html,/type="radio"/);
+ assert.match(html,/Hawaiana|Opción A/);
  assert.match(html,/Hawaiana &lt;especial&gt;/);
  assert.match(html,/Piña &amp; queso/);
  assert.doesNotMatch(html,/Oculto|<especial>/);
  const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});
  n.run(`borradorMenu.productos[0].opciones=[{grupo:'Sabor',nombre:'Hawaiana',descripcion:'Piña'}]; renderizarRevisionMenu(0);`);
- assert.match(n.el('revision-menu-lista').innerHTML,/Ver ejemplo en mi carta/);
+ assert.match(n.el('revision-menu-lista').innerHTML,/Ver ejemplo si personalizas tu producto/);
  n.context.editarDatoBorrador(0,'nombre','Criolla',0);
  assert.match(n.el('revision-elecciones-previa-0').innerHTML,/Criolla/);
  assert.doesNotMatch(n.el('revision-elecciones-previa-0').innerHTML,/Hawaiana/);
@@ -751,11 +751,11 @@ test('el ejemplo vivo muestra el producto completo y actualiza datos sin guardar
  const html=crearVistaProductoCliente(p,'producto');
  assert.match(html,/Pizza &lt;especial&gt;/);
  assert.match(html,/Piña &amp; queso/);
- assert.match(html,/19\.000/);
- assert.match(html,/src="https:\/\/fotos.example\/pizza.webp"/);
- assert.match(html,/Elegir sabores/);
- assert.match(html,/data-ejemplo-opciones/);
- assert.match(html,/type="radio"/);
+ assert.match(html,/19000/);
+ assert.match(html,/https:\/\/fotos.example\/pizza.webp/);
+ assert.match(html,/data-ejemplo-producto/);
+ assert.match(html,/ejemplo=tarjeta/);
+ assert.match(html,/Hawaiana|Opción A/);
  assert.doesNotMatch(crearVistaProductoCliente({...p,imagen_url:'javascript:alert(1)'},'x'),/src="javascript/);
  assert.match(crearVistaProductoCliente({...p,opciones:[]},'x'),/Ejemplo ilustrativo/);
  const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});
@@ -764,14 +764,14 @@ test('el ejemplo vivo muestra el producto completo y actualiza datos sin guardar
  n.context.editarDatoBorrador(0,'descripcion','Carne y queso');
  n.context.editarDatoBorrador(0,'precio','25.000');
  const vista=n.el('revision-elecciones-previa-0').innerHTML;
- assert.match(vista,/Pizza nueva/);assert.match(vista,/Carne y queso/);assert.match(vista,/25\.000/);assert.match(vista,/Elegir sabores/);
+ assert.match(vista,/Pizza nueva/);assert.match(vista,/Carne y queso/);assert.match(vista,/25000/);assert.match(vista,/ejemplo=tarjeta/);
 });
 
  test('un producto vacío siempre tiene ejemplo interactivo sin guardar los datos de muestra',()=>{
  const {crearVistaProductoCliente}=require('../app.menu-categorias');
  const p={nombre:'',precio:0,descripcion:'',opciones:[]};
  const original=JSON.stringify(p);const html=crearVistaProductoCliente(p,'muestra');
- for(const texto of ['Ejemplo ilustrativo','Pizza personal','19.000','Elegir sabores','Hawaiana','Pollo','Tu foto aquí']) assert.ok(html.includes(texto),texto);
+ for(const texto of ['Ejemplo ilustrativo','Pizza personal','19000','Hawaiana','Pollo','ejemplo=tarjeta']) assert.ok(html.includes(texto),texto);
  assert.doesNotMatch(html,/Precio pendiente|Nombre del producto|Sin foto/);
  assert.equal(JSON.stringify(p),original);
  });
@@ -781,8 +781,46 @@ test('el ejemplo siempre abre variantes con el mismo botón que la carta',()=>{
  for (const [grupo,boton] of [['Sabor','Elegir sabores'],['Gaseosas','Elegir gaseosas'],['Acompañamiento','Elegir acompañamiento'],['Salsas','Elegir salsas']]) {
   assert.equal(textoBotonVariantesCliente([grupo]),boton);
   const html=crearVistaProductoCliente({nombre:'Combo',precio:20000,opciones:[{grupo,nombre:'Opción A'},{grupo,nombre:'Opción B'}]},'prueba');
-  assert.ok(html.includes(boton));assert.match(html,/data-ejemplo-opciones/);assert.match(html,/type="radio"/);assert.match(html,/Opción A/);assert.match(html,/Opción B/);assert.doesNotMatch(html,/\+ Agregar/);
+  assert.ok(html.includes(grupo));assert.match(html,/ejemplo=tarjeta/);assert.match(html,/Hawaiana|Opción A/);assert.match(html,/Opción A/);assert.match(html,/Opción B/);assert.doesNotMatch(html,/\+ Agregar/);
  }
- assert.match(crearVistaProductoCliente({},'demo'),/Elegir sabores/);
+ assert.match(crearVistaProductoCliente({},'demo'),/Hawaiana/);
  assert.doesNotMatch(crearVistaProductoCliente({},'demo'),/\+ Agregar/);
+});
+
+test('el editor guiado conserva descripciones y grupos internos al editar opciones',()=>{
+ const elementos=new Map();
+ const el=id=>{if(!elementos.has(id))elementos.set(id,{value:'',innerHTML:'',textContent:'',hidden:false});return elementos.get(id);};
+ const contexto={document:{getElementById:el},console,URL,confirm:()=>true,productosEditor:[],urlMiniaturaProducto:'',quitarImagenGuardadaProducto:false,imagenGuardadaProducto:'',escaparHtmlUI:v=>String(v??'').replace(/</g,'&lt;'),actualizarEjemploProductoCliente(){}};
+ vm.createContext(contexto);vm.runInContext(read('app.menu-categorias.js'),contexto);
+ const html=read('dashboard.html');
+ vm.runInContext(html.slice(html.indexOf('    let opcionesGuardadasProducto = [];'),html.indexOf('    async function guardarProducto(event)')),contexto);
+ vm.runInContext(`opcionesGuardadasProducto=[{grupo:'Proteína',nombre:'Pollo',descripcion:'A la plancha',extra:'conservar'},{grupo:'__velox_combo_family__',nombre:'interno'}]; cargarGruposProducto(opcionesGuardadasProducto);`,contexto);
+ assert.equal(contexto.leerOpcionesEditadasProducto(),null);
+ contexto.editarGrupoProducto(0,'Proteína principal');contexto.editarOpcionProducto(0,0,'Pollo desmechado');
+ const opciones=contexto.leerOpcionesEditadasProducto();
+ assert.equal(opciones[0].grupo,'Proteína principal');assert.equal(opciones[0].nombre,'Pollo desmechado');assert.equal(opciones[0].descripcion,'A la plancha');assert.equal(opciones[0].extra,'conservar');assert.equal(opciones[1].grupo,'__velox_combo_family__');
+ vm.runInContext("gruposProducto.push({nombre:'',opciones:[{nombre:''}]})",contexto);
+ assert.throws(()=>contexto.leerOpcionesEditadasProducto(),/Completa el nombre del grupo/);
+});
+
+test('los nombres parecidos se avisan sin fusionar ni modificar las opciones',()=>{
+ const {gruposParecidosCliente}=require('../app.menu-categorias');
+ const opciones=[{grupo:'Proteína',nombre:'Pollo'},{grupo:'Poteína',nombre:'Carne'},{grupo:'Gaseosas',nombre:'Cola'}];
+ const original=JSON.stringify(opciones);const pares=gruposParecidosCliente(opciones);
+ assert.deepEqual(pares,[['Proteína','Poteína']]);assert.equal(JSON.stringify(opciones),original);
+ assert.deepEqual(gruposParecidosCliente([{grupo:'Sabores'},{grupo:'Salsas'}]),[]);
+});
+
+test('el ejemplo reutiliza una sola tarjeta de la carta y abre el panel real',()=>{
+ const html=read('app.menu-categorias.js'), menu=read('menu.html');
+ assert.match(html,/productos:\[producto\]/);
+ assert.match(html,/velox-ejemplo-abrir/);
+ assert.match(html,/dialogo.showModal\(\)/);
+ assert.match(menu,/modoEjemploProducto==='tarjeta'/);
+ assert.match(menu,/iniciarPersonalizacion\('borrador-0'\)/);
+ assert.match(menu,/if\(modoEjemploProducto\) \{ cerrarModalPersonalizar\(\); return; \}/);
+ const {crearVistaProductoCliente}=require('../app.menu-categorias');
+ const render=crearVistaProductoCliente({nombre:'Mi pizza',precio:19000},'x');
+ assert.equal((render.match(/<iframe/g)||[]).length,1);
+ assert.doesNotMatch(render,/<summary|velox-ejemplo-elegir/);
 });

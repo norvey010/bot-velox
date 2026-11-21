@@ -160,6 +160,17 @@ function crearVistaEleccionesCliente(opciones, prefijo) {
     return `<div class="velox-elecciones-vista">${[...grupos].map(([grupo,lista],g)=>`<fieldset class="mb-3 last:mb-0"><legend class="mb-2 text-sm font-semibold">${/^(sabor|sabores|especialidad|especialidades)$/.test(normalizarTexto(grupo)) ? 'Elige un sabor' : 'Elige '+escapar(grupo.toLowerCase())}</legend>${lista.map((o,j)=>`<label class="mb-2 flex min-h-11 cursor-pointer items-start gap-2 rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm"><input type="radio" name="${escapar(prefijo)}-grupo-${g}" value="${j}" class="mt-1 shrink-0 accent-red-600"><span class="min-w-0 break-words"><strong class="block">${escapar(o.nombre)}</strong>${o.descripcion ? `<small class="block text-xs text-slate-400">${escapar(o.descripcion)}</small>` : ''}</span></label>`).join('')}</fieldset>`).join('')}</div>`;
 }
 
+function gruposParecidosCliente(opciones) {
+    const nombres = [...new Set((opciones||[]).filter(o=>o && typeof o==='object' && !String(o.grupo||'').startsWith('__')).map(o=>String(o.grupo||'').trim()).filter(Boolean))];
+    const distancia = (a,b) => { let fila=Array.from({length:b.length+1},(_,i)=>i); for(let i=1;i<=a.length;i++){const siguiente=[i];for(let j=1;j<=b.length;j++) siguiente[j]=Math.min(siguiente[j-1]+1,fila[j]+1,fila[j-1]+(a[i-1]===b[j-1]?0:1));fila=siguiente;} return fila[b.length]; };
+    const pares=[];
+    for(let i=0;i<nombres.length;i++) for(let j=i+1;j<nombres.length;j++) {
+      const a=normalizarTexto(nombres[i]), b=normalizarTexto(nombres[j]);
+      if(a===b || Math.min(a.length,b.length)>=5 && distancia(a,b)<=1) pares.push([nombres[i],nombres[j]]);
+    }
+    return pares;
+}
+
 function textoBotonVariantesCliente(grupos) {
     const nombres = [...new Set(grupos.map(g=>String(g||'').trim()).filter(Boolean))];
     if (nombres.length && nombres.every(g=>/^(sabor|sabores|especialidad|especialidades)$/.test(normalizarTexto(g)))) return 'Elegir sabores';
@@ -167,38 +178,58 @@ function textoBotonVariantesCliente(grupos) {
     return 'Elegir opciones';
 }
 
-function crearVistaProductoCliente(producto, prefijo) {
+function datosEjemploProductoCliente(producto) {
     const validas = (Array.isArray(producto.opciones) ? producto.opciones : []).filter(o=>o && typeof o==='object' && String(o.grupo||'').trim() && String(o.nombre||'').trim() && !String(o.grupo).startsWith('__'));
     const muestra = !String(producto.nombre||'').trim() || !(Number(producto.precio)>0) || !validas.length;
-    // Los valores de demostración se usan solo para renderizar; nunca modifican el producto.
-    producto = {...producto,
-      nombre: String(producto.nombre||'').trim() || 'Pizza personal',
-      precio: Number(producto.precio)>0 ? producto.precio : 19000,
-      descripcion: producto.descripcion || (muestra ? 'Pizza con queso y el sabor que elijas.' : ''),
-      opciones: validas.length ? validas : [{grupo:'Sabor',nombre:'Hawaiana',descripcion:'Piña, jamón y queso'},{grupo:'Sabor',nombre:'Pollo',descripcion:'Pollo y queso'}]
-    };
+    let foto=''; try {const url=new URL(producto.imagen_url);if(['https:','http:','blob:'].includes(url.protocol))foto=url.href;} catch {}
+    return {muestra, producto:{...producto,
+      nombre:String(producto.nombre||'').trim() || 'Pizza personal',
+      precio:Number(producto.precio)>0 ? Number(producto.precio) : 19000,
+      categoria:producto.categoria || 'Pizzas', disponible:true, imagen_url:foto,
+      descripcion:producto.descripcion || (muestra ? 'Producto preparado al momento, con la opción que elijas.' : ''),
+      opciones:validas.length ? validas : [{grupo:'Sabores',nombre:'Hawaiana',descripcion:'Piña, jamón y queso'},{grupo:'Sabores',nombre:'Pollo',descripcion:'Pollo y queso'}]
+    }};
+}
+
+function crearVistaProductoCliente(producto, prefijo) {
+    const datos=datosEjemploProductoCliente(producto);
     const escapar = valor => String(valor ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const opciones = (Array.isArray(producto.opciones) ? producto.opciones : []).filter(o=>o && typeof o==='object' && o.grupo && o.nombre && !String(o.grupo).startsWith('__'));
-    const grupos = [...new Set(opciones.map(o=>String(o.grupo).trim()))];
-    const boton = textoBotonVariantesCliente(grupos);
-    let foto = '';
-    try { const url = new URL(producto.imagen_url); if (['https:','http:','blob:'].includes(url.protocol)) foto=url.href; } catch {}
-    const precio = Number(producto.precio);
-    return `${muestra ? '<p class="velox-ejemplo-aviso">Ejemplo ilustrativo. Los datos de muestra no se guardan.</p>' : ''}<article class="velox-producto-ejemplo" aria-label="Ejemplo del producto en tu carta">
-      <div class="velox-producto-ejemplo-foto">${foto ? `<img src="${escapar(foto)}" alt="${escapar(producto.nombre)}">` : '<span class="velox-ejemplo-foto-guia"><span aria-hidden="true">🍽️</span><small>Tu foto aquí</small></span>'}</div>
-      <div class="velox-producto-ejemplo-datos"><h3>${escapar(producto.nombre || 'Nombre del producto')}</h3>
-      ${producto.descripcion ? `<p>${escapar(producto.descripcion)}</p>` : ''}
-      <strong class="velox-producto-ejemplo-precio">${Number.isFinite(precio) && precio>0 ? '$'+precio.toLocaleString('es-CO') : 'Precio pendiente'}</strong>
-      <details data-ejemplo-opciones><summary class="velox-ejemplo-elegir">${escapar(boton)} <span aria-hidden="true">⌄</span></summary><div class="velox-producto-ejemplo-opciones">${crearVistaEleccionesCliente(opciones,prefijo)}<small class="velox-ejemplo-aviso">Puedes probar las opciones. No se crea ningún pedido.</small></div></details>
-      </div></article>`;
+    return `${datos.muestra ? '<p class="velox-ejemplo-aviso">Ejemplo ilustrativo. Los datos de muestra no se guardan.</p>' : ''}<iframe class="velox-ejemplo-carta-real" title="Ejemplo del producto en la carta real" src="/menu.html?vista=borrador&ejemplo=tarjeta&v=ejemplo-real" data-ejemplo-producto="${escapar(JSON.stringify(datos.producto))}" onload="enviarEjemploCartaReal(this)"></iframe>`;
+}
+
+function enviarEjemploCartaReal(marco, abrir=false) {
+    let producto;try {producto=JSON.parse(marco.dataset.ejemploProducto);}catch{return;}
+    marco.contentWindow?.postMessage({tipo:'velox-borrador-carta',restaurante:'Ejemplo',productos:[producto],editable:false,ejemploProducto:true,abrirOpciones:abrir},window.location.origin);
 }
 
 function actualizarEjemploProductoCliente(contenedor, producto, prefijo) {
-    if (!contenedor) return;
-    const abierto = contenedor.querySelector?.('[data-ejemplo-opciones]')?.open;
-    contenedor.innerHTML = crearVistaProductoCliente(producto,prefijo);
-    const opciones = contenedor.querySelector?.('[data-ejemplo-opciones]');
-    if (opciones && abierto) opciones.open = true;
+    if(!contenedor) return;
+    const marco=contenedor.querySelector?.('.velox-ejemplo-carta-real');
+    if(!marco) {contenedor.innerHTML=crearVistaProductoCliente(producto,prefijo);return;}
+    const datos=datosEjemploProductoCliente(producto);
+    marco.dataset.ejemploProducto=JSON.stringify(datos.producto);
+    const aviso=contenedor.querySelector('.velox-ejemplo-aviso');
+    if(aviso) aviso.hidden=!datos.muestra;
+    enviarEjemploCartaReal(marco);
 }
 
-if (typeof module !== 'undefined') module.exports = { revisarDatosFotoMenu, crearVistaEleccionesCliente, crearVistaProductoCliente, textoBotonVariantesCliente };
+if(typeof window!=='undefined' && window.addEventListener) window.addEventListener('message',event=>{
+    if(event.origin!==window.location.origin) return;
+    const marco=[...document.querySelectorAll('.velox-ejemplo-carta-real')].find(f=>f.contentWindow===event.source);
+    if(!marco)return;
+    if(event.data?.tipo==='velox-ejemplo-altura' && !marco.closest('dialog[data-ejemplo-dialogo]')) {
+      marco.style.height=Math.max(160,Math.min(900,Number(event.data.altura)||250))+'px';
+    }
+    if(event.data?.tipo==='velox-ejemplo-abrir') {
+      const dialogo=document.createElement('dialog');dialogo.dataset.ejemploDialogo='';
+      dialogo.className='velox-ejemplo-dialogo';
+      dialogo.innerHTML='<iframe class="velox-ejemplo-carta-real" title="Probar sabores y opciones como cliente" src="/menu.html?vista=borrador&ejemplo=opciones&v=ejemplo-real"></iframe>';
+      const panel=dialogo.querySelector('iframe');panel.dataset.ejemploProducto=marco.dataset.ejemploProducto;
+      panel.onload=()=>enviarEjemploCartaReal(panel,true);
+      dialogo.addEventListener('close',()=>{dialogo.remove();marco.focus();});
+      document.body.appendChild(dialogo);dialogo.showModal();
+    }
+    if(event.data?.tipo==='velox-ejemplo-cerrar') marco.closest('dialog[data-ejemplo-dialogo]')?.close();
+});
+
+if (typeof module !== 'undefined') module.exports = { revisarDatosFotoMenu, crearVistaEleccionesCliente, crearVistaProductoCliente, textoBotonVariantesCliente, gruposParecidosCliente, datosEjemploProductoCliente };
