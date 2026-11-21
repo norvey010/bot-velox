@@ -251,7 +251,7 @@
         <form method="dialog" class="mt-4"><button class="min-h-11 rounded-lg bg-red-600 px-4 text-white">Listo</button></form>
     </dialog>
 
-    <script src="/app.menu-categorias.js?v=carta-organizada"></script>
+    <script src="/app.menu-categorias.js?v=elegir-variante-carta-organizada"></script>
     <script>
         var cart = [];
         var numeroWhatsAppRestaurante = '';
@@ -656,13 +656,7 @@ function obtenerPersonalizacionProducto(producto) {
 }
 
 function textoBotonPersonalizacion(selectores) {
-    if (selectores.length && selectores.every(selector => /^(sabor|sabores|especialidad|especialidades)$/i.test(normalizarTexto(selector.grupo)))) {
-        return 'Elegir sabores';
-    }
-    if (selectores.length === 1 && /^(proteina|acompanamiento|bebida)$/.test(normalizarTexto(selectores[0].grupo))) {
-        return `Elegir ${selectores[0].grupo.toLowerCase()}`;
-    }
-    return 'Elegir opciones';
+    return textoBotonVariantesCliente(selectores.map(selector=>selector.grupo));
 }
 
 function escaparHtml(valor) {
