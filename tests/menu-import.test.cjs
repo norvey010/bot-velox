@@ -775,3 +775,14 @@ test('el ejemplo vivo muestra el producto completo y actualiza datos sin guardar
  assert.doesNotMatch(html,/Precio pendiente|Nombre del producto|Sin foto/);
  assert.equal(JSON.stringify(p),original);
  });
+
+test('el ejemplo siempre abre variantes con el mismo botón que la carta',()=>{
+ const {crearVistaProductoCliente,textoBotonVariantesCliente}=require('../app.menu-categorias');
+ for (const [grupo,boton] of [['Sabor','Elegir sabores'],['Gaseosas','Elegir gaseosas'],['Acompañamiento','Elegir acompañamiento'],['Salsas','Elegir salsas']]) {
+  assert.equal(textoBotonVariantesCliente([grupo]),boton);
+  const html=crearVistaProductoCliente({nombre:'Combo',precio:20000,opciones:[{grupo,nombre:'Opción A'},{grupo,nombre:'Opción B'}]},'prueba');
+  assert.ok(html.includes(boton));assert.match(html,/data-ejemplo-opciones/);assert.match(html,/type="radio"/);assert.match(html,/Opción A/);assert.match(html,/Opción B/);assert.doesNotMatch(html,/\+ Agregar/);
+ }
+ assert.match(crearVistaProductoCliente({},'demo'),/Elegir sabores/);
+ assert.doesNotMatch(crearVistaProductoCliente({},'demo'),/\+ Agregar/);
+});
