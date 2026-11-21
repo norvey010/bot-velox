@@ -141,6 +141,10 @@
     .velox-ejemplo-foto-guia small { font-size:12px; }
       .velox-producto-ejemplo .velox-ejemplo-elegir { background:#a83d24 !important; color:#fff !important; font-weight:700; box-shadow:0 5px 12px #a83d2426; }
     .velox-ejemplo-elegir span { margin-left:4px; }
+      .velox-ejemplo-carta-real { display:block; width:100%; height:270px; border:0; background:transparent; }
+    .velox-ejemplo-dialogo { padding:0; border:0; background:transparent; width:min(100vw,680px); max-width:100vw; height:90dvh; max-height:96dvh; overflow:hidden; }
+    .velox-ejemplo-dialogo::backdrop { background:#0009; }
+    .velox-ejemplo-dialogo .velox-ejemplo-carta-real { width:100%;height:100%; }
   </style>
     <link rel="stylesheet" href="/velox-theme.css?v=crema-terracota">
 </head>
@@ -466,11 +470,12 @@
       </div>
       <details id="prod-opciones-panel" class="velox-opciones-panel sm:col-span-2">
         <summary><span>Personalizar este producto<small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
-        <label for="prod-opciones">Una opción por línea</label>
-        <textarea id="prod-opciones" oninput="actualizarVistaEleccionesProducto()" rows="3" aria-describedby="prod-opciones-ayuda" placeholder="Proteína: ¼ de pollo&#10;Proteína: costilla churrasco" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></textarea>
-        <p id="prod-opciones-ayuda" class="mt-1 text-xs text-slate-400">Ejemplo: Proteína: Churrasco. También puedes escribir solo Churrasco. El cliente elige una opción por grupo, al mismo precio.</p>
+        <div id="prod-grupos" class="space-y-3 p-2"></div>
+        <datalist id="prod-grupos-sugeridos"><option value="Proteína"><option value="Sabores"><option value="Gaseosas"><option value="Salsas"><option value="Acompañamiento"><option value="Tamaño"></datalist>
+        <button type="button" onclick="agregarGrupoProducto()" class="min-h-11 rounded-lg border border-slate-700 px-3 text-sm">+ Añadir otro grupo</button>
+        <p id="prod-grupos-aviso" class="p-2 text-sm text-amber-300" role="status" hidden></p>
         <details class="velox-opcion-fila m-2" aria-label="Ejemplo de las elecciones del cliente">
-          <summary><span>Ver ejemplo en mi carta</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+          <summary><span>Ver ejemplo si personalizas tu producto</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
           <div id="producto-elecciones-previa" class="p-3"></div>
         </details>
       </details>
@@ -529,7 +534,7 @@
     </footer>
   </dialog>
 
-  <script src="/app.menu-categorias.js?v=elegir-variante"></script>
+  <script src="/app.menu-categorias.js?v=ejemplo-real"></script>
   <script>
     let RESTAURANTE_ID = null;
     let ANCHO_PAPEL_IMPRESORA = 80;
@@ -1233,17 +1238,48 @@
     });
 
     let opcionesGuardadasProducto = [];
-    let textoOpcionesGuardadas = '';
+    let gruposProducto = [];
+    let gruposProductoOriginal = '[]';
+
+    function cargarGruposProducto(opciones) {
+      gruposProducto=[];
+      for(const entrada of opciones || []) {
+        const o=typeof entrada==='string' ? {grupo:'Variante',nombre:entrada,descripcion:''} : entrada;
+        if(!o || String(o.grupo||'').startsWith('__')) continue;
+        let grupo=gruposProducto.find(g=>g.nombre===o.grupo);
+        if(!grupo) gruposProducto.push(grupo={nombre:o.grupo || '',opciones:[]});
+        grupo.opciones.push({...o});
+      }
+      gruposProductoOriginal=JSON.stringify(gruposProducto);
+      renderizarGruposProducto();
+    }
+    function opcionesGruposProducto() {
+      return gruposProducto.flatMap(g=>g.opciones.map(o=>({...o,grupo:g.nombre.trim()})));
+    }
+    function renderizarGruposProducto() {
+      const e=escaparHtmlUI;
+      document.getElementById('prod-grupos').innerHTML=gruposProducto.map((g,i)=>`<section class="velox-foto-producto space-y-2">
+        <label class="block text-sm font-semibold">Grupo<input list="prod-grupos-sugeridos" value="${e(g.nombre)}" maxlength="120" placeholder="Elige o escribe: Proteína, Sabores…" oninput="editarGrupoProducto(${i},this.value)" class="mt-1 w-full rounded-lg border border-slate-700 p-2"></label>
+        <p class="text-xs text-slate-400">El cliente elige una de estas opciones.</p>
+        ${g.opciones.map((o,j)=>`<div class="flex items-center gap-2"><label class="min-w-0 flex-1 text-xs">Opción<input value="${e(o.nombre||'')}" maxlength="200" placeholder="Ej.: Pollo desmechado" oninput="editarOpcionProducto(${i},${j},this.value)" class="mt-1 w-full rounded-lg border border-slate-700 p-2"></label><button type="button" aria-label="Quitar opción ${e(o.nombre||'')}" onclick="quitarOpcionProducto(${i},${j})" class="min-h-11 min-w-11">×</button></div>`).join('')}
+        <div class="flex flex-wrap gap-2"><button type="button" onclick="agregarOpcionProducto(${i})" class="min-h-11 px-2 text-sm">+ Añadir opción</button><button type="button" onclick="quitarGrupoProducto(${i})" class="min-h-11 px-2 text-sm text-red-300">Eliminar grupo</button></div></section>`).join('');
+      actualizarAvisoGruposProducto();
+    }
+    function actualizarAvisoGruposProducto() {
+      const pares=gruposParecidosCliente(opcionesGruposProducto());
+      const aviso=document.getElementById('prod-grupos-aviso');
+      aviso.hidden=!pares.length;
+      aviso.textContent=pares.map(([a,b])=>`¿«${a}» y «${b}» son el mismo grupo? Revisa sus nombres antes de guardar.`).join(' ');
+    }
+    function editarGrupoProducto(i,valor){gruposProducto[i].nombre=valor;actualizarAvisoGruposProducto();actualizarVistaEleccionesProducto();}
+    function editarOpcionProducto(i,j,valor){gruposProducto[i].opciones[j].nombre=valor;actualizarVistaEleccionesProducto();}
+    function agregarGrupoProducto(){gruposProducto.push({nombre:'',opciones:[{nombre:'',descripcion:''}]});renderizarGruposProducto();document.getElementById('prod-grupos').lastElementChild.querySelector('input').focus();actualizarVistaEleccionesProducto();}
+    function agregarOpcionProducto(i){gruposProducto[i].opciones.push({nombre:'',descripcion:''});renderizarGruposProducto();document.getElementById('prod-grupos').children[i].querySelectorAll('input')[gruposProducto[i].opciones.length].focus();actualizarVistaEleccionesProducto();}
+    function quitarOpcionProducto(i,j){gruposProducto[i].opciones.splice(j,1);renderizarGruposProducto();actualizarVistaEleccionesProducto();}
+    function quitarGrupoProducto(i){if(gruposProducto[i].opciones.some(o=>o.nombre) && !confirm('¿Eliminar este grupo y sus opciones del producto?'))return;gruposProducto.splice(i,1);renderizarGruposProducto();actualizarVistaEleccionesProducto();}
 
     function actualizarVistaEleccionesProducto() {
-      const opciones = document.getElementById('prod-opciones').value.split(/\r?\n/).flatMap(linea => {
-        const separador = linea.indexOf(':');
-        if (!linea.trim()) return [];
-        const grupo = separador < 0 ? 'Opción' : linea.slice(0,separador).trim();
-        const nombre = separador < 0 ? linea.trim() : linea.slice(separador+1).trim();
-        const anterior = opcionesGuardadasProducto.find(o=>o?.grupo===grupo && o.nombre===nombre);
-        return [{grupo,nombre,descripcion:anterior?.descripcion || ''}];
-      });
+      const opciones = opcionesGruposProducto();
       actualizarEjemploProductoCliente(document.getElementById('producto-elecciones-previa'), {
         nombre: document.getElementById('prod-nombre').value,
         descripcion: document.getElementById('prod-descripcion').value,
@@ -1255,18 +1291,9 @@
     }
 
     function leerOpcionesEditadasProducto() {
-      const texto = document.getElementById('prod-opciones').value.trim();
-      if (texto === textoOpcionesGuardadas) return null;
-      const opciones = texto.split(/\r?\n/).map(linea => linea.trim()).filter(Boolean).map(linea => {
-        const separador = linea.indexOf(':');
-        const grupo = separador < 0 ? 'Opción' : linea.slice(0, separador).trim();
-        const nombre = separador < 0 ? linea.trim() : linea.slice(separador + 1).trim();
-        if (separador === 0 || !grupo || !nombre || grupo.startsWith('__') || grupo.length > 120 || nombre.length > 200) {
-          throw new Error('Escribe cada opción así: Grupo: opción. Por ejemplo, Proteína: ¼ de pollo.');
-        }
-        const anterior = opcionesGuardadasProducto.find(opcion => opcion?.grupo === grupo && opcion.nombre === nombre);
-        return { grupo, nombre, descripcion: anterior?.descripcion || '' };
-      });
+      if(JSON.stringify(gruposProducto)===gruposProductoOriginal) return null;
+      if(gruposProducto.some(g=>!g.nombre.trim() || g.nombre.trim().startsWith('__') || g.nombre.length>120 || !g.opciones.length || g.opciones.some(o=>!String(o.nombre||'').trim() || o.nombre.length>200))) throw new Error('Completa el nombre del grupo y sus opciones, o elimina el grupo vacío.');
+      const opciones=opcionesGruposProducto().map(o=>({...o,nombre:o.nombre.trim()}));
       const internas = opcionesGuardadasProducto.filter(opcion => opcion?.grupo === '__velox_combo_family__');
       if (opciones.length + internas.length > 200) throw new Error('Usa máximo 200 opciones por producto.');
       return [...opciones, ...internas];
@@ -1297,6 +1324,8 @@
         if (!Number.isSafeInteger(precioNumerico) || precioNumerico <= 0) throw new Error('Ingresa un precio válido mayor que $0.');
 
         const opciones = leerOpcionesEditadasProducto();
+        const parecidos=gruposParecidosCliente(opciones || opcionesGuardadasProducto);
+        if(parecidos.length && !confirm(parecidos.map(([a,b])=>`¿«${a}» y «${b}» son el mismo grupo?`).join('\n')+'\nAceptar: guardar como grupos separados. Cancelar: volver y corregir.')) return;
         const file = fileInput.files[0] || fotoBorradorIA;
         if (file) {
           const fileExt = file.name.split('.').pop();
@@ -1446,12 +1475,7 @@
       document.getElementById('prod-precio').value = formatearPrecioCOP(data.precio || '');
       document.getElementById('prod-descripcion').value = data.descripcion || '';
       opcionesGuardadasProducto = Array.isArray(data.opciones) ? data.opciones : [];
-      textoOpcionesGuardadas = opcionesGuardadasProducto
-        .filter(opcion => opcion && opcion.grupo !== '__velox_combo_family__')
-        .map(opcion => typeof opcion === 'string' ? `Variante: ${opcion}`
-          : `${opcion.grupo || 'Variante'}: ${opcion.nombre || ''}`)
-        .join('\n').trim();
-      document.getElementById('prod-opciones').value = textoOpcionesGuardadas;
+      cargarGruposProducto(opcionesGuardadasProducto);
       actualizarVistaEleccionesProducto();
       prepararCategoriaProducto(data.categoria || 'General');
       imagenGuardadaProducto = data.imagen_url || '';
@@ -1518,10 +1542,9 @@
 
     function limpiarFormProducto() {
       document.getElementById('form-producto').reset();
-      document.getElementById('prod-opciones').value = '';
       document.getElementById('prod-opciones-panel').open = false;
       opcionesGuardadasProducto = [];
-      textoOpcionesGuardadas = '';
+      cargarGruposProducto([]);
       actualizarVistaEleccionesProducto();
       limpiarMiniaturaProducto();
       document.getElementById('prod-id').value = '';
@@ -1982,6 +2005,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=elegir-variante"></script>
+  <script src="/app.menu-import.js?v=ejemplo-real"></script>
 </body>
 </html>

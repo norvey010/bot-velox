@@ -678,7 +678,7 @@ function renderizarRevisionMenu(i) {
         <h4 class="text-sm font-semibold">${escaparHtmlUI(grupo || 'Nuevo grupo')} (${lista.length})</h4>
         <details${grupo ? '' : ' open'}>
           <summary class="cursor-pointer py-2 text-xs text-slate-400">${grupo ? 'Cambiar nombre del grupo' : 'Ponle un nombre al grupo'}</summary>
-          <label class="block text-xs">Nombre del grupo<input value="${escaparHtmlUI(grupo)}" placeholder="Ej.: Sabor" maxlength="120" onchange="renombrarGrupoBorrador(${i},${primero.j},this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm"></label>
+          <label class="block text-xs">Nombre del grupo<input value="${escaparHtmlUI(grupo)}" list="revision-grupos-sugeridos" placeholder="Elige o escribe: Sabores, Proteína…" maxlength="120" onchange="renombrarGrupoBorrador(${i},${primero.j},this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm"></label>
         </details>
         ${lista.map(({opcion:o,j})=>`<details class="velox-opcion-fila"${o.nombre?.trim() ? '' : ' open'}>
           <summary><span id="revision-opcion-nombre-${i}-${j}">${escaparHtmlUI(o.nombre || 'Nueva opción')}</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
@@ -721,12 +721,14 @@ function renderizarRevisionMenu(i) {
           <details class="velox-opciones-panel" id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
             <summary><span>Personalizar este producto<small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
             ${p.revision_opciones ? '<p class="mb-2 text-xs text-amber-300">Compara con la descripción. Agrega las opciones de precio fijo que se eligen de una en una. Si hay precios distintos, revisa si deben ser productos separados.</p>' : ''}
+            <datalist id="revision-grupos-sugeridos"><option value="Proteína"><option value="Sabores"><option value="Gaseosas"><option value="Salsas"><option value="Acompañamiento"><option value="Tamaño"></datalist>
+            ${gruposParecidosCliente(p.opciones).map(([a,b])=>`<p class="p-2 text-xs text-amber-300">¿«${escaparHtmlUI(a)}» y «${escaparHtmlUI(b)}» son el mismo grupo? Revisa sus nombres.</p>`).join('')}
             <p class="mt-3 px-2 text-sm font-semibold">Editar opciones</p>
             <div class="space-y-2">${opciones}</div>
             <button type="button" onclick="cambiarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-white">${cantidadOpciones ? '+ Añadir otro grupo' : '+ Añadir sabores u opciones'}</button>
             ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
             <details class="velox-opcion-fila m-2" aria-label="Ejemplo de las elecciones del cliente">
-              <summary><span>Ver ejemplo en mi carta</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
+              <summary><span>Ver ejemplo si personalizas tu producto</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
               <div id="revision-elecciones-previa-${i}" class="p-3">${crearVistaProductoCliente({...p, imagen_url:foto},`borrador-${i}`)}</div>
             </details>
           </details>
@@ -895,6 +897,8 @@ async function publicarMenuRevisado(event) {
     }
     return;
   }
+  const parecidos=borradorMenu.productos.flatMap(p=>gruposParecidosCliente(p.opciones).map(([a,b])=>`«${p.nombre}»: «${a}» y «${b}»`));
+  if(parecidos.length && !confirm('Hay grupos con nombres parecidos:\n'+parecidos.slice(0,10).join('\n')+'\n¿Son grupos distintos? Aceptar: publicar separados. Cancelar: revisar.')) return;
   publicandoMenu=true;
   actualizarAccionesBorrador('publicar');
   document.getElementById('revision-menu').setAttribute('inert','');
