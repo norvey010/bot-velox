@@ -757,7 +757,7 @@ test('el ejemplo vivo muestra el producto completo y actualiza datos sin guardar
  assert.match(html,/data-ejemplo-opciones/);
  assert.match(html,/type="radio"/);
  assert.doesNotMatch(crearVistaProductoCliente({...p,imagen_url:'javascript:alert(1)'},'x'),/src="javascript/);
- assert.match(crearVistaProductoCliente({...p,opciones:[]},'x'),/\+ Agregar/);
+ assert.match(crearVistaProductoCliente({...p,opciones:[]},'x'),/Ejemplo ilustrativo/);
  const n=navegador();await n.context.enviarMenuConIA({preventDefault(){}});
  n.run("borradorMenu.productos[0].opciones=[{grupo:'Sabor',nombre:'Hawaiana'}]; renderizarRevisionMenu(0);");
  n.context.editarDatoBorrador(0,'nombre','Pizza nueva');
@@ -766,3 +766,12 @@ test('el ejemplo vivo muestra el producto completo y actualiza datos sin guardar
  const vista=n.el('revision-elecciones-previa-0').innerHTML;
  assert.match(vista,/Pizza nueva/);assert.match(vista,/Carne y queso/);assert.match(vista,/25\.000/);assert.match(vista,/Elegir sabores/);
 });
+
+ test('un producto vacío siempre tiene ejemplo interactivo sin guardar los datos de muestra',()=>{
+ const {crearVistaProductoCliente}=require('../app.menu-categorias');
+ const p={nombre:'',precio:0,descripcion:'',opciones:[]};
+ const original=JSON.stringify(p);const html=crearVistaProductoCliente(p,'muestra');
+ for(const texto of ['Ejemplo ilustrativo','Pizza personal','19.000','Elegir sabores','Hawaiana','Pollo','Tu foto aquí']) assert.ok(html.includes(texto),texto);
+ assert.doesNotMatch(html,/Precio pendiente|Nombre del producto|Sin foto/);
+ assert.equal(JSON.stringify(p),original);
+ });
