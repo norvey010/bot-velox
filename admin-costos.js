@@ -287,60 +287,111 @@ async function cargarFacturas(auto = true) {
       estadoFacturas(`Correo conectado: ${status.correo} · Comprobantes actualizados`, true);
     }
   }
-  const { facturas = [] } = await solicitarAdmin('/api/admin/facturas');
-  const anuladas = facturas.filter(invoice => ['void', 'refunded'].includes(invoice.status)).length;
-  const activas = facturas.length - anuladas;
+  const { facturas = [], movimientos = [] } = await solicitarAdmin('/api/admin/facturas');
+  const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro', otro: 'Otro / Codex' };
+  const registros = [
+    ...facturas.map(invoice => ({ ...invoice, tipoRegistro: 'factura', fechaOrden: invoice.invoice_date || invoice.source_received_at || invoice.imported_at })),
+    ...movimientos.map(movimiento => ({
+      ...movimiento,
+      provider: movimiento.categoria,
+      status: movimiento.anulado_en ? 'void' : 'recorded',
+      tipoRegistro: 'movimiento',
+      fechaOrden: movimiento.fecha
+    }))
+  ];
+  const anuladas = registros.filter(registro =>
+    registro.tipoRegistro === 'movimiento'
+      ? Boolean(registro.anulado_en)
+      : ['void', 'refunded'].includes(registro.status)
+  ).length;
+  const activas = registros.length - anuladas;
+  const proveedoresConocidos = ['railway', 'supabase', 'openai', 'meta', 'claro'];
+  const filtroProveedor = $('invoice-provider-filter').value || 'all';
+  const filtroFactura = $('invoice-filter').value || 'active';
+  const coincideServicio = registro => filtroProveedor === 'all'
+    || (filtroProveedor === 'otro'
+      ? !proveedoresConocidos.includes(registro.provider)
+      : registro.provider === filtroProveedor);
+  const coincideEstado = registro => filtroFactura === 'all'
+    || (filtroFactura === 'void'
+      ? (registro.tipoRegistro === 'movimiento' ? Boolean(registro.anulado_en) : ['void', 'refunded'].includes(registro.status))
+      : (registro.tipoRegistro === 'movimiento' ? !registro.anulado_en : !['void', 'refunded'].includes(registro.status)));
+  const facturasFiltradas = registros
+    .filter(registro => coincideServicio(registro) && coincideEstado(registro))
+    .sort((a, b) => new Date(b.fechaOrden || 0) - new Date(a.fechaOrden || 0));
+  const cantidadFactura = facturasFiltradas.filter(registro => registro.tipoRegistro === 'factura').length;
+  const cantidadMovimiento = facturasFiltradas.length - cantidadFactura;
   $('invoice-filter').options[0].textContent = 'Activas (' + activas + ')';
   $('invoice-filter').options[1].textContent = 'Anuladas (' + anuladas + ')';
-  $('invoice-filter').options[2].textContent = 'Todas (' + facturas.length + ')';
-  const filtroFactura = $('invoice-filter').value || 'active';
-  const filtroProveedor = $('invoice-provider-filter').value || 'all';
-  const facturasFiltradas = facturas.filter(invoice => {
-    const estadoCoincide = filtroFactura === 'all'
-      || (filtroFactura === 'void' ? ['void', 'refunded'].includes(invoice.status) : !['void', 'refunded'].includes(invoice.status));
-    const proveedorCoincide = filtroProveedor === 'all'
-      || (filtroProveedor === 'otro'
-        ? !['railway', 'supabase', 'openai', 'meta', 'claro'].includes(invoice.provider)
-        : invoice.provider === filtroProveedor);
-    return estadoCoincide && proveedorCoincide;
-  });
-  $('invoice-summary').textContent = `Historial completo · ${activas} activas, ${anuladas} anuladas · mostrando ${facturasFiltradas.length} comprobantes. Los filtros solo ordenan la lista; no cambian los gastos.`;
+  $('invoice-filter').options[2].textContent = 'Todas (' + registros.length + ')';
+  for (const option of $('invoice-provider-filter').options) {
+    const cantidad = registros.filter(registro =>
+      option.value === 'all' ? true
+        : option.value === 'otro' ? !proveedoresConocidos.includes(registro.provider)
+          : registro.provider === option.value
+    ).length;
+    const base = option.value === 'all' ? 'Todos'
+      : option.value === 'otro' ? 'Otros'
+        : nombres[option.value] || option.textContent.replace(/\s+\(\d+\)$/, '');
+    option.textContent = base + ' (' + cantidad + ')';
+  }
+  $('invoice-summary').textContent = 'Historial completo · ' + activas + ' activos, ' + anuladas
+    + ' anulados · mostrando ' + facturasFiltradas.length + ' registros: ' + cantidadFactura
+    + ' facturas y ' + cantidadMovimiento + ' movimientos. Los gastos vinculados a una factura aparecen una sola vez con su comprobante.';
   const list = $('invoice-list'); list.replaceChildren();
   if (!facturasFiltradas.length) {
     const vacio = document.createElement('p'); vacio.className = 'text-sm text-[#69544A]';
-    vacio.textContent = facturas.length
-      ? 'No hay comprobantes en este filtro.'
-      : 'Aún no hay comprobantes. Súbelos arriba o conecta Gmail más adelante.';
+    vacio.textContent = registros.length
+      ? 'No hay facturas ni movimientos para este servicio y estado.'
+      : 'Aún no hay facturas ni movimientos guardados.';
     list.append(vacio); return;
   }
-  const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro', otro: 'Otro / Codex' };
-  for (const invoice of facturasFiltradas) {
+  for (const registro of facturasFiltradas) {
     const fila = document.createElement('article'); fila.className = 'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E6D8C9] p-3';
     const info = document.createElement('div'); info.className = 'min-w-0';
     const titulo = document.createElement('p'); titulo.className = 'truncate text-sm font-medium text-[#241A15]';
-    titulo.textContent = `${nombres[invoice.provider] || invoice.provider} · ${invoice.invoice_number ? `Factura ${invoice.invoice_number}` : invoice.email_subject || 'Comprobante'}`;
     const detalle = document.createElement('p'); detalle.className = 'mt-1 text-xs text-[#69544A]';
-    const estado = invoice.status === 'paid' ? 'Pagada' : invoice.status === 'open' ? 'Pendiente de pago' : invoice.status === 'void' ? 'Anulada' : invoice.status === 'refunded' ? 'Reembolsada' : 'Importe por revisar';
-    detalle.textContent = `${fechaFactura(invoice.invoice_date || invoice.source_received_at)} · ${estado} · ${dineroFactura(invoice.paid_amount ?? invoice.amount, invoice.currency)}`;
-    info.append(titulo, detalle);
     const acciones = document.createElement('div'); acciones.className = 'flex flex-wrap gap-2';
-    for (const [indice, archivo] of (Array.isArray(invoice.files) ? invoice.files : []).entries()) {
-      const boton = document.createElement('button'); boton.type = 'button'; boton.className = 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs text-[#241A15]'; boton.textContent = `Ver ${archivo.name || 'comprobante'}`;
-      boton.addEventListener('click', () => abrirComprobante(invoice.id, indice).catch(error => { $('data-message').textContent = error.message; }));
+    if (registro.tipoRegistro === 'movimiento') {
+      titulo.textContent = (nombres[registro.provider] || registro.provider || 'Otro') + ' · Movimiento de gasto';
+      detalle.textContent = fechaFactura(registro.fecha) + ' · '
+        + (registro.anulado_en ? 'Anulado' : 'Movimiento manual') + ' · '
+        + dineroFactura(registro.monto, registro.moneda);
+      info.append(titulo, detalle);
+      const descripcion = [registro.descripcion, registro.referencia].filter(Boolean).join(' · ');
+      fila.append(info, acciones);
+      if (descripcion) {
+        const nota = document.createElement('p'); nota.className = 'w-full text-xs text-[#69544A]'; nota.textContent = descripcion; fila.append(nota);
+      }
+      list.append(fila);
+      continue;
+    }
+    titulo.textContent = (nombres[registro.provider] || registro.provider) + ' · '
+      + (registro.invoice_number ? 'Factura ' + registro.invoice_number : registro.email_subject || 'Comprobante');
+    const estado = registro.status === 'paid' ? 'Pagada'
+      : registro.status === 'open' ? 'Pendiente de pago'
+        : registro.status === 'void' ? 'Anulada'
+          : registro.status === 'refunded' ? 'Reembolsada' : 'Importe por revisar';
+    detalle.textContent = fechaFactura(registro.invoice_date || registro.source_received_at) + ' · '
+      + estado + ' · ' + dineroFactura(registro.paid_amount ?? registro.amount, registro.currency);
+    info.append(titulo, detalle);
+    for (const [indice, archivo] of (Array.isArray(registro.files) ? registro.files : []).entries()) {
+      const boton = document.createElement('button'); boton.type = 'button'; boton.className = 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs text-[#241A15]'; boton.textContent = 'Ver ' + (archivo.name || 'comprobante');
+      boton.addEventListener('click', () => abrirComprobante(registro.id, indice).catch(error => { $('data-message').textContent = error.message; }));
       acciones.append(boton);
     }
     const editar = document.createElement('button');
     editar.type = 'button'; editar.className = 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs text-[#241A15]'; editar.textContent = 'Corregir';
-    editar.addEventListener('click', () => abrirEdicionFactura(invoice));
+    editar.addEventListener('click', () => abrirEdicionFactura(registro));
     acciones.append(editar);
-    if (invoice.status !== 'void' && invoice.status !== 'refunded') {
+    if (registro.status !== 'void' && registro.status !== 'refunded') {
       const anular = document.createElement('button');
       anular.type = 'button'; anular.className = 'rounded-lg border border-red-200 px-3 py-2 text-xs text-red-800'; anular.textContent = 'Anular';
-      anular.addEventListener('click', () => anularFactura(invoice, anular).catch(error => { $('data-message').textContent = error.message; }));
+      anular.addEventListener('click', () => anularFactura(registro, anular).catch(error => { $('data-message').textContent = error.message; }));
       acciones.append(anular);
     }
     fila.append(info, acciones);
-    if (invoice.extraction_note) { const nota = document.createElement('p'); nota.className = 'w-full text-xs text-[#69544A]'; nota.textContent = invoice.extraction_note; fila.append(nota); }
+    if (registro.extraction_note) { const nota = document.createElement('p'); nota.className = 'w-full text-xs text-[#69544A]'; nota.textContent = registro.extraction_note; fila.append(nota); }
     list.append(fila);
   }
 }

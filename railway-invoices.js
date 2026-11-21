@@ -548,12 +548,40 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
 
     app.get('/api/admin/facturas', autenticarAdminPlataforma, async (_req, res) => {
         try {
-        const { data, error } = await supabaseAdmin.from('velox_platform_invoices')
-                .select('id, provider, invoice_number, invoice_date, status, amount, paid_amount, currency, description, email_subject, source_received_at, file_paths, extraction_note, imported_at')
-                .order('source_received_at', { ascending: false }).limit(500);
-            if (error) throw error;
-            res.json({ facturas: (data || []).map(({ file_paths, ...invoice }) => ({ ...invoice, files: (Array.isArray(file_paths) ? file_paths : []).map(({ name, mimeType }) => ({ name, mimeType })) })) });
-        } catch (error) { res.status(503).json({ error: 'No se pudieron cargar las facturas guardadas.' }); }
+            const facturas = [];
+            const movimientos = [];
+            const pageSize = 1000;
+            for (let offset = 0; ; offset += pageSize) {
+                const { data, error } = await supabaseAdmin.from('velox_platform_invoices')
+                    .select('id, provider, invoice_number, invoice_date, status, amount, paid_amount, currency, description, email_subject, source_received_at, file_paths, extraction_note, imported_at')
+                    .order('source_received_at', { ascending: false })
+                    .range(offset, offset + pageSize - 1);
+                if (error) throw error;
+                facturas.push(...(data || []));
+                if (!data || data.length < pageSize) break;
+            }
+            for (let offset = 0; ; offset += pageSize) {
+                const { data, error } = await supabaseAdmin.from('velox_financial_entries')
+                    .select('id, categoria, descripcion, monto, moneda, fecha, referencia, anulado_en, factura_id')
+                    .eq('tipo', 'gasto')
+                    .is('factura_id', null)
+                    .order('fecha', { ascending: false })
+                    .range(offset, offset + pageSize - 1);
+                if (error) throw error;
+                movimientos.push(...(data || []));
+                if (!data || data.length < pageSize) break;
+            }
+            res.json({
+                facturas: facturas.map(({ file_paths, ...invoice }) => ({
+                    ...invoice,
+                    files: (Array.isArray(file_paths) ? file_paths : []).map(({ name, mimeType }) => ({ name, mimeType }))
+                })),
+                movimientos
+            });
+        } catch (error) {
+            console.error('No se pudieron cargar facturas y movimientos del historial:', error.message);
+            res.status(503).json({ error: 'No se pudieron cargar las facturas y movimientos guardados.' });
+        }
     });
 
     app.patch('/api/admin/facturas/:id', autenticarAdminPlataforma, async (req, res) => {
