@@ -161,6 +161,15 @@ function crearVistaEleccionesCliente(opciones, prefijo) {
 }
 
 function crearVistaProductoCliente(producto, prefijo) {
+    const validas = (Array.isArray(producto.opciones) ? producto.opciones : []).filter(o=>o && typeof o==='object' && String(o.grupo||'').trim() && String(o.nombre||'').trim() && !String(o.grupo).startsWith('__'));
+    const muestra = !String(producto.nombre||'').trim() || !(Number(producto.precio)>0) || !validas.length;
+    // Los valores de demostración se usan solo para renderizar; nunca modifican el producto.
+    producto = {...producto,
+      nombre: String(producto.nombre||'').trim() || 'Pizza personal',
+      precio: Number(producto.precio)>0 ? producto.precio : 19000,
+      descripcion: producto.descripcion || (muestra ? 'Pizza con queso y el sabor que elijas.' : ''),
+      opciones: validas.length ? validas : [{grupo:'Sabor',nombre:'Hawaiana',descripcion:'Piña, jamón y queso'},{grupo:'Sabor',nombre:'Pollo',descripcion:'Pollo y queso'}]
+    };
     const escapar = valor => String(valor ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const opciones = (Array.isArray(producto.opciones) ? producto.opciones : []).filter(o=>o && typeof o==='object' && o.grupo && o.nombre && !String(o.grupo).startsWith('__'));
     const grupos = [...new Set(opciones.map(o=>String(o.grupo).trim()))];
@@ -169,8 +178,8 @@ function crearVistaProductoCliente(producto, prefijo) {
     let foto = '';
     try { const url = new URL(producto.imagen_url); if (['https:','http:','blob:'].includes(url.protocol)) foto=url.href; } catch {}
     const precio = Number(producto.precio);
-    return `<article class="velox-producto-ejemplo" aria-label="Ejemplo del producto en tu carta">
-      <div class="velox-producto-ejemplo-foto">${foto ? `<img src="${escapar(foto)}" alt="${escapar(producto.nombre)}">` : '<span>Sin foto</span>'}</div>
+    return `${muestra ? '<p class="velox-ejemplo-aviso">Ejemplo ilustrativo. Los datos de muestra no se guardan.</p>' : ''}<article class="velox-producto-ejemplo" aria-label="Ejemplo del producto en tu carta">
+      <div class="velox-producto-ejemplo-foto">${foto ? `<img src="${escapar(foto)}" alt="${escapar(producto.nombre)}">` : '<span class="velox-ejemplo-foto-guia"><span aria-hidden="true">🍽️</span><small>Tu foto aquí</small></span>'}</div>
       <div class="velox-producto-ejemplo-datos"><h3>${escapar(producto.nombre || 'Nombre del producto')}</h3>
       ${producto.descripcion ? `<p>${escapar(producto.descripcion)}</p>` : ''}
       <strong class="velox-producto-ejemplo-precio">${Number.isFinite(precio) && precio>0 ? '$'+precio.toLocaleString('es-CO') : 'Precio pendiente'}</strong>
