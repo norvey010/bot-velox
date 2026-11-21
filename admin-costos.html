@@ -171,39 +171,6 @@
           </section></div>
       </details>
       <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Registrar ingreso o gasto</summary>
-        <div class="border-t border-[#D7C2AD] p-4"><section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
-            
-            
-            <form id="movimiento-form" class="grid gap-3 sm:grid-cols-2">
-              <label class="text-sm">Tipo<select id="mov-tipo" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="ingreso">Ingreso recibido</option><option value="gasto">Gasto</option></select></label>
-              <label class="text-sm">Categoría<select id="mov-categoria" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></select></label>
-              <label class="text-sm sm:col-span-2"><span id="mov-restaurante-label">Atribuir gasto a restaurante</span><select id="mov-restaurante" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="">Gasto compartido de Velox</option></select><span id="mov-restaurante-help" class="hidden"></span></label>
-              <label class="text-sm">Valor<input id="mov-monto" type="number" min="0.01" step="0.01" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Ej: 30000"></label>
-              <label class="text-sm">Moneda<select id="mov-moneda" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="COP">COP · pesos</option><option value="USD">USD · dólares</option></select></label>
-              <label class="text-sm">Fecha · define el período<input id="mov-fecha" type="date" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
-              <label class="text-sm">Referencia (opcional)<input id="mov-ref" maxlength="120" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Factura o comprobante"></label>
-              <label class="text-sm sm:col-span-2">Descripción<input id="mov-descripcion" maxlength="240" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Ej: Suscripción mensual / factura de internet Claro"></label>
-              <button id="mov-guardar" class="rounded-lg bg-red-600 p-3 font-semibold text-white sm:col-span-2">Guardar movimiento</button>
-            </form>
-            <p id="mov-mensaje" class="mt-2 text-sm" role="status" aria-live="polite"></p>
-          </section></div>
-      </details>
-      <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Tasa de cambio por mes</summary>
-        <div class="border-t border-[#D7C2AD] p-4"><section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
-            
-            
-            <form id="tasa-form" class="flex flex-wrap items-end gap-3">
-              <label class="text-sm">Mes<input id="tasa-periodo" type="month" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
-              <label class="min-w-48 flex-1 text-sm">COP por 1 USD<input id="tasa-usd-cop" type="number" min="1" step="0.01" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Ej: tasa usada en tu extracto"></label>
-              <button id="tasa-guardar" class="rounded-lg border border-[#D7C2AD] bg-[#F0E3D5] px-4 py-2.5 font-semibold">Guardar tasa</button>
-            </form>
-            <p id="tasa-mensaje" class="mt-2 text-sm" role="status" aria-live="polite"></p>
-
-          </section></div>
-      </details>
-      <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
         <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Subir facturas y costos</summary>
         <div class="border-t border-[#D7C2AD] p-4"><section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
         <div>
