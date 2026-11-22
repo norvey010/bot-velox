@@ -671,6 +671,10 @@ function renderizarRevisionMenu(i) {
       gruposOpciones.get(clave).push({opcion,j});
     });
     const cantidadOpciones = [...gruposOpciones.values()].reduce((n,lista)=>n+lista.length,0);
+    const categoriasDisponibles = [...new Set([...(borradorMenu?.productos || []).map(producto => String(producto.categoria || '').trim()), String(p.categoria || '').trim()].filter(Boolean))];
+    const categoriasHtml = categoriasDisponibles.map(nombre => `<option value="${escaparHtmlUI(nombre)}"${nombre === String(p.categoria || '').trim() ? ' selected' : ''}>${escaparHtmlUI(nombre)}</option>`).join('');
+    const gruposEjemploPersonalizacion = [...new Set((p.opciones || []).filter(o => o && o.grupo !== '__velox_combo_family__').map(o => String(o.grupo || '').trim()).filter(Boolean))];
+    const textoBotonPersonalizacion = gruposEjemploPersonalizacion.length ? textoBotonVariantesCliente(gruposEjemploPersonalizacion) : 'Añadir opciones';
     const opciones = [...gruposOpciones.values()].map(lista => {
       const primero = lista[0];
       const grupo = String(primero.opcion.grupo || '').trim();
@@ -703,7 +707,7 @@ function renderizarRevisionMenu(i) {
         <div class="mt-3 space-y-2 border-t border-slate-700 pt-3">
           <div class="grid gap-3">${campo('nombre','Nombre del producto',p.nombre,'maxlength="200"')}${campo('precio','Precio en pesos (COP)',formatearPrecioCOP(p.precio),'inputmode="numeric"')}
             <label class="block text-xs text-slate-300">Descripción e ingredientes<textarea maxlength="5000" oninput="editarDatoBorrador(${i}, 'descripcion', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white" rows="3">${escaparHtmlUI(p.descripcion||'')}</textarea></label>
-            ${campo('categoria','Categoría',p.categoria,'maxlength="120"')}
+            <label class="block text-xs text-slate-300">Categoría<select data-campo-revision="categoria" onchange="cambiarCategoriaBorrador(${i},this.value)" class="mt-1 w-full rounded-lg border border-slate-300 bg-[#FFFBF5] p-2 text-sm text-[#34251E]"><option value="" disabled${p.categoria ? '' : ' selected'}>Elige una categoría</option>${categoriasHtml}<option value="__nueva_categoria__">＋ Crear categoría…</option></select><input data-revision-categoria-nueva="${i}" maxlength="120" value="" placeholder="Nombre de la nueva categoría" oninput="editarDatoBorrador(${i}, 'categoria', this.value)" class="mt-2 w-full rounded-lg border border-slate-300 bg-[#FFFBF5] p-2 text-sm text-[#34251E]" hidden></label>
           </div>
           <div class="velox-foto-producto space-y-2" role="group" aria-labelledby="revision-foto-titulo">
             <span id="revision-foto-titulo" class="block font-semibold">Foto del producto · Opcional</span>
@@ -719,11 +723,11 @@ function renderizarRevisionMenu(i) {
               <button id="revision-foto-quitar" type="button" aria-label="Quitar foto" onclick="quitarFotoBorradorMenu(${i})" class="min-h-11 min-w-11 rounded-lg text-2xl">×</button>
             </div>
           </div>
-          <section class="velox-editor-personalizacion mt-4 rounded-xl border border-slate-600 bg-slate-800/70 p-3" id="revision-opciones-${i}">
+          <section class="velox-editor-personalizacion mt-4 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-3 text-[#34251E]" id="revision-opciones-${i}">
             <h3 class="text-base font-bold">Personalizar este producto</h3>
-            <p class="mt-1 text-xs text-slate-300">Toca el botón de la tarjeta para editar sus opciones.</p>
+            <p class="mt-1 text-sm text-[#76695F]">Toca «${escaparHtmlUI(textoBotonPersonalizacion)}» para editar sus opciones.</p>
             ${p.revision_opciones ? '<p class="mt-3 rounded-lg border border-amber-700 bg-amber-950/40 p-2 text-xs text-amber-200">Revisa que las opciones coincidan con la descripción del producto.</p>' : ''}
-            ${gruposParecidosCliente(p.opciones).map(([a,b])=>`<p class="mt-2 rounded-lg bg-amber-950/40 p-2 text-xs text-amber-200">¿«${escaparHtmlUI(a)}» y «${escaparHtmlUI(b)}» son el mismo grupo? Revisa sus nombres.</p>`).join('')}
+            ${gruposParecidosCliente(p.opciones).map(([a,b])=>`<p class="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">¿«${escaparHtmlUI(a)}» y «${escaparHtmlUI(b)}» son el mismo grupo? Revisa sus nombres.</p>`).join('')}
             ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="mt-2 min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
             <div id="revision-elecciones-previa-${i}" class="mt-3">${crearVistaProductoCliente({...p, imagen_url:foto},`borrador-${i}`)}</div>
           </section>
@@ -826,6 +830,16 @@ window.addEventListener('velox-editar-opciones-producto', event => {
     guardadoBorradorMenu = setTimeout(guardarEdicionBorradorMenu, 350);
   }
 });
+
+function cambiarCategoriaBorrador(indice, valor) {
+  const campoNuevo = document.querySelector(`[data-revision-categoria-nueva="${indice}"]`);
+  if (valor === '__nueva_categoria__') {
+    if (campoNuevo) { campoNuevo.hidden = false; campoNuevo.focus(); }
+    return;
+  }
+  if (campoNuevo) { campoNuevo.hidden = true; campoNuevo.value = ''; }
+  editarDatoBorrador(indice, 'categoria', valor);
+}
 
 function actualizarEjemploBorrador(i) {
   const p = borradorMenu?.productos[i];
