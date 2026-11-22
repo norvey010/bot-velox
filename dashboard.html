@@ -472,7 +472,8 @@
         <summary><span>Personalizar este producto<small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
         <div id="prod-grupos" class="space-y-3 p-2"></div>
         <datalist id="prod-grupos-sugeridos"><option value="Proteína"><option value="Sabores"><option value="Gaseosas"><option value="Salsas"><option value="Acompañamiento"><option value="Tamaño"></datalist>
-        <button type="button" onclick="agregarGrupoProducto()" class="min-h-11 rounded-lg border border-slate-700 px-3 text-sm">+ Añadir otro grupo</button>
+        <button id="prod-agregar-grupo" type="button" onclick="agregarGrupoProducto()" class="min-h-11 rounded-lg border border-slate-700 px-3 text-sm disabled:cursor-not-allowed disabled:opacity-40">+ Añadir otro grupo</button>
+        <p id="prod-grupos-ayuda" class="px-2 text-xs text-slate-400" hidden></p>
         <p id="prod-grupos-aviso" class="p-2 text-sm text-amber-300" role="status" hidden></p>
         <details class="velox-opcion-fila m-2" aria-label="Ejemplo de las elecciones del cliente">
           <summary><span>Ver ejemplo si personalizas tu producto</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
@@ -1262,17 +1263,34 @@
         <label class="block text-sm font-semibold">Grupo<input list="prod-grupos-sugeridos" value="${e(g.nombre)}" maxlength="120" placeholder="Elige o escribe: Proteína, Sabores…" oninput="editarGrupoProducto(${i},this.value)" class="mt-1 w-full rounded-lg border border-slate-700 p-2"></label>
         <p class="text-xs text-slate-400">El cliente elige una de estas opciones.</p>
         ${g.opciones.map((o,j)=>`<div class="flex items-center gap-2"><label class="min-w-0 flex-1 text-xs">Opción<input value="${e(o.nombre||'')}" maxlength="200" placeholder="Ej.: Pollo desmechado" oninput="editarOpcionProducto(${i},${j},this.value)" class="mt-1 w-full rounded-lg border border-slate-700 p-2"></label><button type="button" aria-label="Quitar opción ${e(o.nombre||'')}" onclick="quitarOpcionProducto(${i},${j})" class="min-h-11 min-w-11">×</button></div>`).join('')}
-        <div class="flex flex-wrap gap-2"><button type="button" onclick="agregarOpcionProducto(${i})" class="min-h-11 px-2 text-sm">+ Añadir opción</button><button type="button" onclick="quitarGrupoProducto(${i})" class="min-h-11 px-2 text-sm text-red-300">Eliminar grupo</button></div></section>`).join('');
+        <div class="flex flex-wrap gap-2"><button type="button" data-agregar-opcion-producto="${i}" onclick="agregarOpcionProducto(${i})" class="min-h-11 px-2 text-sm disabled:cursor-not-allowed disabled:opacity-40">+ Añadir opción</button><button type="button" onclick="quitarGrupoProducto(${i})" class="min-h-11 px-2 text-sm text-red-300">Eliminar grupo</button></div><p data-ayuda-opcion-producto="${i}" class="text-xs text-slate-400" hidden></p></section>`).join('');
+      actualizarBotonesAgregarProducto();
       actualizarAvisoGruposProducto();
     }
-    function actualizarAvisoGruposProducto() {
+    function grupoProductoCompleto(g){return Boolean(g?.nombre?.trim() && !g.nombre.trim().startsWith('__') && g.opciones?.length && g.opciones.every(o=>String(o.nombre||'').trim()));}
+    function actualizarBotonesAgregarProducto(){
+      const botonGrupo=document.getElementById('prod-agregar-grupo');
+      const gruposCompletos=gruposProducto.every(grupoProductoCompleto);
+      botonGrupo.disabled=!gruposCompletos;
+      const ayudaGrupo=document.getElementById('prod-grupos-ayuda');
+      ayudaGrupo.hidden=gruposCompletos || !gruposProducto.length;
+      ayudaGrupo.textContent='Completa el nombre del grupo y sus opciones antes de añadir otro grupo.';
+      gruposProducto.forEach((g,i)=>{
+        const completo=grupoProductoCompleto(g);
+        const boton=document.querySelector(`[data-agregar-opcion-producto="${i}"]`);
+        const ayuda=document.querySelector(`[data-ayuda-opcion-producto="${i}"]`);
+        if(boton) boton.disabled=!completo;
+        if(ayuda){ayuda.hidden=completo;ayuda.textContent='Completa el grupo y la opción actual antes de añadir otra.';}
+      });
+    }
+        function actualizarAvisoGruposProducto() {
       const pares=gruposParecidosCliente(opcionesGruposProducto());
       const aviso=document.getElementById('prod-grupos-aviso');
       aviso.hidden=!pares.length;
       aviso.textContent=pares.map(([a,b])=>`¿«${a}» y «${b}» son el mismo grupo? Revisa sus nombres antes de guardar.`).join(' ');
     }
-    function editarGrupoProducto(i,valor){gruposProducto[i].nombre=valor;actualizarAvisoGruposProducto();actualizarVistaEleccionesProducto();}
-    function editarOpcionProducto(i,j,valor){gruposProducto[i].opciones[j].nombre=valor;actualizarVistaEleccionesProducto();}
+    function editarGrupoProducto(i,valor){gruposProducto[i].nombre=valor;actualizarBotonesAgregarProducto();actualizarAvisoGruposProducto();actualizarVistaEleccionesProducto();}
+    function editarOpcionProducto(i,j,valor){gruposProducto[i].opciones[j].nombre=valor;actualizarBotonesAgregarProducto();actualizarVistaEleccionesProducto();}
     function agregarGrupoProducto(){gruposProducto.push({nombre:'',opciones:[{nombre:'',descripcion:''}]});renderizarGruposProducto();document.getElementById('prod-grupos').lastElementChild.querySelector('input').focus();actualizarVistaEleccionesProducto();}
     function agregarOpcionProducto(i){gruposProducto[i].opciones.push({nombre:'',descripcion:''});renderizarGruposProducto();document.getElementById('prod-grupos').children[i].querySelectorAll('input')[gruposProducto[i].opciones.length].focus();actualizarVistaEleccionesProducto();}
     function quitarOpcionProducto(i,j){gruposProducto[i].opciones.splice(j,1);renderizarGruposProducto();actualizarVistaEleccionesProducto();}
