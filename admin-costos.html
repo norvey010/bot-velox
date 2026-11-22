@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261122-auto-actualizacion-final"></script>
+  <script type="module" src="admin-costos.js?v=20261122-ajustes-vertical"></script>
 </head>
 <body class="min-h-screen">
   <aside id="update-notice" class="hidden fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4 shadow-xl" role="status" aria-live="polite">
@@ -99,10 +99,16 @@
         <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Costo OpenAI · USD</p><strong id="openai-usd" class="mt-1 block text-2xl">—</strong><p id="openai-cop" class="mt-1 text-sm font-semibold text-[#8A3D2C]">—</p><p id="openai-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
       </div>
 
-        <nav class="flex flex-wrap gap-x-5 gap-y-2 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3 text-sm font-semibold text-red-700" aria-label="Vistas de análisis">
-          <button type="button" data-open-finance-view="facturas" class="underline underline-offset-4">Ver facturas →</button>
-          <button type="button" data-open-finance-view="restaurantes" class="underline underline-offset-4">Ver por restaurante →</button>
-          <button type="button" data-open-finance-view="acumulado" class="underline underline-offset-4">Ver por servicio →</button>
+        <nav class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] divide-y divide-[#E6D8C9]" aria-label="Vistas de análisis">
+          <button type="button" data-open-finance-view="facturas" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
+            <span>Ver facturas</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span>
+          </button>
+          <button type="button" data-open-finance-view="restaurantes" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
+            <span>Ver por restaurante</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span>
+          </button>
+          <button type="button" data-open-finance-view="acumulado" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
+            <span>Ver por servicio</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span>
+          </button>
         </nav>
 
         <p id="finance-note" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] p-3 text-sm text-[#69544A]" role="status"></p>
