@@ -178,35 +178,44 @@ function textoBotonVariantesCliente(grupos) {
     return 'Elegir opciones';
 }
 
-function datosEjemploProductoCliente(producto) {
-    const validas = (Array.isArray(producto.opciones) ? producto.opciones : []).filter(o=>o && typeof o==='object' && String(o.grupo||'').trim() && String(o.nombre||'').trim() && !String(o.grupo).startsWith('__'));
-    const muestra = !String(producto.nombre||'').trim() || !(Number(producto.precio)>0) || !validas.length;
+function datosEjemploProductoCliente(producto, prefijo) {
+    const edicion=prefijo==='producto';
+    const origen=Array.isArray(producto.opciones) ? producto.opciones : [];
+    const validas=origen.filter(o=>o && typeof o==='object' && String(o.grupo||'').trim() && String(o.nombre||'').trim() && !String(o.grupo).startsWith('__'));
+    const opciones=edicion
+      ? origen.map(o=>typeof o==='string' ? {grupo:'Variante',nombre:o,descripcion:''} : o).filter(o=>o && typeof o==='object' && !String(o.grupo||'').startsWith('__'))
+      : (validas.length ? validas : [{grupo:'Sabores',nombre:'Hawaiana',descripcion:'Piña, jamón y queso'},{grupo:'Sabores',nombre:'Pollo',descripcion:'Pollo y queso'}]);
+    const muestra = !String(producto.nombre||'').trim() || !(Number(producto.precio)>0) || (!edicion && !validas.length);
     let foto=''; try {const url=new URL(producto.imagen_url);if(['https:','http:','blob:'].includes(url.protocol))foto=url.href;} catch {}
     return {muestra, producto:{...producto,
       nombre:String(producto.nombre||'').trim() || 'Pizza personal',
       precio:Number(producto.precio)>0 ? Number(producto.precio) : 19000,
       categoria:producto.categoria || 'Pizzas', disponible:true, imagen_url:foto,
-      descripcion:producto.descripcion || (muestra ? 'Producto preparado al momento, con la opción que elijas.' : ''),
-      opciones:validas.length ? validas : [{grupo:'Sabores',nombre:'Hawaiana',descripcion:'Piña, jamón y queso'},{grupo:'Sabores',nombre:'Pollo',descripcion:'Pollo y queso'}]
+      descripcion:edicion ? (producto.descripcion || '') : (producto.descripcion || (muestra ? 'Producto preparado al momento, con la opción que elijas.' : '')),
+      opciones
     }};
 }
 
+let secuenciaEjemplosProductoCliente=0;
 function crearVistaProductoCliente(producto, prefijo) {
-    const datos=datosEjemploProductoCliente(producto);
+    const datos=datosEjemploProductoCliente(producto,prefijo);
     const escapar = valor => String(valor ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    return `${datos.muestra ? '<p class="velox-ejemplo-aviso">Ejemplo ilustrativo. Los datos de muestra no se guardan.</p>' : ''}<iframe class="velox-ejemplo-carta-real" title="Ejemplo del producto en la carta real" src="/menu.html?vista=borrador&ejemplo=tarjeta&v=ejemplo-real" data-ejemplo-producto="${escapar(JSON.stringify(datos.producto))}" onload="enviarEjemploCartaReal(this)"></iframe>`;
+    const editor=prefijo==='producto';
+    const id='velox-ejemplo-producto-'+(++secuenciaEjemplosProductoCliente);
+    const src='/menu.html?vista=borrador&ejemplo=tarjeta'+(editor?'&editor=1':'')+'&v=personalizacion-en-vivo';
+    return `${datos.muestra && !editor ? '<p class="velox-ejemplo-aviso">Ejemplo ilustrativo. Los datos de muestra no se guardan.</p>' : ''}<iframe id="${id}" class="velox-ejemplo-carta-real" title="Ejemplo del producto en la carta real" src="${src}" data-editor-personalizacion="${editor ? 'true' : 'false'}" data-ejemplo-producto="${escapar(JSON.stringify(datos.producto))}" onload="enviarEjemploCartaReal(this)"></iframe>`;
 }
 
 function enviarEjemploCartaReal(marco, abrir=false) {
     let producto;try {producto=JSON.parse(marco.dataset.ejemploProducto);}catch{return;}
-    marco.contentWindow?.postMessage({tipo:'velox-borrador-carta',restaurante:'Ejemplo',productos:[producto],editable:false,ejemploProducto:true,abrirOpciones:abrir},window.location.origin);
+    marco.contentWindow?.postMessage({tipo:'velox-borrador-carta',restaurante:'Ejemplo',productos:[producto],editable:false,ejemploProducto:true,abrirOpciones:abrir,editarPersonalizacion:marco.dataset.editorPersonalizacion==='true'},window.location.origin);
 }
 
 function actualizarEjemploProductoCliente(contenedor, producto, prefijo) {
     if(!contenedor) return;
     const marco=contenedor.querySelector?.('.velox-ejemplo-carta-real');
     if(!marco) {contenedor.innerHTML=crearVistaProductoCliente(producto,prefijo);return;}
-    const datos=datosEjemploProductoCliente(producto);
+    const datos=datosEjemploProductoCliente(producto,prefijo);
     marco.dataset.ejemploProducto=JSON.stringify(datos.producto);
     const aviso=contenedor.querySelector('.velox-ejemplo-aviso');
     if(aviso) aviso.hidden=!datos.muestra;
@@ -223,11 +232,29 @@ if(typeof window!=='undefined' && window.addEventListener) window.addEventListen
     if(event.data?.tipo==='velox-ejemplo-abrir') {
       const dialogo=document.createElement('dialog');dialogo.dataset.ejemploDialogo='';
       dialogo.className='velox-ejemplo-dialogo';
-      dialogo.innerHTML='<iframe class="velox-ejemplo-carta-real" title="Probar sabores y opciones como cliente" src="/menu.html?vista=borrador&ejemplo=opciones&v=ejemplo-real"></iframe>';
-      const panel=dialogo.querySelector('iframe');panel.dataset.ejemploProducto=marco.dataset.ejemploProducto;
+      if(!marco.id) marco.id='velox-ejemplo-producto-'+(++secuenciaEjemplosProductoCliente);
+      const editor=marco.dataset.editorPersonalizacion==='true';
+      const src='/menu.html?vista=borrador&ejemplo=opciones'+(editor?'&editor=1':'')+'&v=personalizacion-en-vivo';
+      dialogo.innerHTML='<iframe class="velox-ejemplo-carta-real" title="Editar grupos y opciones del producto" src="'+src+'"></iframe>';
+      const panel=dialogo.querySelector('iframe');
+      panel.dataset.ejemploProducto=marco.dataset.ejemploProducto;
+      panel.dataset.editorPersonalizacion=editor?'true':'false';
+      panel.dataset.ejemploOrigen=marco.id;
       panel.onload=()=>enviarEjemploCartaReal(panel,true);
       dialogo.addEventListener('close',()=>{dialogo.remove();marco.focus();});
       document.body.appendChild(dialogo);dialogo.showModal();
+    }
+    if(event.data?.tipo==='velox-editar-opciones-producto' && marco.closest('dialog[data-ejemplo-dialogo]')) {
+      const origen=document.getElementById(marco.dataset.ejemploOrigen);
+      if(origen) {
+        try {
+          const producto=JSON.parse(origen.dataset.ejemploProducto);
+          producto.opciones=Array.isArray(event.data.opciones)?event.data.opciones:[];
+          origen.dataset.ejemploProducto=JSON.stringify(producto);
+          enviarEjemploCartaReal(origen);
+          window.dispatchEvent(new CustomEvent('velox-editar-opciones-producto',{detail:producto.opciones}));
+        } catch {}
+      }
     }
     if(event.data?.tipo==='velox-ejemplo-cerrar') marco.closest('dialog[data-ejemplo-dialogo]')?.close();
 });
