@@ -162,6 +162,7 @@
         <button type="button" data-open-finance-view="ingresos-adicionales" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Registrar ingresos adicionales</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
         <button type="button" data-open-finance-view="tasas" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Tasas de cambio</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
         <button type="button" data-open-finance-view="carga-factura" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Subir facturas y costos</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+        <button type="button" data-open-finance-view="correo" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Conectar correo</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
         <button type="button" data-open-finance-view="comprobantes" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Facturas y comprobantes</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
       </nav>
     </section>
@@ -254,15 +255,22 @@
         <p id="manual-invoice-message" class="text-sm text-[#69544A]" role="status" aria-live="polite"></p>
       </section></div>
       </section>
-<section id="vista-comprobantes" class="hidden space-y-4">
+<section id="vista-correo" class="hidden space-y-4">
+        <button type="button" data-back-ledger class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver al libro contable</button>
+        <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Conectar correo</h2><p class="mt-1 text-sm text-[#69544A]">Vincula el correo donde recibes las facturas. Velox solo buscará y leerá comprobantes para guardarlos en el repositorio.</p></header>
+        <section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
+          <div class="flex flex-wrap gap-2"><button id="connect-gmail" class="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white">Conectar con Google</button><button id="sync-invoices" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-sm">Sincronizar correo</button></div>
+          <p id="gmail-status" class="rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-3 text-sm text-[#69544A]" role="status">Revisando conexión de facturas…</p>
+        </section>
+      </section>
+      <section id="vista-comprobantes" class="hidden space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div><button type="button" data-back-ledger class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver al libro contable</button><h2 class="mt-2 text-lg font-semibold">Facturas y comprobantes</h2><p class="text-sm text-[#69544A]">Documentos guardados, agrupados por servicio.</p></div>
         </div>
-<section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
-  <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-semibold">Repositorio de comprobantes</h2></div><div class="flex gap-2"><button id="connect-gmail" class="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white">Conectar correo</button><button id="sync-invoices" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-sm">Sincronizar</button></div></div>
-  <p id="gmail-status" class="rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-3 text-sm text-[#69544A]" role="status">Revisando conexión de facturas…</p>
-  <div class="flex flex-wrap items-center justify-between gap-2"><p id="invoice-summary" class="text-xs text-[#69544A]">Los documentos aparecerán agrupados por servicio.</p><div class="flex flex-wrap gap-2"><label class="text-xs text-[#69544A]">Servicio <select id="invoice-provider-filter" class="ml-1 rounded-lg border border-[#D7C2AD] bg-white p-1.5"><option value="all">Todos</option><option value="railway">Railway</option><option value="supabase">Supabase</option><option value="openai">OpenAI</option><option value="meta">Meta</option><option value="claro">Claro</option><option value="otro">Otros</option></select></label><label class="text-xs text-[#69544A]">Estado <select id="invoice-filter" class="ml-1 rounded-lg border border-[#D7C2AD] bg-white p-1.5"><option value="active">Activas</option><option value="void">Anuladas</option><option value="all">Todas</option></select></label></div></div><div id="invoice-list" class="space-y-2"></div>
-</section>
+        <section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2"><p id="invoice-summary" class="text-xs text-[#69544A]">Los documentos aparecerán agrupados por servicio.</p><div class="flex flex-wrap gap-2"><label class="text-xs text-[#69544A]">Servicio <select id="invoice-provider-filter" class="ml-1 rounded-lg border border-[#D7C2AD] bg-white p-1.5"><option value="all">Todos</option><option value="railway">Railway</option><option value="supabase">Supabase</option><option value="openai">OpenAI</option><option value="meta">Meta</option><option value="claro">Claro</option><option value="otro">Otros</option></select></label><label class="text-xs text-[#69544A]">Estado <select id="invoice-filter" class="ml-1 rounded-lg border border-[#D7C2AD] bg-white p-1.5"><option value="active">Activas</option><option value="void">Anuladas</option><option value="all">Todas</option></select></label></div></div>
+          <div id="invoice-list" class="space-y-2"></div>
+        </section>
       </section>
       <dialog id="invoice-edit-dialog" class="w-[min(94vw,32rem)] rounded-2xl border border-[#D7C2AD] bg-[#FFFBF5] p-0 text-[#241A15] shadow-2xl backdrop:bg-black/50">
         <form id="invoice-edit-form" class="space-y-3 p-5">
