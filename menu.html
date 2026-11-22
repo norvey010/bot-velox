@@ -258,7 +258,7 @@
         <form method="dialog" class="mt-4"><button class="min-h-11 rounded-lg bg-red-600 px-4 text-white">Listo</button></form>
     </dialog>
 
-    <script src="/app.menu-categorias.js?v=modal-edicion-fiel"></script>
+    <script src="/app.menu-categorias.js?v=etiqueta-eleccion-editable"></script>
     <script>
         var cart = [];
         var numeroWhatsAppRestaurante = '';
@@ -658,7 +658,7 @@ function obtenerPersonalizacionProducto(producto) {
         grupos.get(grupo).push(opcion);
     });
     const selectores = [...grupos.entries()].map(([grupo, opciones]) => ({
-        etiqueta: /^(sabor|sabores|especialidad|especialidades)$/i.test(normalizarTexto(grupo)) ? 'Elige un sabor' : `Elige ${grupo.toLowerCase()}`,
+        etiqueta: opciones.find(opcion=>String(opcion.etiqueta||'').trim())?.etiqueta || etiquetaPorDefectoGrupo(grupo),
         grupo,
         opciones
     }));
@@ -679,6 +679,10 @@ function escaparHtml(valor) {
 let productoPersonalizacionActual = null;
 let gruposEditablesEjemplo = [];
 
+function etiquetaPorDefectoGrupo(nombre) {
+    return /^(sabor|sabores|especialidad|especialidades)$/i.test(normalizarTexto(nombre)) ? 'Elige un sabor' : `Elige ${String(nombre||'').toLowerCase()}`;
+}
+
 function agruparOpcionesParaEditar(producto) {
     const grupos=[];
     for(const entrada of Array.isArray(producto?.opciones)?producto.opciones:[]) {
@@ -686,7 +690,7 @@ function agruparOpcionesParaEditar(producto) {
         if(!opcion || typeof opcion!=='object' || String(opcion.grupo||'').startsWith('__')) continue;
         const nombreGrupo=String(opcion.grupo||'');
         let grupo=grupos.find(item=>item.nombre===nombreGrupo);
-        if(!grupo) grupos.push(grupo={nombre:nombreGrupo,opciones:[]});
+        if(!grupo) grupos.push(grupo={nombre:nombreGrupo,etiqueta:String(opcion.etiqueta||etiquetaPorDefectoGrupo(nombreGrupo)),opciones:[]});
         grupo.opciones.push({...opcion,nombre:String(opcion.nombre||''),descripcion:String(opcion.descripcion||'')});
     }
     return grupos;
@@ -695,8 +699,8 @@ function agruparOpcionesParaEditar(producto) {
 function opcionesEditadasEjemplo() {
     return gruposEditablesEjemplo.flatMap(grupo=>
         grupo.opciones.length
-          ? grupo.opciones.map(opcion=>({...opcion,grupo:grupo.nombre,nombre:opcion.nombre,descripcion:opcion.descripcion||''}))
-          : [{grupo:grupo.nombre,nombre:'',descripcion:''}]
+          ? grupo.opciones.map(opcion=>({...opcion,grupo:grupo.nombre,etiqueta:grupo.etiqueta,nombre:opcion.nombre,descripcion:opcion.descripcion||''}))
+          : [{grupo:grupo.nombre,etiqueta:grupo.etiqueta,nombre:'',descripcion:''}]
     );
 }
 
@@ -724,7 +728,7 @@ function renderizarEditorOpcionesEjemplo() {
     const gruposHtml=gruposEditablesEjemplo.map((grupo,i)=>`<section class="velox-editor-grupo space-y-3">
       <div class="flex items-center gap-2">
         <span class="h-7 w-1 shrink-0 rounded-full bg-red-400"></span>
-        <input type="text" maxlength="120" value="${escapar(grupo.nombre)}" placeholder="Ej. Elige un sabor" aria-label="Nombre de la elección ${i+1}" oninput="editarNombreGrupoEjemplo(${i},this.value)" class="min-w-0 flex-1 bg-transparent py-1 text-base font-bold text-slate-800 placeholder:text-slate-500 focus:outline-none">
+        <input type="text" maxlength="120" value="${escapar(grupo.etiqueta)}" placeholder="Ej. Elige un sabor" aria-label="Texto que verá el cliente para la elección ${i+1}" oninput="editarEtiquetaGrupoEjemplo(${i},this.value)" class="min-w-0 flex-1 bg-transparent py-1 text-base font-bold text-slate-800 placeholder:text-slate-500 focus:outline-none">
         <button type="button" aria-label="Eliminar grupo ${escapar(grupo.nombre||i+1)}" title="Eliminar grupo" onclick="quitarGrupoEjemplo(${i})" class="min-h-11 min-w-11 rounded-lg text-xl text-red-700">×</button>
       </div>
       <div class="velox-option-list max-h-[42vh] space-y-2 overflow-y-auto rounded-2xl border border-white/5 bg-black/15 p-2">
@@ -751,7 +755,10 @@ function renderizarEditorOpcionesEjemplo() {
 
 function editarNombreGrupoEjemplo(i,valor) {
     if(!gruposEditablesEjemplo[i]) return;
-    gruposEditablesEjemplo[i].nombre=valor;
+    gruposEditablesEjemplo[i].etiqueta=valor;
+    if(!String(gruposEditablesEjemplo[i].nombre||'').trim()) {
+        gruposEditablesEjemplo[i].nombre=valor.trim().replace(/^elige\\s+/i,'').replace(/^(un|una)\\s+/i,'');
+    }
     sincronizarOpcionesEditadasEjemplo();
     const boton=document.getElementById('ejemplo-agregar-grupo');
     const ultimo=gruposEditablesEjemplo[gruposEditablesEjemplo.length-1];
