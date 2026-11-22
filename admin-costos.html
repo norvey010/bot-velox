@@ -110,7 +110,7 @@
       <section id="vista-analisis" class="hidden space-y-4">
       <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Análisis financiero</h2><p class="mt-1 text-xs text-[#69544A]">Desgloses, costos por servicio y movimientos del período.</p></header>
       <nav class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] divide-y divide-[#E6D8C9]" aria-label="Paneles de análisis">
-          <button type="button" data-open-finance-view="restaurantes" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Costos por restaurante</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+          <button type="button" data-open-finance-view="restaurantes" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Análisis operativo por restaurante</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
           <button type="button" data-open-finance-view="acumulado" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Costos por servicio</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
           <button type="button" data-open-finance-view="movimientos" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Libro de movimientos</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
           <button type="button" data-open-finance-view="categorias" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Distribución de gastos</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
@@ -145,12 +145,19 @@
       </section>
 <section id="vista-restaurantes" class="hidden space-y-4">
         <button type="button" data-back-analysis class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver a Análisis</button>
-        <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Rentabilidad por restaurante</h2></div>
-          <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Ingresos COP</th><th class="p-3">Gastos directos COP</th><th class="p-3">Parte compartida COP</th><th class="p-3">OpenAI atribuido</th><th class="p-3">Neto estimado COP</th></tr></thead><tbody id="restaurantes-finanzas-body"></tbody></table></div>
+        <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Análisis operativo por restaurante</h2><p class="mt-1 text-xs text-[#69544A]">Consulta cada indicador por separado.</p></header>
+        <nav id="restaurantes-submenu" class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] divide-y divide-[#E6D8C9]" aria-label="Indicadores por restaurante">
+          <button type="button" data-open-restaurant-view="utilidad" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Utilidad neta por restaurante</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+          <button type="button" data-open-restaurant-view="ia" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Uso y costo de IA por restaurante</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+        </nav>
+        <section id="restaurantes-panel-utilidad" class="hidden overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
+          <button type="button" data-back-restaurantes class="px-4 pt-4 text-sm font-semibold text-red-700 underline underline-offset-4">← Análisis operativo por restaurante</button>
+          <div class="border-b border-[#D7C2AD] p-4"><h3 class="font-semibold">Utilidad neta por restaurante</h3><p class="mt-1 text-xs text-[#69544A]">Ingresos − gastos directos − parte de gastos compartidos − costo de IA.</p></div>
+          <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Ingresos COP</th><th class="p-3">Gastos directos COP</th><th class="p-3">Gastos compartidos asignados COP</th><th class="p-3">IA atribuida COP</th><th class="p-3">Utilidad neta COP</th></tr></thead><tbody id="restaurantes-finanzas-body"></tbody></table></div>
         </section>
-        <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Costo de IA por restaurante</h2><p id="ai-period-note" class="text-xs text-[#69544A]"></p></div>
+        <section id="restaurantes-panel-ia" class="hidden overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
+          <button type="button" data-back-restaurantes class="px-4 pt-4 text-sm font-semibold text-red-700 underline underline-offset-4">← Análisis operativo por restaurante</button>
+          <div class="border-b border-[#D7C2AD] p-4"><h3 class="font-semibold">Uso y costo de IA por restaurante</h3><p id="ai-period-note" class="text-xs text-[#69544A]"></p></div>
           <div class="overflow-x-auto"><table class="w-full min-w-[680px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Operaciones</th><th class="p-3">Costo OpenAI (USD)</th><th class="p-3">Equivalente (COP)</th></tr></thead><tbody id="ia-restaurantes-body"></tbody></table></div>
         </section>
       </section>

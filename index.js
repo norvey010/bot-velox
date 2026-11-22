@@ -517,6 +517,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
         };
         const restaurantMap = new Map();
         const pesoRestaurante = new Map();
+        const fechaInicioRestaurante = new Map();
         for (const item of restaurantesRes.data || []) {
             const creado = item.created_at ? fechaBogota(item.created_at) : desde;
             const inicioActivo = creado > desde ? creado : desde;
@@ -531,6 +532,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
                 ingresos_tasa_faltante: false, gastos_tasa_faltante: false, ia_tasa_faltante: false
             };
             restaurantMap.set(item.id, restaurante);
+            fechaInicioRestaurante.set(item.id, creado);
             if (diasActivos > 0) pesoRestaurante.set(item.id, diasActivos);
         }
         for (const mov of movimientos) {
@@ -604,7 +606,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
                 restaurante.tokens_salida += salida;
                 restaurante.ia_estimado_usd += estimado;
                 const equivalente = uso.costo_estimado_usd == null ? 0 : convertirCop(estimado, 'USD', fecha);
-                if (equivalente == null) restaurante.ia_tasa_faltante = true;
+                if (uso.costo_estimado_usd == null || equivalente == null) restaurante.ia_tasa_faltante = true;
                 else restaurante.ia_cop_calc += equivalente;
                 if (!usoPorDia.has(fecha)) usoPorDia.set(fecha, new Map());
                 const pesos = usoPorDia.get(fecha);
@@ -620,7 +622,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             consultarAlertaConsumoOpenAI()
         ]);
         const aplicadoUsd = costosOpenAI.disponible ? Number(costosOpenAI.monto_usd) || 0 : totales.ia_usd;
-        let iaRealCop = 0, iaRealSinTasa = false, iaSinAsignarUsd = 0;
+        let iaRealCop = 0, iaRealSinTasa = false, iaSinAsignarUsd = 0, iaRealCompartidaUsd = 0;
         const costosPorDia = costosOpenAI.por_dia || {};
         if (costosOpenAI.disponible) {
             for (const [dia, monto] of Object.entries(costosPorDia)) {
@@ -629,11 +631,39 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
                 if (equivalente == null) iaRealSinTasa = true;
                 else iaRealCop += equivalente;
                 const pesos = usoPorDia.get(dia);
-                if (!pesos || !pesos.size) { iaSinAsignarUsd += usd; continue; }
+                if (!pesos || !pesos.size) {
+                    const activos = [...pesoRestaurante.keys()].filter(id => (fechaInicioRestaurante.get(id) || desde) <= dia);
+                    if (!activos.length) { iaSinAsignarUsd += usd; continue; }
+                    const share = usd / activos.length;
+                    iaRealCompartidaUsd += usd;
+                    for (const id of activos) {
+                        const restaurante = restaurantMap.get(id);
+                        if (!restaurante) continue;
+                        restaurante.ia_real_asignado_usd += share;
+                        const cop = convertirCop(share, 'USD', dia);
+                        if (cop == null) restaurante.ia_tasa_faltante = true;
+                        else restaurante.ia_cop_calc += cop;
+                    }
+                    continue;
+                }
                 let divisor = [...pesos.values()].reduce((sum, item) => sum + item.estimado, 0);
                 const porEstimacion = divisor > 0;
                 if (!porEstimacion) divisor = [...pesos.values()].reduce((sum, item) => sum + item.tokens, 0);
-                if (!divisor) { iaSinAsignarUsd += usd; continue; }
+                if (!divisor) {
+                    const activos = [...pesoRestaurante.keys()].filter(id => (fechaInicioRestaurante.get(id) || desde) <= dia);
+                    if (!activos.length) { iaSinAsignarUsd += usd; continue; }
+                    const share = usd / activos.length;
+                    iaRealCompartidaUsd += usd;
+                    for (const id of activos) {
+                        const restaurante = restaurantMap.get(id);
+                        if (!restaurante) continue;
+                        restaurante.ia_real_asignado_usd += share;
+                        const cop = convertirCop(share, 'USD', dia);
+                        if (cop == null) restaurante.ia_tasa_faltante = true;
+                        else restaurante.ia_cop_calc += cop;
+                    }
+                    continue;
+                }
                 for (const [id, peso] of pesos) {
                     const restaurante = restaurantMap.get(id);
                     if (!restaurante) continue;
@@ -650,7 +680,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
         if (aplicadoUsd > 0) totales.gastos_por_categoria.openai = categoriaOpenAI;
         for (const restaurante of restaurantMap.values()) {
             restaurante.ia_usd = costosOpenAI.disponible ? restaurante.ia_real_asignado_usd : restaurante.ia_estimado_usd;
-            restaurante.ia_cop = restaurante.ia_tasa_faltante ? null : restaurante.ia_cop_calc;
+            restaurante.ia_cop = restaurante.ia_tasa_faltante && !costosOpenAI.disponible ? null : restaurante.ia_cop_calc;
         }
         const gastosConIAcop = copTotals.gastosSinTasa || iaAplicadoCop == null ? null : copTotals.gastosRegistrados + iaAplicadoCop;
         const ingresosCop = copTotals.ingresosSinTasa ? null : copTotals.ingresos;
@@ -661,7 +691,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             item.gastos_directos_cop = item.gastos_tasa_faltante ? null : item.gastos_directos_cop_calc;
             item.gastos_compartidos_cop = copTotals.compartidosSinTasa ? null : item.gastos_compartidos.COP;
             item.neto_cop = item.ingresos_cop == null || item.gastos_directos_cop == null ||
-                item.gastos_compartidos_cop == null || item.ia_cop == null ? null :
+                item.gastos_compartidos_cop == null || item.ia_cop == null || (!costosOpenAI.disponible && item.ia_sin_tarifa > 0) ? null :
                 item.ingresos_cop - item.gastos_directos_cop - item.gastos_compartidos_cop - item.ia_cop;
             delete item.ingresos_cop_calc; delete item.gastos_directos_cop_calc; delete item.ia_cop_calc;
             delete item.ingresos_tasa_faltante; delete item.gastos_tasa_faltante; delete item.ia_tasa_faltante;
@@ -676,7 +706,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
                 gastos_registrados_cop: gastosRegistradosCop, gastos_cop: gastosConIAcop,
                 gastos_usd: totales.gastos.USD + aplicadoUsd, ia_estimado_usd: totales.ia_usd,
                 ia_real_usd: costosOpenAI.disponible ? Number(costosOpenAI.monto_usd) || 0 : null,
-                ia_real_disponible: Boolean(costosOpenAI.disponible), ia_real_sin_asignar_usd: iaSinAsignarUsd,
+                ia_real_disponible: Boolean(costosOpenAI.disponible), ia_real_sin_asignar_usd: iaSinAsignarUsd, ia_real_compartida_usd: iaRealCompartidaUsd,
                 ia_costo_aplicado_usd: aplicadoUsd, ia_costo_aplicado_cop: iaAplicadoCop,
                 utilidad_neta_cop: netoCop,
                 utilidad_parcial: ingresosCop == null || gastosConIAcop == null || totales.ia_sin_tarifa > 0 || Boolean(costosOpenAI.error),
@@ -689,7 +719,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             gastos_por_categoria: totales.gastos_por_categoria,
             restaurantes, movimientos,
             costos_openai: costosOpenAI, alerta_consumo_openai: alertaConsumoOpenAI,
-            nota: 'Resumen de movimientos dentro del rango elegido. Los gastos se agrupan por la categoría guardada; MAX recorre todo el historial. Los valores en USD se convierten con la tasa guardada para el mes de cada movimiento. Los gastos compartidos se reparten por días activos durante el rango seleccionado.'
+            nota: 'Resumen de movimientos dentro del rango elegido. Los gastos se agrupan por la categoría guardada; MAX recorre todo el historial. Los valores en USD se convierten con la tasa guardada para el mes de cada movimiento. Los gastos compartidos se reparten por días activos durante el rango seleccionado. El costo diario de OpenAI se atribuye según el uso registrado; los días sin telemetría se distribuyen entre restaurantes activos y, si no hay ninguno, quedan como costo compartido de Velox.'
         });
     } catch (error) {
         console.error('No se pudo consultar finanzas por rango:', error.message);

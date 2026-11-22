@@ -213,11 +213,13 @@ function renderizarMovimientos(movimientos, restaurantes) {
 }
 function renderizarRestaurantes(restaurantes) {
   llenarSelectorRestaurantes(restaurantes);
+  const ordenUtilidad = [...restaurantes].sort((a, b) => a.neto_cop == null ? 1 : b.neto_cop == null ? -1 : a.neto_cop - b.neto_cop);
+  const ordenIa = [...restaurantes].sort((a, b) => (b.ia_usd || 0) - (a.ia_usd || 0));
   const tbody = $('restaurantes-finanzas-body');
   if (!restaurantes.length) filaVacia(tbody, 6, 'Aún no hay restaurantes registrados.');
   else {
     const fragmento = document.createDocumentFragment();
-    for (const r of restaurantes) {
+    for (const r of ordenUtilidad) {
       const fila = document.createElement('tr');
       fila.className = 'border-t border-[#E6D8C9]';
       celda(fila, r.restaurante);
@@ -232,7 +234,7 @@ function renderizarRestaurantes(restaurantes) {
   }
   const ia = $('ia-restaurantes-body');
   const fragmentoIa = document.createDocumentFragment();
-  for (const r of restaurantes) {
+  for (const r of ordenIa) {
     const fila = document.createElement('tr');
     fila.className = 'border-t border-[#E6D8C9]';
     celda(fila, r.restaurante);
@@ -739,7 +741,7 @@ function activarPestana(nombre) {
     $(`vista-${id}`).classList.toggle('hidden', nombre !== id);
   }
 
-  if (['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos'].includes(nombre)) cargar();
+  if (['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos'].includes(nombre)) { if (nombre === 'restaurantes') abrirSubpanelRestaurantes(); cargar(); }
   if (nombre === 'acumulado' || nombre === 'historial') cargarAcumulado();
   if (['comprobantes', 'carga-factura'].includes(nombre)) cargarFacturas(false).catch(error => estadoFacturas(error.message));
 }
@@ -748,6 +750,17 @@ $('tab-analisis').addEventListener('click', () => activarPestana('analisis'));
 $('tab-facturas').addEventListener('click', () => activarPestana('facturas'));
 document.querySelectorAll('[data-open-finance-view]').forEach(button => {
   button.addEventListener('click', () => activarPestana(button.dataset.openFinanceView));
+});
+function abrirSubpanelRestaurantes(nombre = '') {
+  $('restaurantes-submenu').classList.toggle('hidden', Boolean(nombre));
+  $('restaurantes-panel-utilidad').classList.toggle('hidden', nombre !== 'utilidad');
+  $('restaurantes-panel-ia').classList.toggle('hidden', nombre !== 'ia');
+}
+document.querySelectorAll('[data-open-restaurant-view]').forEach(button => {
+  button.addEventListener('click', () => abrirSubpanelRestaurantes(button.dataset.openRestaurantView));
+});
+document.querySelectorAll('[data-back-restaurantes]').forEach(button => {
+  button.addEventListener('click', () => abrirSubpanelRestaurantes());
 });
 document.querySelectorAll('[data-back-analysis]').forEach(button => {
   button.addEventListener('click', () => activarPestana('analisis'));
