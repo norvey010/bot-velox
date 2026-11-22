@@ -371,7 +371,7 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
             const config = googleConfig();
             if (!config) return res.status(503).json({ error: 'Falta configurar el cliente OAuth de Google en Railway.' });
             const accountEmail = String(req.body?.email || INVOICE_ACCOUNT).trim().toLowerCase();
-            if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(accountEmail)) return res.status(400).json({ error: 'Escribe un correo electrónico válido.' });
+            if (!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(accountEmail)) return res.status(400).json({ error: 'Escribe un correo electrónico válido.' });
             const state = firmarEstado(req.adminPlataforma.id, accountEmail);
             const params = new URLSearchParams({
                 client_id: config.clientId, redirect_uri: config.redirectUri, response_type: 'code',
@@ -550,37 +550,112 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
             }
         });
 
-    app.get('/api/admin/facturas', autenticarAdminPlataforma, async (_req, res) => {
+    app.get('/api/admin/facturas', autenticarAdminPlataforma, async (req, res) => {
         try {
-            const facturas = [];
-            const movimientos = [];
-            const pageSize = 1000;
-            for (let offset = 0; ; offset += pageSize) {
-                const { data, error } = await supabaseAdmin.from('velox_platform_invoices')
-                    .select('id, provider, invoice_number, invoice_date, status, amount, paid_amount, currency, description, email_subject, source_received_at, file_paths, extraction_note, imported_at')
-                    .order('source_received_at', { ascending: false })
-                    .range(offset, offset + pageSize - 1);
-                if (error) throw error;
-                facturas.push(...(data || []));
-                if (!data || data.length < pageSize) break;
-            }
-            for (let offset = 0; ; offset += pageSize) {
-                const { data, error } = await supabaseAdmin.from('velox_financial_entries')
-                    .select('id, categoria, descripcion, monto, moneda, fecha, referencia, anulado_en, factura_id')
-                    .eq('tipo', 'gasto')
-                    .is('factura_id', null)
-                    .order('fecha', { ascending: false })
-                    .range(offset, offset + pageSize - 1);
-                if (error) throw error;
-                movimientos.push(...(data || []));
-                if (!data || data.length < pageSize) break;
-            }
+            const pageValue = Number.parseInt(req.query.page, 10);
+            const sizeValue = Number.parseInt(req.query.limit, 10);
+            const page = Number.isFinite(pageValue) ? Math.max(1, Math.min(pageValue, 1000)) : 1;
+            const pageSize = Number.isFinite(sizeValue) ? (sizeValue === 50 ? 50 : 25) : 25;
+            const needed = page * pageSize;
+            const provider = ['railway', 'supabase', 'openai', 'meta', 'claro', 'otro'].includes(String(req.query.provider || ''))
+                ? String(req.query.provider) : 'all';
+            const status = ['active', 'void'].includes(String(req.query.status || ''))
+                ? String(req.query.status) : 'all';
+            const search = String(req.query.q || '').replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s_-]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+            const validDate = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : '';
+            const from = validDate(req.query.from);
+            const to = validDate(req.query.to);
+            const knownProviders = '(railway,supabase,openai,meta,claro)';
+            const invoiceColumns = 'id, provider, invoice_number, invoice_date, status, amount, paid_amount, currency, description, email_subject, source_received_at, file_paths, extraction_note, imported_at';
+            const movementColumns = 'id, categoria, descripcion, monto, moneda, fecha, referencia, anulado_en, factura_id';
+
+            const filterQuery = (query, providerColumn, invoiceTable) => {
+                if (provider !== 'all') {
+                    query = provider === 'otro'
+                        ? query.not(providerColumn, 'in', knownProviders)
+                        : query.eq(providerColumn, provider);
+                }
+                if (invoiceTable) {
+                    if (status === 'active') query = query.not('status', 'in', '(void,refunded)');
+                    if (status === 'void') query = query.in('status', ['void', 'refunded']);
+                    if (from) query = query.gte('invoice_date', from);
+                    if (to) query = query.lte('invoice_date', to);
+                    if (search) query = query.or('invoice_number.ilike.%' + search + '%,email_subject.ilike.%' + search + '%,description.ilike.%' + search + '%');
+                } else {
+                    if (status === 'active') query = query.is('anulado_en', null);
+                    if (status === 'void') query = query.not('anulado_en', 'is', null);
+                    if (from) query = query.gte('fecha', from);
+                    if (to) query = query.lte('fecha', to);
+                    if (search) query = query.or('descripcion.ilike.%' + search + '%,referencia.ilike.%' + search + '%');
+                }
+                return query;
+            };
+            const createInvoiceQuery = countOnly => {
+                let query = supabaseAdmin.from('velox_platform_invoices').select(
+                    countOnly ? 'id' : invoiceColumns,
+                    countOnly ? { count: 'exact', head: true } : {}
+                );
+                query = filterQuery(query, 'provider', true);
+                if (!countOnly) query = query.order('invoice_date', { ascending: false, nullsFirst: false }).order('source_received_at', { ascending: false, nullsFirst: false });
+                return query;
+            };
+            const createMovementQuery = countOnly => {
+                let query = supabaseAdmin.from('velox_financial_entries')
+                    .select(countOnly ? 'id' : movementColumns, countOnly ? { count: 'exact', head: true } : {})
+                    .eq('tipo', 'gasto').is('factura_id', null);
+                query = filterQuery(query, 'categoria', false);
+                if (!countOnly) query = query.order('fecha', { ascending: false });
+                return query;
+            };
+            const [invoiceCountResult, movementCountResult] = await Promise.all([
+                createInvoiceQuery(true),
+                createMovementQuery(true)
+            ]);
+            if (invoiceCountResult.error) throw invoiceCountResult.error;
+            if (movementCountResult.error) throw movementCountResult.error;
+            const total = (invoiceCountResult.count || 0) + (movementCountResult.count || 0);
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+            const effectivePage = Math.min(page, totalPages);
+            const prefixSize = effectivePage * pageSize;
+            const cargarPrefijo = async (createQuery, count, neededRows) => {
+                const rows = [];
+                const chunkSize = 500;
+                for (let offset = 0; offset < Math.min(count, neededRows); offset += chunkSize) {
+                    const end = Math.min(offset + chunkSize, count, neededRows) - 1;
+                    const { data, error } = await createQuery().range(offset, end);
+                    if (error) throw error;
+                    rows.push(...(data || []));
+                    if (!data || data.length < end - offset + 1) break;
+                }
+                return rows;
+            };
+            const [facturasPrefijo, movimientosPrefijo] = await Promise.all([
+                cargarPrefijo(createInvoiceQuery, invoiceCountResult.count || 0, prefixSize),
+                cargarPrefijo(createMovementQuery, movementCountResult.count || 0, prefixSize)
+            ]);
+            const registros = [
+                ...facturasPrefijo.map(invoice => ({
+                    ...invoice,
+                    tipoRegistro: 'factura',
+                    fechaOrden: invoice.invoice_date || invoice.source_received_at || invoice.imported_at
+                })),
+                ...movimientosPrefijo.map(movimiento => ({
+                    ...movimiento,
+                    tipoRegistro: 'movimiento',
+                    fechaOrden: movimiento.fecha
+                }))
+            ].sort((a, b) => new Date(b.fechaOrden || 0) - new Date(a.fechaOrden || 0));
+            const pagina = registros.slice((effectivePage - 1) * pageSize, effectivePage * pageSize);
             res.json({
-                facturas: facturas.map(({ file_paths, ...invoice }) => ({
+                facturas: pagina.filter(row => row.tipoRegistro === 'factura').map(({ file_paths, tipoRegistro, fechaOrden, ...invoice }) => ({
                     ...invoice,
                     files: (Array.isArray(file_paths) ? file_paths : []).map(({ name, mimeType }) => ({ name, mimeType }))
                 })),
-                movimientos
+                movimientos: pagina.filter(row => row.tipoRegistro === 'movimiento').map(({ tipoRegistro, fechaOrden, ...movimiento }) => movimiento),
+                total,
+                pagina: effectivePage,
+                paginas: totalPages,
+                por_pagina: pageSize
             });
         } catch (error) {
             console.error('No se pudieron cargar facturas y movimientos del historial:', error.message);

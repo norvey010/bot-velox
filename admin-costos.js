@@ -268,25 +268,48 @@ async function abrirComprobante(id, indice) {
     throw error;
   }
 }
+let paginaFacturas = 1;
+let temporizadorBusquedaFacturas = null;
+let solicitudFacturasActual = 0;
 async function cargarFacturas(auto = true) {
+  const solicitudActual = ++solicitudFacturasActual;
   const status = await solicitarAdmin('/api/admin/integraciones/gmail/estado');
   if (!$('gmail-account-email').value) $('gmail-account-email').value = localStorage.getItem('velox-gmail-account-email') || status.correo || '';
   $('connect-gmail').disabled = !status.configurado;
   $('sync-invoices').disabled = !status.conectado;
   if (!status.configurado) {
-    estadoFacturas(`Para vincular ${status.correo}, el administrador debe configurar el cliente OAuth de Google en Railway. URI de retorno: ${status.redirect_uri || 'pendiente del dominio público'}.`);
+    estadoFacturas('Para vincular ' + status.correo + ', el administrador debe configurar el cliente OAuth de Google en Railway. URI de retorno: ' + (status.redirect_uri || 'pendiente del dominio público') + '.');
   } else if (!status.conectado) {
-    estadoFacturas(`Conecta ${status.correo} una vez. Velox buscará únicamente correos de facturación de las plataformas.`);
+    estadoFacturas('Conecta ' + status.correo + ' una vez. Velox buscará únicamente correos de facturación de las plataformas.');
   } else {
-    estadoFacturas(`Correo conectado: ${status.correo}${status.ultima_sync ? ` · Última sincronización ${new Date(status.ultima_sync).toLocaleString('es-CO')}` : ' · Aún no se sincroniza'}`, true);
+    estadoFacturas('Correo conectado: ' + status.correo + (status.ultima_sync ? ' · Última sincronización ' + new Date(status.ultima_sync).toLocaleString('es-CO') : ' · Aún no se sincroniza'), true);
     if (auto && (!status.ultima_sync || Date.now() - new Date(status.ultima_sync).getTime() > 6 * 60 * 60 * 1000)) {
       estadoFacturas('Buscando comprobantes y guardando los originales…', true);
       await solicitarAdmin('/api/admin/facturas/sync', { method: 'POST' });
       status.ultima_sync = new Date().toISOString();
-      estadoFacturas(`Correo conectado: ${status.correo} · Comprobantes actualizados`, true);
+      estadoFacturas('Correo conectado: ' + status.correo + ' · Comprobantes actualizados', true);
     }
   }
-  const { facturas = [], movimientos = [] } = await solicitarAdmin('/api/admin/facturas');
+  const pageSize = Number($('invoice-page-size').value) || 25;
+  const params = new URLSearchParams({
+    page: String(paginaFacturas),
+    limit: String(pageSize),
+    provider: $('invoice-provider-filter').value || 'all',
+    status: $('invoice-filter').value || 'active',
+    q: $('invoice-search').value.trim(),
+    from: $('invoice-from').value,
+    to: $('invoice-to').value
+  });
+  const data = await solicitarAdmin('/api/admin/facturas?' + params.toString());
+  if (solicitudActual !== solicitudFacturasActual) return;
+  const facturas = data.facturas || [];
+  const movimientos = data.movimientos || [];
+  const total = Number(data.total) || 0;
+  const paginas = Math.max(1, Number(data.paginas) || 1);
+  if (paginaFacturas > paginas) {
+    paginaFacturas = paginas;
+    return cargarFacturas(false);
+  }
   const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro', otro: 'Otro / Codex' };
   const registros = [
     ...facturas.map(invoice => ({ ...invoice, tipoRegistro: 'factura', fechaOrden: invoice.invoice_date || invoice.source_received_at || invoice.imported_at })),
@@ -297,101 +320,107 @@ async function cargarFacturas(auto = true) {
       tipoRegistro: 'movimiento',
       fechaOrden: movimiento.fecha
     }))
-  ];
-  const anuladas = registros.filter(registro =>
-    registro.tipoRegistro === 'movimiento'
-      ? Boolean(registro.anulado_en)
-      : ['void', 'refunded'].includes(registro.status)
-  ).length;
-  const activas = registros.length - anuladas;
-  const proveedoresConocidos = ['railway', 'supabase', 'openai', 'meta', 'claro'];
-  const filtroProveedor = $('invoice-provider-filter').value || 'all';
-  const filtroFactura = $('invoice-filter').value || 'active';
-  const coincideServicio = registro => filtroProveedor === 'all'
-    || (filtroProveedor === 'otro'
-      ? !proveedoresConocidos.includes(registro.provider)
-      : registro.provider === filtroProveedor);
-  const coincideEstado = registro => filtroFactura === 'all'
-    || (filtroFactura === 'void'
-      ? (registro.tipoRegistro === 'movimiento' ? Boolean(registro.anulado_en) : ['void', 'refunded'].includes(registro.status))
-      : (registro.tipoRegistro === 'movimiento' ? !registro.anulado_en : !['void', 'refunded'].includes(registro.status)));
-  const facturasFiltradas = registros
-    .filter(registro => coincideServicio(registro) && coincideEstado(registro))
-    .sort((a, b) => new Date(b.fechaOrden || 0) - new Date(a.fechaOrden || 0));
-  const cantidadFactura = facturasFiltradas.filter(registro => registro.tipoRegistro === 'factura').length;
-  const cantidadMovimiento = facturasFiltradas.length - cantidadFactura;
-  $('invoice-filter').options[0].textContent = 'Activas (' + activas + ')';
-  $('invoice-filter').options[1].textContent = 'Anuladas (' + anuladas + ')';
-  $('invoice-filter').options[2].textContent = 'Todas (' + registros.length + ')';
-  for (const option of $('invoice-provider-filter').options) {
-    const cantidad = registros.filter(registro =>
-      option.value === 'all' ? true
-        : option.value === 'otro' ? !proveedoresConocidos.includes(registro.provider)
-          : registro.provider === option.value
-    ).length;
-    const base = option.value === 'all' ? 'Todos'
-      : option.value === 'otro' ? 'Otros'
-        : nombres[option.value] || option.textContent.replace(/\s+\(\d+\)$/, '');
-    option.textContent = base + ' (' + cantidad + ')';
+  ].sort((a, b) => new Date(b.fechaOrden || 0) - new Date(a.fechaOrden || 0));
+
+  const primero = total ? (paginaFacturas - 1) * pageSize + 1 : 0;
+  const ultimo = Math.min(paginaFacturas * pageSize, total);
+  $('invoice-summary').textContent = total
+    ? 'Resultados: ' + numero.format(total) + ' · ordenados del más reciente al más antiguo.'
+    : 'No hay registros que coincidan con esos filtros.';
+  $('invoice-page-summary').textContent = 'Página ' + paginaFacturas + ' de ' + paginas + (total ? ' · ' + numero.format(primero) + '–' + numero.format(ultimo) + ' de ' + numero.format(total) : '');
+  $('invoice-prev').disabled = paginaFacturas <= 1;
+  $('invoice-next').disabled = paginaFacturas >= paginas;
+
+  const list = $('invoice-list');
+  list.replaceChildren();
+  if (!registros.length) {
+    const vacio = document.createElement('p');
+    vacio.className = 'py-4 text-sm text-[#69544A]';
+    vacio.textContent = 'No hay facturas ni movimientos para esos filtros.';
+    list.append(vacio);
+    return;
   }
-  $('invoice-summary').textContent = 'Historial completo · ' + activas + ' activos, ' + anuladas
-    + ' anulados · mostrando ' + facturasFiltradas.length + ' registros: ' + cantidadFactura
-    + ' facturas y ' + cantidadMovimiento + ' movimientos. Los gastos vinculados a una factura aparecen una sola vez con su comprobante.';
-  const list = $('invoice-list'); list.replaceChildren();
-  if (!facturasFiltradas.length) {
-    const vacio = document.createElement('p'); vacio.className = 'text-sm text-[#69544A]';
-    vacio.textContent = registros.length
-      ? 'No hay facturas ni movimientos para este servicio y estado.'
-      : 'Aún no hay facturas ni movimientos guardados.';
-    list.append(vacio); return;
-  }
-  for (const registro of facturasFiltradas) {
-    const fila = document.createElement('article'); fila.className = 'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E6D8C9] p-3';
-    const info = document.createElement('div'); info.className = 'min-w-0';
-    const titulo = document.createElement('p'); titulo.className = 'truncate text-sm font-medium text-[#241A15]';
-    const detalle = document.createElement('p'); detalle.className = 'mt-1 text-xs text-[#69544A]';
-    const acciones = document.createElement('div'); acciones.className = 'flex flex-wrap gap-2';
+  for (const registro of registros) {
+    const card = document.createElement('details');
+    card.className = 'rounded-lg border border-[#E6D8C9] bg-white/50';
+    const resumen = document.createElement('summary');
+    resumen.className = 'flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-2.5';
+    const texto = document.createElement('div');
+    texto.className = 'min-w-0 flex-1';
+    const titulo = document.createElement('p');
+    titulo.className = 'truncate text-sm font-semibold text-[#241A15]';
+    const detalle = document.createElement('p');
+    detalle.className = 'mt-0.5 text-xs text-[#69544A]';
+    const valor = document.createElement('span');
+    valor.className = 'shrink-0 text-sm font-semibold text-[#241A15]';
     if (registro.tipoRegistro === 'movimiento') {
       titulo.textContent = (nombres[registro.provider] || registro.provider || 'Otro') + ' · Movimiento de gasto';
-      detalle.textContent = fechaFactura(registro.fecha) + ' · '
-        + (registro.anulado_en ? 'Anulado' : 'Movimiento manual') + ' · '
-        + dineroFactura(registro.monto, registro.moneda);
-      info.append(titulo, detalle);
+      detalle.textContent = fechaFactura(registro.fecha) + ' · ' + (registro.anulado_en ? 'Anulado' : 'Movimiento manual');
+      valor.textContent = dineroFactura(registro.monto, registro.moneda);
+      texto.append(titulo, detalle);
+      resumen.append(texto, valor);
+      card.append(resumen);
       const descripcion = [registro.descripcion, registro.referencia].filter(Boolean).join(' · ');
-      fila.append(info, acciones);
       if (descripcion) {
-        const nota = document.createElement('p'); nota.className = 'w-full text-xs text-[#69544A]'; nota.textContent = descripcion; fila.append(nota);
+        const nota = document.createElement('p');
+        nota.className = 'border-t border-[#E6D8C9] px-3 py-2 text-xs text-[#69544A]';
+        nota.textContent = descripcion;
+        card.append(nota);
       }
-      list.append(fila);
+      list.append(card);
       continue;
     }
-    titulo.textContent = (nombres[registro.provider] || registro.provider) + ' · '
-      + (registro.invoice_number ? 'Factura ' + registro.invoice_number : registro.email_subject || 'Comprobante');
+    const proveedor = nombres[registro.provider] || registro.provider || 'Otro';
+    titulo.textContent = proveedor + ' · ' + (registro.invoice_number ? 'Factura ' + registro.invoice_number : registro.email_subject || 'Comprobante');
     const estado = registro.status === 'paid' ? 'Pagada'
-      : registro.status === 'open' ? 'Pendiente de pago'
+      : registro.status === 'open' ? 'Pendiente'
         : registro.status === 'void' ? 'Anulada'
-          : registro.status === 'refunded' ? 'Reembolsada' : 'Importe por revisar';
-    detalle.textContent = fechaFactura(registro.invoice_date || registro.source_received_at) + ' · '
-      + estado + ' · ' + dineroFactura(registro.paid_amount ?? registro.amount, registro.currency);
-    info.append(titulo, detalle);
+          : registro.status === 'refunded' ? 'Reembolsada' : 'Por revisar';
+    detalle.textContent = fechaFactura(registro.invoice_date || registro.source_received_at || registro.imported_at) + ' · ' + estado;
+    valor.textContent = dineroFactura(registro.paid_amount ?? registro.amount, registro.currency);
+    texto.append(titulo, detalle);
+    resumen.append(texto, valor);
+    card.append(resumen);
+    const contenido = document.createElement('div');
+    contenido.className = 'flex flex-wrap items-center gap-2 border-t border-[#E6D8C9] p-3';
     for (const [indice, archivo] of (Array.isArray(registro.files) ? registro.files : []).entries()) {
-      const boton = document.createElement('button'); boton.type = 'button'; boton.className = 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs text-[#241A15]'; boton.textContent = 'Ver ' + (archivo.name || 'comprobante');
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.className = 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs text-[#241A15]';
+      boton.textContent = registro.files.length === 1 ? 'Ver PDF' : 'Ver ' + (archivo.name || 'comprobante');
       boton.addEventListener('click', () => abrirComprobante(registro.id, indice).catch(error => { $('data-message').textContent = error.message; }));
-      acciones.append(boton);
+      contenido.append(boton);
     }
     const editar = document.createElement('button');
-    editar.type = 'button'; editar.className = 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs text-[#241A15]'; editar.textContent = 'Corregir';
+    editar.type = 'button';
+    editar.className = 'rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs text-[#241A15]';
+    editar.textContent = 'Corregir';
     editar.addEventListener('click', () => abrirEdicionFactura(registro));
-    acciones.append(editar);
+    contenido.append(editar);
     if (registro.status !== 'void' && registro.status !== 'refunded') {
       const anular = document.createElement('button');
-      anular.type = 'button'; anular.className = 'rounded-lg border border-red-200 px-3 py-2 text-xs text-red-800'; anular.textContent = 'Anular';
+      anular.type = 'button';
+      anular.className = 'rounded-lg border border-red-200 px-3 py-2 text-xs text-red-800';
+      anular.textContent = 'Anular';
       anular.addEventListener('click', () => anularFactura(registro, anular).catch(error => { $('data-message').textContent = error.message; }));
-      acciones.append(anular);
+      contenido.append(anular);
     }
-    fila.append(info, acciones);
-    if (registro.extraction_note) { const nota = document.createElement('p'); nota.className = 'w-full text-xs text-[#69544A]'; nota.textContent = registro.extraction_note; fila.append(nota); }
-    list.append(fila);
+    const notaImportacion = String(registro.extraction_note || '');
+    const notaRepetida = 'Importe, fecha y moneda revisados en el panel; comprobante original guardado. Sin uso de IA.';
+    if (notaImportacion && notaImportacion !== notaRepetida) {
+      const nota = document.createElement('p');
+      nota.className = 'w-full text-xs text-[#69544A]';
+      nota.textContent = notaImportacion;
+      contenido.append(nota);
+    }
+    if (registro.description) {
+      const descripcion = document.createElement('p');
+      descripcion.className = 'w-full text-xs text-[#69544A]';
+      descripcion.textContent = registro.description;
+      contenido.append(descripcion);
+    }
+    card.append(contenido);
+    list.append(card);
   }
 }
 const dialogoFactura = $('invoice-edit-dialog');
@@ -583,12 +612,14 @@ function mostrarVista(session) {
       activarRango('MAX'); rangoInicializado = true;
     }
     const vistaGuardada = sessionStorage.getItem('velox-finanzas-vista');
-    if (vistaGuardada && ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura'].includes(vistaGuardada)) {
+    if (vistaGuardada && ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'tasas', 'carga-factura'].includes(vistaGuardada)) {
       sessionStorage.removeItem('velox-finanzas-vista');
       activarPestana(vistaGuardada);
     }
     const filtroGuardado = localStorage.getItem('velox-invoice-filter');
     if (filtroGuardado && ['active', 'void', 'all'].includes(filtroGuardado)) $('invoice-filter').value = filtroGuardado;
+    const tamanoGuardado = localStorage.getItem('velox-invoice-page-size');
+    if (tamanoGuardado && ['25', '50'].includes(tamanoGuardado)) $('invoice-page-size').value = tamanoGuardado;
     const servicioGuardado = localStorage.getItem('velox-invoice-provider-filter');
     if (servicioGuardado && [...$('invoice-provider-filter').options].some(option => option.value === servicioGuardado)) $('invoice-provider-filter').value = servicioGuardado;
     cargarAcumulado();
@@ -715,7 +746,7 @@ $('password-form').addEventListener('submit', async event => {
 });
 
 function activarPestana(nombre) {
-  const vistasSecundarias = ['restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura'];
+  const vistasSecundarias = ['restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'tasas', 'carga-factura'];
   const vistasDeAnalisis = ['restaurantes', 'acumulado', 'categorias', 'movimientos'];
   const esVistaSecundaria = vistasSecundarias.includes(nombre);
   const principal = esVistaSecundaria
@@ -757,7 +788,7 @@ document.querySelectorAll('[data-back-comprobantes]').forEach(button => {
 });
 
 function vistaFinancieraVisible() {
-  return ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura']
+  return ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'tasas', 'carga-factura']
     .find(id => !$('vista-' + id).classList.contains('hidden')) || 'historial';
 }
 function hayCambiosFinancierosSinGuardar() {
@@ -904,13 +935,36 @@ $('aplicar-rango-personalizado').addEventListener('click', () => {
 });
 $('refresh').addEventListener('click', () => cargarAcumulado());
 $('actualizar-acumulado').addEventListener('click', cargarAcumulado);
+const aplicarFiltrosFacturas = () => {
+  paginaFacturas = 1;
+  cargarFacturas(false).catch(error => estadoFacturas(error.message));
+};
 $('invoice-filter').addEventListener('change', () => {
   localStorage.setItem('velox-invoice-filter', $('invoice-filter').value);
-  cargarFacturas(false);
+  aplicarFiltrosFacturas();
 });
 $('invoice-provider-filter').addEventListener('change', () => {
   localStorage.setItem('velox-invoice-provider-filter', $('invoice-provider-filter').value);
-  cargarFacturas(false);
+  aplicarFiltrosFacturas();
+});
+for (const id of ['invoice-from', 'invoice-to']) $(id).addEventListener('change', aplicarFiltrosFacturas);
+$('invoice-search').addEventListener('input', () => {
+  clearTimeout(temporizadorBusquedaFacturas);
+  temporizadorBusquedaFacturas = setTimeout(aplicarFiltrosFacturas, 300);
+});
+$('invoice-page-size').addEventListener('change', () => {
+  localStorage.setItem('velox-invoice-page-size', $('invoice-page-size').value);
+  aplicarFiltrosFacturas();
+});
+$('invoice-prev').addEventListener('click', () => {
+  if (paginaFacturas > 1) {
+    paginaFacturas--;
+    cargarFacturas(false).catch(error => estadoFacturas(error.message));
+  }
+});
+$('invoice-next').addEventListener('click', () => {
+  paginaFacturas++;
+  cargarFacturas(false).catch(error => estadoFacturas(error.message));
 });
 document.querySelectorAll('[data-factura-shortcut]').forEach(button => {
   button.addEventListener('click', () => {
@@ -957,32 +1011,6 @@ $('movimiento-form').addEventListener('submit', async event => {
     mensaje('mov-mensaje', error.message, true);
   } finally {
     $('mov-guardar').disabled = false;
-  }
-});
-$('otro-ingreso-form').addEventListener('submit', async event => {
-  event.preventDefault();
-  const boton = $('otro-ingreso-guardar');
-  boton.disabled = true;
-  mensaje('otro-ingreso-mensaje', '', false);
-  const fecha = $('otro-ingreso-fecha').value;
-  const body = {
-    tipo: 'ingreso', categoria: 'otro', restaurante_id: null,
-    descripcion: $('otro-ingreso-descripcion').value.trim(),
-    monto: Number($('otro-ingreso-monto').value), moneda: $('otro-ingreso-moneda').value,
-    fecha, referencia: $('otro-ingreso-ref').value.trim()
-  };
-  try {
-    await solicitar('/api/admin/finanzas', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-    });
-    $('otro-ingreso-form').reset();
-    $('otro-ingreso-fecha').value = hoyBogota();
-    mensaje('otro-ingreso-mensaje', 'Ingreso guardado y sumado al neto. No cuenta como suscripción.', false);
-    await void cargarAcumulado();
-  } catch (error) {
-    mensaje('otro-ingreso-mensaje', error.message, true);
-  } finally {
-    boton.disabled = false;
   }
 });
 $('tasa-periodo').addEventListener('change', () => {
