@@ -111,15 +111,17 @@ function actualizarCategorias(reiniciarAtribucion = false) {
   const categoria = $('mov-categoria');
   const selector = $('mov-restaurante');
   const opciones = tipo === 'ingreso'
-    ? [['suscripcion', 'Suscripción'], ['otro', 'Otro ingreso']]
-    : [['railway', 'Railway'], ['supabase', 'Supabase'], ['claro', 'Claro'], ['meta', 'Meta'], ['otro', 'Otro gasto']];
+    ? [['suscripcion', 'Suscripción'], ['otro', 'Otro']]
+    : [['railway', 'Railway'], ['supabase', 'Supabase'], ['claro', 'Claro'], ['meta', 'Meta'], ['otro', 'Otro']];
   categoria.replaceChildren(...opciones.map(([valor, texto]) => new Option(texto, valor)));
   const customWrap = $('mov-service-custom-wrap');
   const customInput = $('mov-service-custom');
   const requiereNombre = categoria.value === 'otro';
   customWrap.classList.toggle('hidden', !requiereNombre);
+  customWrap.hidden = !requiereNombre;
+  customInput.disabled = !requiereNombre;
   customInput.required = requiereNombre;
-  customInput.placeholder = tipo === 'ingreso' ? 'Ej.: Venta de implementación' : 'Ej.: Codex, dominio web, suscripción';
+  customInput.placeholder = tipo === 'ingreso' ? 'Escribe el concepto del ingreso' : 'Escribe el nombre del servicio o proveedor';
   customWrap.firstChild.textContent = tipo === 'ingreso' ? 'Concepto del ingreso' : 'Nombre del servicio o proveedor';
   selector.required = tipo === 'ingreso';
   selector.options[0].textContent = tipo === 'ingreso'
@@ -131,7 +133,7 @@ function actualizarCategorias(reiniciarAtribucion = false) {
   $('mov-restaurante-help').textContent = tipo === 'ingreso'
     ? 'El ingreso se asignará a este restaurante.'
     : 'Déjalo como gasto compartido para repartirlo entre restaurantes activos. Elige un restaurante solo si el gasto es exclusivo de ese negocio.';
-  if (reiniciarAtribucion) selector.value = '';
+  if (reiniciarAtribucion) { selector.value = ''; customInput.value = ''; }
   const descripcion = $('mov-descripcion');
   descripcion.disabled = false;
   descripcion.readOnly = false;
@@ -506,6 +508,8 @@ const providerInvoiceCustom = formularioFactura.elements.provider_custom;
 function actualizarProveedorPersonalizado() {
   const esOtro = providerInvoiceSelect.value === 'otro';
   $('invoice-provider-custom-wrap').classList.toggle('hidden', !esOtro);
+  $('invoice-provider-custom-wrap').hidden = !esOtro;
+  providerInvoiceCustom.disabled = !esOtro;
   providerInvoiceCustom.required = esOtro;
 }
 providerInvoiceSelect.addEventListener('change', actualizarProveedorPersonalizado);
@@ -538,7 +542,7 @@ $('read-invoice').addEventListener('click', async () => {
     if (fields.amount != null) { formularioFactura.elements.amount.value = fields.amount; parsed.push('importe'); }
     if (fields.currency) { formularioFactura.elements.currency.value = fields.currency; parsed.push('moneda'); }
     if (fields.invoice_number) { formularioFactura.elements.invoice_number.value = fields.invoice_number; parsed.push('número'); }
-    const nombresProveedor = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro', otro: 'Otro / Codex' };
+    const nombresProveedor = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro', otro: 'Otro' };
     if (fields.proveedor_detectado && nombresProveedor[fields.proveedor_detectado]) {
       formularioFactura.elements.provider.value = fields.proveedor_detectado;
       parsed.push('proveedor ' + nombresProveedor[fields.proveedor_detectado]);
@@ -656,7 +660,7 @@ function mostrarVista(session) {
     cargarAcumulado();
     cargarFacturas(true).catch(error => estadoFacturas(error.message));
     if (!autoRefresh) autoRefresh = setInterval(() => {
-      if (document.visibilityState === 'visible' && (!$('vista-historial').classList.contains('hidden') || ['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos'].some(id => !$('vista-' + id).classList.contains('hidden')))) cargarAcumulado();
+      if (document.visibilityState === 'visible' && (!$('vista-historial').classList.contains('hidden') || ['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos', 'movimiento'].some(id => !$('vista-' + id).classList.contains('hidden')))) cargarAcumulado();
     }, 15000);
     if (!autoRefreshVersion) autoRefreshVersion = setInterval(() => {
       if (document.visibilityState === 'visible') void comprobarVersionPanel();
@@ -798,7 +802,7 @@ function activarPestana(nombre) {
     $(`vista-${id}`).classList.toggle('hidden', nombre !== id);
   }
 
-  if (['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos'].includes(nombre)) cargar();
+  if (['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos', 'movimiento'].includes(nombre)) cargar();
   if (nombre === 'acumulado' || nombre === 'historial') cargarAcumulado();
   if (['comprobantes', 'carga-factura'].includes(nombre)) cargarFacturas(false).catch(error => estadoFacturas(error.message));
 }
