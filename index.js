@@ -348,7 +348,7 @@ async function consultarAlertaConsumoOpenAI() {
             Number(limite.threshold_amount) > 0);
         if (limitesValidos) {
             for (let i = 0; i < projectIds.length; i++) {
-                limiteUsd += Number(limitesProyecto[i].threshold_amount);
+                limiteUsd += Number(limitesProyecto[i].threshold_amount) / 100;
                 const gasto = await consultarCostosOpenAIPeriodo(desde, hasta, [projectIds[i]]);
                 if (!gasto.disponible) return guardar({ disponible: false, motivo: gasto.mensaje || 'No se pudo consultar el costo de OpenAI.' });
                 consumoUsd += Number(gasto.monto_usd) || 0;
@@ -360,7 +360,7 @@ async function consultarAlertaConsumoOpenAI() {
                 return guardar({ disponible: true, limite_configurado: false });
             }
             origen = 'organización';
-            limiteUsd = Number(limiteOrg.threshold_amount);
+            limiteUsd = Number(limiteOrg.threshold_amount) / 100;
             const gasto = await consultarCostosOpenAIPeriodo(desde, hasta, []);
             if (!gasto.disponible) return guardar({ disponible: false, motivo: gasto.mensaje || 'No se pudo consultar el costo de OpenAI.' });
             consumoUsd = Number(gasto.monto_usd) || 0;
