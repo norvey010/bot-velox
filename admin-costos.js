@@ -22,6 +22,8 @@ let cargandoAcumulado = false;
 let acumuladoPendiente = false;
 let cargaPendiente = false;
 let rangoActual = 'MAX';
+let rangoDesdePersonalizado = '';
+let rangoHastaPersonalizado = '';
 let rangoInicializado = false;
 let datos = null;
 
@@ -251,7 +253,7 @@ async function cargar() {
   cargando = true;
   $('data-message').textContent = '';
   try {
-    const data = await solicitar('/api/admin/finanzas/rango?rango=' + encodeURIComponent(rangoActual));
+    const data = await solicitar(urlRangoFinanciero());
     renderizar(data);
     $('rango-actual').textContent = data.periodo;
   } catch (error) {
@@ -569,6 +571,11 @@ $('sync-invoices').addEventListener('click', async () => {
   finally { $('sync-invoices').disabled = false; }
 });
 
+function urlRangoFinanciero() {
+  const params = new URLSearchParams({ rango: rangoActual });
+  if (rangoActual === 'CUSTOM') { params.set('desde', rangoDesdePersonalizado); params.set('hasta', rangoHastaPersonalizado); }
+  return '/api/admin/finanzas/rango?' + params.toString();
+}
 function activarRango(rango) {
   rangoActual = rango;
   const etiquetas = {
@@ -576,7 +583,10 @@ function activarRango(rango) {
     YTD: 'Desde enero de este año', '1A': 'Últimos 12 meses', '5A': 'Últimos 5 años', MAX: 'Todo el historial'
   };
   $('rango-selector').value = rango;
-  $('rango-actual').textContent = etiquetas[rango] || rango;
+  $('rango-personalizado').classList.toggle('hidden', rango !== 'CUSTOM');
+  $('rango-actual').textContent = rango === 'CUSTOM'
+    ? (rangoDesdePersonalizado + ' — ' + rangoHastaPersonalizado)
+    : (etiquetas[rango] || rango);
 }
 function mostrarVista(session) {
   token = session && session.access_token ? session.access_token : null;
@@ -586,7 +596,14 @@ function mostrarVista(session) {
   $('password-card').classList.toggle('hidden', !enRecuperacion);
   $('dashboard').classList.toggle('hidden', !session || enRecuperacion);
   if (session && !enRecuperacion) {
-    if (!rangoInicializado) { activarRango('MAX'); rangoInicializado = true; }
+    if (!rangoInicializado) {
+      try { const guardado = JSON.parse(localStorage.getItem('velox-finanzas-rango-personalizado') || '{}'); rangoDesdePersonalizado = guardado.desde || ''; rangoHastaPersonalizado = guardado.hasta || ''; } catch {}
+      const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      $('rango-desde').value = rangoDesdePersonalizado;
+      $('rango-hasta').value = rangoHastaPersonalizado;
+      $('rango-desde').max = hoy; $('rango-hasta').max = hoy;
+      activarRango('MAX'); rangoInicializado = true;
+    }
     const vistaGuardada = sessionStorage.getItem('velox-finanzas-vista');
     if (vistaGuardada && ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura'].includes(vistaGuardada)) {
       sessionStorage.removeItem('velox-finanzas-vista');
@@ -820,43 +837,53 @@ async function cargarAcumulado() {
   if (!token) return;
   if (cargandoAcumulado) { acumuladoPendiente = true; return; }
   cargandoAcumulado = true;
-  $('acumulado-nota').textContent = 'Sumando los gastos guardados y consultando el costo histórico disponible…';
+  $('acumulado-nota').textContent = 'Calculando los costos de este período…';
   try {
-    const data = await solicitar('/api/admin/finanzas/acumulado');
-    $('acumulado-cop').textContent = mostrarMoneda(data.monedas?.COP, 'COP');
-    $('acumulado-usd').textContent = mostrarMoneda(data.monedas?.USD, 'USD');
-    $('acumulado-equivalente').textContent = mostrarMoneda(data.monedas?.equivalente_cop, 'COP');
-    const sinTasa = Number(data.monedas?.usd_sin_tasa) > 0
-      ? mostrarMoneda(data.monedas.usd_sin_tasa, 'USD') + ' sin tasa mensual guardada'
-      : 'No hay USD pendientes de conversión.';
-    $('acumulado-sin-tasa').textContent = sinTasa;
-    const periodoData = await solicitar('/api/admin/finanzas/rango?rango=' + encodeURIComponent(rangoActual));
+    const periodoData = await solicitar(urlRangoFinanciero());
     renderizar(periodoData);
     $('rango-actual').textContent = periodoData.periodo;
     const resumen = periodoData.resumen || {};
-    const faltaTasa = 'Completa las tasas mensuales para ver el total en COP.';
-    $('vida-equivalente').textContent = resumen.gastos_cop == null ? 'Falta tasa de cambio' : mostrarMoneda(resumen.gastos_cop, 'COP');
-    $('vida-sin-tasa').textContent = resumen.gastos_cop == null ? 'Hay costos en USD sin tasa guardada en Facturas.' : 'Incluye los costos registrados y los costos de IA disponibles.';
-    $('vida-ingresos-brutos').textContent = resumen.ingresos_suscripcion_cop == null ? 'Falta tasa de cambio' : mostrarMoneda(resumen.ingresos_suscripcion_cop, 'COP');
-    $('vida-ingresos-detalle').textContent = resumen.ingresos_suscripcion_cop == null ? faltaTasa : 'Solo suscripciones del período.';
-    $('vida-ingreso-neto').textContent = resumen.utilidad_neta_cop == null ? 'Falta tasa de cambio' : mostrarMoneda(resumen.utilidad_neta_cop, 'COP');
-    $('vida-ingreso-neto').classList.toggle('text-red-700', resumen.utilidad_neta_cop != null && Number(resumen.utilidad_neta_cop) < 0);
-    $('vida-ingreso-neto').classList.toggle('text-emerald-700', resumen.utilidad_neta_cop != null && Number(resumen.utilidad_neta_cop) >= 0);
-    $('vida-neto-nota').textContent = resumen.utilidad_neta_cop == null ? faltaTasa : 'Suscripciones + otros ingresos − costos del período.';
-    $('vida-nota').textContent = periodoData.periodo + ' · ' + numero.format(periodoData.movimientos?.length || 0) + ' movimientos activos.';
-    $('acumulado-nota').textContent = data.nota + ' ' + data.nota_openai;
-    $('acumulado-fecha').textContent = data.inicio
-      ? 'Desde ' + fechaFactura(data.inicio) + ' · actualizado ' + new Date(data.actualizado_en).toLocaleString('es-CO') + ' · ' + numero.format(data.movimientos_contados || 0) + ' gastos registrados.'
-      : 'Aún no hay gastos con fecha en el libro financiero.';
+    const movimientosGasto = (periodoData.movimientos || []).filter(m => m.tipo === 'gasto');
+    const totalCopRegistrado = movimientosGasto.filter(m => m.moneda !== 'USD').reduce((s, m) => s + (Number(m.monto) || 0), 0);
+    const costosUsdProveedor = resumen.ia_real_disponible ? Number(resumen.ia_real_usd) || 0 : Number(resumen.ia_estimado_usd) || 0;
+    $('acumulado-cop').textContent = mostrarMoneda(totalCopRegistrado, 'COP');
+    $('acumulado-usd').textContent = mostrarMoneda((Number(resumen.gastos_registrados_usd) || 0) + costosUsdProveedor, 'USD');
+    $('acumulado-equivalente').textContent = resumen.gastos_cop == null ? 'Falta tasa de cambio' : mostrarMoneda(resumen.gastos_cop, 'COP');
+    $('acumulado-sin-tasa').textContent = resumen.gastos_cop == null
+      ? 'Hay gastos en USD sin una tasa guardada para su fecha.'
+      : 'Incluye costos registrados y consumo de IA disponible.';
+    $('acumulado-nota').textContent = 'Costos agrupados por servicio para ' + periodoData.periodo + '.';
+    $('acumulado-fecha').textContent = periodoData.periodo + ' · ' + numero.format(movimientosGasto.length) + ' gastos registrados.';
+    const servicios = new Map();
+    const sumar = (categoria, monto, moneda, equivalente) => {
+      const nombre = nombresCategoria[categoria] || 'Otros servicios';
+      const item = servicios.get(nombre) || { COP: 0, USD: 0, equivalente_cop: 0, sinTasa: false };
+      const valor = Number(monto) || 0;
+      item[moneda === 'USD' ? 'USD' : 'COP'] += valor;
+      if (equivalente == null) item.sinTasa = true;
+      else item.equivalente_cop += Number(equivalente) || 0;
+      servicios.set(nombre, item);
+    };
+    for (const mov of movimientosGasto) {
+      const moneda = mov.moneda === 'USD' ? 'USD' : 'COP';
+      const tasa = periodoData.tasas_por_mes?.[String(mov.fecha || '').slice(0, 7)];
+      const equivalente = moneda === 'COP' ? Number(mov.monto) || 0
+        : Number.isFinite(Number(tasa)) && Number(tasa) > 0 ? Number(mov.monto) * Number(tasa) : null;
+      sumar(mov.categoria || 'otro', mov.monto, moneda, equivalente);
+    }
+    if (costosUsdProveedor > 0) {
+      sumar('openai', costosUsdProveedor, 'USD', resumen.ia_costo_aplicado_cop);
+    }
+    const filas = [...servicios.entries()].sort((a, b) => (b[1].equivalente_cop || 0) - (a[1].equivalente_cop || 0));
     const tbody = $('servicios-acumulado-body');
-    if (!data.servicios?.length) return filaVacia(tbody, 4, 'Aún no hay gastos registrados.');
+    if (!filas.length) return filaVacia(tbody, 4, 'No hay gastos en este período.');
     const fragmento = document.createDocumentFragment();
-    for (const servicio of data.servicios) {
+    for (const [nombre, servicio] of filas) {
       const fila = document.createElement('tr'); fila.className = 'border-t border-[#E6D8C9]';
-      celda(fila, servicio.servicio);
+      celda(fila, nombre);
       celda(fila, mostrarMoneda(servicio.COP, 'COP'));
       celda(fila, mostrarMoneda(servicio.USD, 'USD'));
-      celda(fila, mostrarMoneda(servicio.equivalente_cop, 'COP'));
+      celda(fila, servicio.sinTasa ? 'Falta tasa' : mostrarMoneda(servicio.equivalente_cop, 'COP'));
       fragmento.append(fila);
     }
     tbody.replaceChildren(fragmento);
@@ -869,10 +896,35 @@ async function cargarAcumulado() {
   }
 }
 $('rango-selector').addEventListener('change', () => {
-  activarRango($('rango-selector').value);
-  Promise.allSettled([cargar(), cargarAcumulado()]);
+  const elegido = $('rango-selector').value;
+  if (elegido === 'CUSTOM') {
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    $('rango-hasta').max = hoy;
+    $('rango-desde').max = hoy;
+    if (!$('rango-desde').value) $('rango-desde').value = hoy.slice(0, 7) + '-01';
+    if (!$('rango-hasta').value) $('rango-hasta').value = hoy;
+    $('rango-personalizado').classList.remove('hidden');
+    $('rango-actual').textContent = 'Elige las fechas y pulsa Aplicar.';
+    return;
+  }
+  $('rango-personalizado').classList.add('hidden');
+  activarRango(elegido);
+  void cargarAcumulado();
 });
-$('refresh').addEventListener('click', () => Promise.allSettled([cargar(), cargarAcumulado()]));
+$('aplicar-rango-personalizado').addEventListener('click', () => {
+  const desde = $('rango-desde').value;
+  const hasta = $('rango-hasta').value;
+  if (!desde || !hasta || desde > hasta) {
+    $('rango-actual').textContent = 'Revisa las fechas: el inicio debe ser anterior o igual al final.';
+    return;
+  }
+  rangoDesdePersonalizado = desde;
+  rangoHastaPersonalizado = hasta;
+  localStorage.setItem('velox-finanzas-rango-personalizado', JSON.stringify({ desde, hasta }));
+  activarRango('CUSTOM');
+  void cargarAcumulado();
+});
+$('refresh').addEventListener('click', () => cargarAcumulado());
 $('actualizar-acumulado').addEventListener('click', cargarAcumulado);
 $('invoice-filter').addEventListener('change', () => {
   localStorage.setItem('velox-invoice-filter', $('invoice-filter').value);
@@ -922,7 +974,7 @@ $('movimiento-form').addEventListener('submit', async event => {
     $('mov-tipo').value = 'ingreso';
     actualizarCategorias();
     mensaje('mov-mensaje', 'Movimiento guardado. El resumen del mes y el historial ya están actualizados.', false);
-    await Promise.allSettled([cargar(), cargarAcumulado()]);
+    await void cargarAcumulado();
   } catch (error) {
     mensaje('mov-mensaje', error.message, true);
   } finally {
@@ -948,7 +1000,7 @@ $('otro-ingreso-form').addEventListener('submit', async event => {
     $('otro-ingreso-form').reset();
     $('otro-ingreso-fecha').value = hoyBogota();
     mensaje('otro-ingreso-mensaje', 'Ingreso guardado y sumado al neto. No cuenta como suscripción.', false);
-    await Promise.allSettled([cargar(), cargarAcumulado()]);
+    await void cargarAcumulado();
   } catch (error) {
     mensaje('otro-ingreso-mensaje', error.message, true);
   } finally {
@@ -968,7 +1020,7 @@ $('tasa-form').addEventListener('submit', async event => {
       body: JSON.stringify({ periodo: $('tasa-periodo').value, cop_por_usd: Number($('tasa-usd-cop').value) })
     });
     mensaje('tasa-mensaje', 'Tasa guardada para ' + $('tasa-periodo').value + '.', false);
-    await Promise.allSettled([cargar(), cargarAcumulado()]);
+    await void cargarAcumulado();
   } catch (error) {
     mensaje('tasa-mensaje', error.message, true);
   } finally {

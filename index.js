@@ -420,7 +420,7 @@ async function consultarCostosOpenAIPeriodo(desde, hasta, proyectosForzados = nu
 
 app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res) => {
     try {
-        const rangos = new Set(['1D', '1S', '1M', '6M', 'YTD', '1A', '5A', 'MAX']);
+        const rangos = new Set(['1D', '1S', '1M', '6M', 'YTD', '1A', '5A', 'MAX', 'CUSTOM']);
         const rango = String(req.query.rango || 'MAX').toUpperCase();
         if (!rangos.has(rango)) return res.status(400).json({ error: 'Selecciona un rango de tiempo válido.' });
 
@@ -443,6 +443,13 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             return base.toISOString().slice(0, 10);
         };
         let desde = hoy;
+        let hasta = hoy;
+        if (rango === 'CUSTOM') {
+            desde = String(req.query.desde || '');
+            hasta = String(req.query.hasta || '');
+            const fechaValida = valor => { if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false; const fecha = new Date(valor + 'T00:00:00Z'); return Number.isFinite(fecha.getTime()) && fecha.toISOString().slice(0, 10) === valor; };
+            if (!fechaValida(desde) || !fechaValida(hasta) || desde > hasta || hasta > hoy) return res.status(400).json({ error: 'Elige un rango válido: desde debe ser anterior o igual a hasta, y hasta no puede superar hoy.' });
+        }
         if (rango === '1S') desde = desplazar(hoy, -6, 0, 0);
         if (rango === '1M') desde = desplazar(hoy, 0, 1, 0);
         if (rango === '6M') desde = desplazar(hoy, 0, 6, 0);
@@ -462,7 +469,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             desde = fechas[0] || hoy;
         }
         const desdeUtc = new Date(desde + 'T05:00:00.000Z').toISOString();
-        const hastaUtc = new Date(desplazar(hoy, 1, 0, 0) + 'T05:00:00.000Z').toISOString();
+        const hastaUtc = new Date(desplazar(hasta, 1, 0, 0) + 'T05:00:00.000Z').toISOString();
         const pageSize = 1000;
         const cargarPaginas = async construir => {
             const filas = [];
@@ -480,7 +487,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
                 .order('created_at', { ascending: true }).limit(10000),
             cargarPaginas(() => supabaseAdmin.from('velox_financial_entries')
                 .select('id, tipo, categoria, restaurante_id, descripcion, monto, moneda, fecha, periodo, referencia, creado_en')
-                .gte('fecha', desde).lte('fecha', hoy).is('anulado_en', null)
+                .gte('fecha', desde).lte('fecha', hasta).is('anulado_en', null)
                 .order('fecha', { ascending: false })),
             cargarPaginas(() => supabaseAdmin.from('velox_ai_usage')
                 .select('restaurante_id, input_tokens, output_tokens, total_tokens, costo_estimado_usd, created_at')
@@ -488,7 +495,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
                 .order('created_at', { ascending: true })),
             supabaseAdmin.from('velox_financial_fx').select('periodo, cop_por_usd')
                 .gte('periodo', desde.slice(0, 7) + '-01')
-                .lte('periodo', hoy.slice(0, 7) + '-01')
+                .lte('periodo', hasta.slice(0, 7) + '-01')
                 .order('periodo', { ascending: true }).limit(10000)
         ]);
         if (restaurantesRes.error || fxRes.error) throw restaurantesRes.error || fxRes.error;
@@ -502,7 +509,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             return tasa > 0 ? (Number(monto) || 0) * tasa : null;
         };
         const diaNumero = fecha => Math.floor(Date.parse(fecha + 'T00:00:00Z') / 86400000);
-        const diasRango = diaNumero(hoy) - diaNumero(desde) + 1;
+        const diasRango = diaNumero(hasta) - diaNumero(desde) + 1;
         const categorias = {};
         const totales = {
             ingresos: { COP: 0, USD: 0 }, gastos: { COP: 0, USD: 0 },
@@ -521,7 +528,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
         for (const item of restaurantesRes.data || []) {
             const creado = item.created_at ? fechaBogota(item.created_at) : desde;
             const inicioActivo = creado > desde ? creado : desde;
-            const diasActivos = inicioActivo > hoy ? 0 : diaNumero(hoy) - diaNumero(inicioActivo) + 1;
+            const diasActivos = inicioActivo > hasta ? 0 : diaNumero(hasta) - diaNumero(inicioActivo) + 1;
             const restaurante = {
                 restaurante_id: item.id, restaurante: item.nombre_restaurante || 'Sin nombre',
                 ingresos: { COP: 0, USD: 0 }, gastos_directos: { COP: 0, USD: 0 },
@@ -698,9 +705,9 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             return item;
         }).sort((a, b) => ((b.gastos_directos_cop || 0) + (b.gastos_compartidos_cop || 0) + (b.ia_cop || 0)) -
             ((a.gastos_directos_cop || 0) + (a.gastos_compartidos_cop || 0) + (a.ia_cop || 0)));
-        const fechaPeriodo = rango + ' · ' + desde + ' — ' + hoy;
+        const fechaPeriodo = rango + ' · ' + desde + ' — ' + hasta;
         return res.json({
-            rango, desde, hasta: hoy, periodo: fechaPeriodo, tasa_cop_por_usd: null, tasas_por_mes: tasasPorMes,
+            rango, desde, hasta, periodo: fechaPeriodo, tasa_cop_por_usd: null, tasas_por_mes: tasasPorMes,
             resumen: {
                 ingresos_cop: ingresosCop, ingresos_suscripcion_cop: copTotals.ingresosSuscripcionSinTasa ? null : copTotals.ingresosSuscripcion,
                 gastos_registrados_cop: gastosRegistradosCop, gastos_cop: gastosConIAcop,
