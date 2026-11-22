@@ -113,7 +113,9 @@ function actualizarCategorias(reiniciarAtribucion = false) {
   const opciones = tipo === 'ingreso'
     ? [['suscripcion', 'Suscripción'], ['otro', 'Otro']]
     : [['railway', 'Railway'], ['supabase', 'Supabase'], ['claro', 'Claro'], ['meta', 'Meta'], ['otro', 'Otro']];
+  const categoriaActual = categoria.value;
   categoria.replaceChildren(...opciones.map(([valor, texto]) => new Option(texto, valor)));
+  if (!reiniciarAtribucion && opciones.some(([valor]) => valor === categoriaActual)) categoria.value = categoriaActual;
   const customWrap = $('mov-service-custom-wrap');
   const customInput = $('mov-service-custom');
   const requiereNombre = categoria.value === 'otro';
@@ -123,15 +125,18 @@ function actualizarCategorias(reiniciarAtribucion = false) {
   customInput.required = requiereNombre;
   customInput.placeholder = tipo === 'ingreso' ? 'Escribe el concepto del ingreso' : 'Escribe el nombre del servicio o proveedor';
   customWrap.firstChild.textContent = tipo === 'ingreso' ? 'Concepto del ingreso' : 'Nombre del servicio o proveedor';
-  selector.required = tipo === 'ingreso';
+  const esSuscripcion = tipo === 'ingreso' && categoria.value === 'suscripcion';
+  selector.required = esSuscripcion;
   selector.options[0].textContent = tipo === 'ingreso'
-    ? 'Selecciona el restaurante que pagó'
+    ? (esSuscripcion ? 'Selecciona el restaurante que pagó' : 'Ingreso general de Velox · sin restaurante')
     : 'Gasto compartido de Velox · repartir entre restaurantes activos';
   $('mov-restaurante-label').textContent = tipo === 'ingreso'
-    ? 'Restaurante que pagó'
+    ? (esSuscripcion ? 'Restaurante que pagó' : 'Atribuir a restaurante (opcional)')
     : '¿A quién atribuimos este gasto?';
   $('mov-restaurante-help').textContent = tipo === 'ingreso'
-    ? 'El ingreso se asignará a este restaurante.'
+    ? (esSuscripcion
+      ? 'La suscripción queda vinculada al restaurante que selecciones.'
+      : 'Puedes elegir un restaurante; si lo dejas vacío, el ingreso queda registrado para Velox.')
     : 'Déjalo como gasto compartido para repartirlo entre restaurantes activos. Elige un restaurante solo si el gasto es exclusivo de ese negocio.';
   if (reiniciarAtribucion) { selector.value = ''; customInput.value = ''; }
   const descripcion = $('mov-descripcion');
