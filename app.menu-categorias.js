@@ -202,7 +202,7 @@ function crearVistaProductoCliente(producto, prefijo) {
     const escapar = valor => String(valor ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const editor=prefijo==='producto';
     const id='velox-ejemplo-producto-'+(++secuenciaEjemplosProductoCliente);
-    const src='/menu.html?vista=borrador&ejemplo=tarjeta'+(editor?'&editor=1':'')+'&v=personalizacion-en-vivo';
+    const src='/menu.html?vista=borrador&ejemplo=tarjeta'+(editor?'&editor=1':'')+'&v=personalizar-expandido';
     return `${datos.muestra && !editor ? '<p class="velox-ejemplo-aviso">Ejemplo ilustrativo. Los datos de muestra no se guardan.</p>' : ''}<iframe id="${id}" class="velox-ejemplo-carta-real" title="Ejemplo del producto en la carta real" src="${src}" data-editor-personalizacion="${editor ? 'true' : 'false'}" data-ejemplo-producto="${escapar(JSON.stringify(datos.producto))}" onload="enviarEjemploCartaReal(this)"></iframe>`;
 }
 
@@ -234,7 +234,7 @@ if(typeof window!=='undefined' && window.addEventListener) window.addEventListen
       dialogo.className='velox-ejemplo-dialogo';
       if(!marco.id) marco.id='velox-ejemplo-producto-'+(++secuenciaEjemplosProductoCliente);
       const editor=marco.dataset.editorPersonalizacion==='true';
-      const src='/menu.html?vista=borrador&ejemplo=opciones'+(editor?'&editor=1':'')+'&v=personalizacion-en-vivo';
+      const src='/menu.html?vista=borrador&ejemplo=opciones'+(editor?'&editor=1':'')+'&v=personalizar-expandido';
       dialogo.innerHTML='<iframe class="velox-ejemplo-carta-real" title="Editar grupos y opciones del producto" src="'+src+'"></iframe>';
       const panel=dialogo.querySelector('iframe');
       panel.dataset.ejemploProducto=marco.dataset.ejemploProducto;
