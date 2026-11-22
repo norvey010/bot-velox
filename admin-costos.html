@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261122-indicadores-cop"></script>
+  <script type="module" src="admin-costos.js?v=20261122-utilidad-directa"></script>
 </head>
 <body class="min-h-screen">
   <aside id="update-notice" class="hidden fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4 shadow-xl" role="status" aria-live="polite">
@@ -149,20 +149,9 @@
       </section>
 <section id="vista-restaurantes" class="hidden space-y-4">
         <button type="button" data-back-analysis class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver a Análisis</button>
-        <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Análisis operativo por restaurante</h2><p class="mt-1 text-xs text-[#69544A]">Consulta cada indicador por separado.</p></header>
-        <nav id="restaurantes-submenu" class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] divide-y divide-[#E6D8C9]" aria-label="Indicadores por restaurante">
-          <button type="button" data-open-restaurant-view="utilidad" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Utilidad neta por restaurante</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
-          <button type="button" data-open-restaurant-view="ia" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Uso y costo de IA por restaurante</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
-        </nav>
-        <section id="restaurantes-panel-utilidad" class="hidden overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-          <button type="button" data-back-restaurantes class="px-4 pt-4 text-sm font-semibold text-red-700 underline underline-offset-4">← Análisis operativo por restaurante</button>
-          <div class="border-b border-[#D7C2AD] p-4"><h3 class="font-semibold">Utilidad neta por restaurante</h3><p class="mt-1 text-xs text-[#69544A]">Ingresos − gastos directos − parte de gastos compartidos − costo de IA.</p></div>
+        <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
+          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Utilidad neta por restaurante</h2><p class="mt-1 text-xs text-[#69544A]">Ingresos − gastos directos − gastos compartidos asignados − costo de IA.</p></div>
           <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Ingresos COP</th><th class="p-3">Gastos directos COP</th><th class="p-3">Gastos compartidos asignados COP</th><th class="p-3">IA atribuida COP</th><th class="p-3">Utilidad neta COP</th></tr></thead><tbody id="restaurantes-finanzas-body"></tbody></table></div>
-        </section>
-        <section id="restaurantes-panel-ia" class="hidden overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-          <button type="button" data-back-restaurantes class="px-4 pt-4 text-sm font-semibold text-red-700 underline underline-offset-4">← Análisis operativo por restaurante</button>
-          <div class="border-b border-[#D7C2AD] p-4"><h3 class="font-semibold">Uso y costo de IA por restaurante</h3><p id="ai-period-note" class="text-xs text-[#69544A]"></p></div>
-          <div class="overflow-x-auto"><table class="w-full min-w-[420px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Costo de IA asignado (COP)</th></tr></thead><tbody id="ia-restaurantes-body"></tbody></table></div>
         </section>
       </section>
       <section id="vista-acumulado" class="hidden space-y-4">

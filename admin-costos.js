@@ -151,9 +151,6 @@ function renderizar(data) {
       ? ' Hay gastos compartidos sin repartir porque ningún restaurante tiene días activos en este mes.'
       : '');
   $('tasa-usd-cop').value = data.tasas_por_mes?.[$('tasa-periodo').value] || '';
-  $('ai-period-note').textContent = data.costos_openai?.disponible
-    ? 'Período ' + data.periodo + '. El costo total real de OpenAI se convierte a COP con la tasa guardada para cada mes; el reparto por restaurante se estima según el uso registrado.'
-    : 'Período ' + data.periodo + '. El costo por restaurante es una estimación local en COP; aún no se recibe el costo monetario real de OpenAI.';
   renderizarCategorias(data.gastos_por_categoria || {});
   renderizarMovimientos(data.movimientos || [], data.restaurantes || []);
   renderizarRestaurantes(data.restaurantes || []);
@@ -209,7 +206,6 @@ function renderizarMovimientos(movimientos, restaurantes) {
 function renderizarRestaurantes(restaurantes) {
   llenarSelectorRestaurantes(restaurantes);
   const ordenUtilidad = [...restaurantes].sort((a, b) => a.neto_cop == null ? 1 : b.neto_cop == null ? -1 : a.neto_cop - b.neto_cop);
-  const ordenIa = [...restaurantes].sort((a, b) => a.ia_cop == null ? 1 : b.ia_cop == null ? -1 : b.ia_cop - a.ia_cop);
   const tbody = $('restaurantes-finanzas-body');
   if (!restaurantes.length) filaVacia(tbody, 6, 'Aún no hay restaurantes registrados.');
   else {
@@ -221,23 +217,13 @@ function renderizarRestaurantes(restaurantes) {
       celda(fila, mostrarMoneda(r.ingresos_cop, 'COP'));
       celda(fila, mostrarMoneda(r.gastos_directos_cop, 'COP'));
       celda(fila, mostrarMoneda(r.gastos_compartidos_cop, 'COP'));
-      celda(fila, r.ia_cop == null ? mostrarMoneda(r.ia_usd, 'USD') + ' · falta tasa' : mostrarMoneda(r.ia_cop, 'COP'));
+      celda(fila, r.ia_cop == null ? 'No disponible en COP · falta tarifa o tasa' : mostrarMoneda(r.ia_cop, 'COP'));
       celda(fila, r.neto_cop == null ? 'Parcial · falta tasa' : mostrarMoneda(r.neto_cop, 'COP'));
       fragmento.append(fila);
     }
     tbody.replaceChildren(fragmento);
   }
-  const ia = $('ia-restaurantes-body');
-  if (!ordenIa.length) { filaVacia(ia, 2, 'Aún no hay restaurantes para este período.'); return; }
-  const fragmentoIa = document.createDocumentFragment();
-  for (const r of ordenIa) {
-    const fila = document.createElement('tr');
-    fila.className = 'border-t border-[#E6D8C9]';
-    celda(fila, r.restaurante);
-    celda(fila, r.ia_cop == null ? 'No disponible · falta tarifa o tasa' : mostrarMoneda(r.ia_cop, 'COP'));
-    fragmentoIa.append(fila);
-  }
-  ia.replaceChildren(fragmentoIa);
+
 }
 async function cargar() {
   if (!token) return;
@@ -750,7 +736,7 @@ function activarPestana(nombre) {
     $(`vista-${id}`).classList.toggle('hidden', nombre !== id);
   }
 
-  if (['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos'].includes(nombre)) { if (nombre === 'restaurantes') abrirSubpanelRestaurantes(); cargar(); }
+  if (['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos'].includes(nombre)) cargar();
   if (nombre === 'acumulado' || nombre === 'historial') cargarAcumulado();
   if (['comprobantes', 'carga-factura'].includes(nombre)) cargarFacturas(false).catch(error => estadoFacturas(error.message));
 }
@@ -759,17 +745,6 @@ $('tab-analisis').addEventListener('click', () => activarPestana('analisis'));
 $('tab-facturas').addEventListener('click', () => activarPestana('facturas'));
 document.querySelectorAll('[data-open-finance-view]').forEach(button => {
   button.addEventListener('click', () => activarPestana(button.dataset.openFinanceView));
-});
-function abrirSubpanelRestaurantes(nombre = '') {
-  $('restaurantes-submenu').classList.toggle('hidden', Boolean(nombre));
-  $('restaurantes-panel-utilidad').classList.toggle('hidden', nombre !== 'utilidad');
-  $('restaurantes-panel-ia').classList.toggle('hidden', nombre !== 'ia');
-}
-document.querySelectorAll('[data-open-restaurant-view]').forEach(button => {
-  button.addEventListener('click', () => abrirSubpanelRestaurantes(button.dataset.openRestaurantView));
-});
-document.querySelectorAll('[data-back-restaurantes]').forEach(button => {
-  button.addEventListener('click', () => abrirSubpanelRestaurantes());
 });
 document.querySelectorAll('[data-back-analysis]').forEach(button => {
   button.addEventListener('click', () => activarPestana('analisis'));
