@@ -839,6 +839,21 @@ async function cargarAcumulado() {
     renderizar(periodoData);
     $('rango-actual').textContent = periodoData.periodo;
     const resumen = periodoData.resumen || {};
+    const faltaTasa = 'Falta tasa de cambio';
+    $('vida-equivalente').textContent = resumen.gastos_cop == null ? faltaTasa : mostrarMoneda(resumen.gastos_cop, 'COP');
+    $('vida-sin-tasa').textContent = resumen.gastos_cop == null
+      ? 'Hay costos en USD sin tasa guardada para su fecha.'
+      : 'Incluye costos registrados y costos de IA disponibles.';
+    $('vida-ingresos-brutos').textContent = resumen.ingresos_suscripcion_cop == null
+      ? faltaTasa : mostrarMoneda(resumen.ingresos_suscripcion_cop, 'COP');
+    $('vida-ingresos-detalle').textContent = resumen.ingresos_suscripcion_cop == null
+      ? faltaTasa : 'Solo suscripciones del período.';
+    $('vida-ingreso-neto').textContent = resumen.utilidad_neta_cop == null
+      ? faltaTasa : mostrarMoneda(resumen.utilidad_neta_cop, 'COP');
+    $('vida-ingreso-neto').classList.toggle('text-red-700', resumen.utilidad_neta_cop != null && Number(resumen.utilidad_neta_cop) < 0);
+    $('vida-ingreso-neto').classList.toggle('text-emerald-700', resumen.utilidad_neta_cop != null && Number(resumen.utilidad_neta_cop) >= 0);
+    $('vida-neto-nota').textContent = resumen.utilidad_neta_cop == null
+      ? faltaTasa : 'Suscripciones + otros ingresos − costos del período.';
     const movimientosGasto = (periodoData.movimientos || []).filter(m => m.tipo === 'gasto');
     const totalCopRegistrado = movimientosGasto.filter(m => m.moneda !== 'USD').reduce((s, m) => s + (Number(m.monto) || 0), 0);
     const costosUsdProveedor = resumen.ia_real_disponible ? Number(resumen.ia_real_usd) || 0 : Number(resumen.ia_estimado_usd) || 0;
