@@ -1267,20 +1267,22 @@
       actualizarBotonesAgregarProducto();
       actualizarAvisoGruposProducto();
     }
-    function grupoProductoCompleto(g){return Boolean(g?.nombre?.trim() && !g.nombre.trim().startsWith('__') && g.opciones?.length && g.opciones.every(o=>String(o.nombre||'').trim()));}
+    function nombreGrupoProductoCompleto(g){return Boolean(g?.nombre?.trim() && !g.nombre.trim().startsWith('__'));}
+    function ultimaOpcionGrupoProductoCompleta(g){return Boolean(g?.opciones?.length && String(g.opciones[g.opciones.length-1].nombre||'').trim());}
     function actualizarBotonesAgregarProducto(){
       const botonGrupo=document.getElementById('prod-agregar-grupo');
-      const gruposCompletos=gruposProducto.every(grupoProductoCompleto);
-      botonGrupo.disabled=!gruposCompletos;
+      const grupoAnterior=gruposProducto[gruposProducto.length-1];
+      const grupoListo=!grupoAnterior || nombreGrupoProductoCompleto(grupoAnterior);
+      botonGrupo.disabled=!grupoListo;
       const ayudaGrupo=document.getElementById('prod-grupos-ayuda');
-      ayudaGrupo.hidden=gruposCompletos || !gruposProducto.length;
-      ayudaGrupo.textContent='Completa el nombre del grupo y sus opciones antes de añadir otro grupo.';
+      ayudaGrupo.hidden=grupoListo || !gruposProducto.length;
+      ayudaGrupo.textContent='Escribe el nombre del grupo actual antes de añadir otro.';
       gruposProducto.forEach((g,i)=>{
-        const completo=grupoProductoCompleto(g);
+        const opcionLista=ultimaOpcionGrupoProductoCompleta(g);
         const boton=document.querySelector(`[data-agregar-opcion-producto="${i}"]`);
         const ayuda=document.querySelector(`[data-ayuda-opcion-producto="${i}"]`);
-        if(boton) boton.disabled=!completo;
-        if(ayuda){ayuda.hidden=completo;ayuda.textContent='Completa el grupo y la opción actual antes de añadir otra.';}
+        if(boton) boton.disabled=!opcionLista;
+        if(ayuda){ayuda.hidden=opcionLista;ayuda.textContent='Completa el nombre de la opción actual para añadir otra.';}
       });
     }
         function actualizarAvisoGruposProducto() {
@@ -1291,8 +1293,8 @@
     }
     function editarGrupoProducto(i,valor){gruposProducto[i].nombre=valor;actualizarBotonesAgregarProducto();actualizarAvisoGruposProducto();actualizarVistaEleccionesProducto();}
     function editarOpcionProducto(i,j,valor){gruposProducto[i].opciones[j].nombre=valor;actualizarBotonesAgregarProducto();actualizarVistaEleccionesProducto();}
-    function agregarGrupoProducto(){gruposProducto.push({nombre:'',opciones:[{nombre:'',descripcion:''}]});renderizarGruposProducto();document.getElementById('prod-grupos').lastElementChild.querySelector('input').focus();actualizarVistaEleccionesProducto();}
-    function agregarOpcionProducto(i){gruposProducto[i].opciones.push({nombre:'',descripcion:''});renderizarGruposProducto();document.getElementById('prod-grupos').children[i].querySelectorAll('input')[gruposProducto[i].opciones.length].focus();actualizarVistaEleccionesProducto();}
+    function agregarGrupoProducto(){const anterior=gruposProducto[gruposProducto.length-1];if(anterior&&!nombreGrupoProductoCompleto(anterior))return;gruposProducto.push({nombre:'',opciones:[{nombre:'',descripcion:''}]});renderizarGruposProducto();document.getElementById('prod-grupos').lastElementChild.querySelector('input').focus();actualizarVistaEleccionesProducto();}
+    function agregarOpcionProducto(i){const grupo=gruposProducto[i];if(!grupo||!ultimaOpcionGrupoProductoCompleta(grupo))return;grupo.opciones.push({nombre:'',descripcion:''});renderizarGruposProducto();document.getElementById('prod-grupos').children[i].querySelectorAll('input')[gruposProducto[i].opciones.length].focus();actualizarVistaEleccionesProducto();}
     function quitarOpcionProducto(i,j){gruposProducto[i].opciones.splice(j,1);renderizarGruposProducto();actualizarVistaEleccionesProducto();}
     function quitarGrupoProducto(i){if(gruposProducto[i].opciones.some(o=>o.nombre) && !confirm('¿Eliminar este grupo y sus opciones del producto?'))return;gruposProducto.splice(i,1);renderizarGruposProducto();actualizarVistaEleccionesProducto();}
 

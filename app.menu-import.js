@@ -675,10 +675,10 @@ function renderizarRevisionMenu(i) {
       const primero = lista[0];
       const grupo = String(primero.opcion.grupo || '').trim();
       return `<section class="mt-3 space-y-2" data-grupo-opciones>
-        <h4 class="text-sm font-semibold">${escaparHtmlUI(grupo || 'Nuevo grupo')} (${lista.length})</h4>
+        <h4 id="revision-grupo-titulo-${i}-${primero.j}" class="text-sm font-semibold">${escaparHtmlUI(grupo || 'Nuevo grupo')} (${lista.length})</h4>
         <details${grupo ? '' : ' open'}>
           <summary class="cursor-pointer py-2 text-xs text-slate-400">${grupo ? 'Cambiar nombre del grupo' : 'Ponle un nombre al grupo'}</summary>
-          <label class="block text-xs">Nombre del grupo<input value="${escaparHtmlUI(grupo)}" list="revision-grupos-sugeridos" placeholder="Elige o escribe: Sabores, Proteína…" maxlength="120" onchange="renombrarGrupoBorrador(${i},${primero.j},this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm"></label>
+          <label class="block text-xs">Nombre del grupo<input value="${escaparHtmlUI(grupo)}" list="revision-grupos-sugeridos" placeholder="Elige o escribe: Sabores, Proteína…" maxlength="120" oninput="editarNombreGrupoBorrador(${i},${primero.j},this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm"></label>
         </details>
         ${lista.map(({opcion:o,j})=>`<details class="velox-opcion-fila"${o.nombre?.trim() ? '' : ' open'}>
           <summary><span id="revision-opcion-nombre-${i}-${j}">${escaparHtmlUI(o.nombre || 'Nueva opción')}</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
@@ -689,8 +689,8 @@ function renderizarRevisionMenu(i) {
             <button type="button" onclick="cambiarOpcionesBorrador(${i},${j})" class="min-h-11 justify-self-start text-xs text-red-300">Eliminar opción</button>
           </div>
         </details>`).join('')}
-        <button type="button" data-revision-agregar-opcion="${i}-${primero.j}" onclick="cambiarOpcionesBorrador(${i},undefined,${primero.j})" class="velox-volver min-h-11 px-2 text-sm disabled:cursor-not-allowed disabled:opacity-40"${lista.every(({opcion:o})=>String(o.nombre||'').trim()) && grupo ? '' : ' disabled'}>+ Añadir opción</button>
-        <p data-revision-ayuda-opcion="${i}-${primero.j}" class="text-xs text-slate-400"${lista.every(({opcion:o})=>String(o.nombre||'').trim()) && grupo ? ' hidden' : ''}>Completa el grupo y la opción actual antes de añadir otra.</p>
+        <button type="button" data-revision-agregar-opcion="${i}-${primero.j}" onclick="cambiarOpcionesBorrador(${i},undefined,${primero.j})" class="velox-volver min-h-11 px-2 text-sm disabled:cursor-not-allowed disabled:opacity-40"${String(lista.at(-1)?.opcion?.nombre||'').trim() ? '' : ' disabled'}>+ Añadir opción</button>
+        <p data-revision-ayuda-opcion="${i}-${primero.j}" class="text-xs text-slate-400"${String(lista.at(-1)?.opcion?.nombre||'').trim() ? ' hidden' : ''}>Completa la opción actual para habilitar otra.</p>
       </section>`;
     }).join('');
     document.getElementById('revision-menu-lista').innerHTML = `<article id="revision-producto-${i}" tabindex="-1" class="rounded-lg border border-slate-700 bg-slate-900 p-3">
@@ -726,8 +726,8 @@ function renderizarRevisionMenu(i) {
             ${gruposParecidosCliente(p.opciones).map(([a,b])=>`<p class="p-2 text-xs text-amber-300">¿«${escaparHtmlUI(a)}» y «${escaparHtmlUI(b)}» son el mismo grupo? Revisa sus nombres.</p>`).join('')}
             <p class="mt-3 px-2 text-sm font-semibold">Editar opciones</p>
             <div class="space-y-2">${opciones}</div>
-            <button type="button" data-revision-agregar-grupo="${i}" onclick="cambiarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"${[...gruposOpciones.values()].every(lista=>lista.every(({opcion:o})=>String(o.grupo||'').trim() && String(o.nombre||'').trim())) ? '' : ' disabled'}>${cantidadOpciones ? '+ Añadir otro grupo' : '+ Añadir sabores u opciones'}</button>
-            <p data-revision-ayuda-grupo="${i}" class="px-2 text-xs text-slate-400"${[...gruposOpciones.values()].every(lista=>lista.every(({opcion:o})=>String(o.grupo||'').trim() && String(o.nombre||'').trim())) ? ' hidden' : ''}>Completa el grupo y sus opciones antes de añadir otro grupo.</p>
+            <button type="button" data-revision-agregar-grupo="${i}" onclick="cambiarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"${!gruposOpciones.size || String([...gruposOpciones.keys()].at(-1)||'').trim() ? '' : ' disabled'}>${cantidadOpciones ? '+ Añadir otro grupo' : '+ Añadir sabores u opciones'}</button>
+            <p data-revision-ayuda-grupo="${i}" class="px-2 text-xs text-slate-400"${!gruposOpciones.size || String([...gruposOpciones.keys()].at(-1)||'').trim() ? ' hidden' : ''}>Completa el nombre del grupo actual para habilitar otro.</p>
             ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
             <details class="velox-opcion-fila m-2" aria-label="Ejemplo de las elecciones del cliente">
               <summary><span>Ver ejemplo si personalizas tu producto</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
@@ -746,9 +746,12 @@ function cambiarOpcionesBorrador(indice, opcion, indiceGrupo) {
   if (opcion === undefined) {
     if (indiceGrupo !== undefined) {
       const grupo=producto.opciones[indiceGrupo]?.grupo;
-      const opcionesGrupo=producto.opciones.filter(o=>o && o.grupo===grupo);
-      if (!String(grupo||'').trim() || opcionesGrupo.some(o=>!String(o.nombre||'').trim())) return;
-    } else if (visibles.some(o=>!String(o.grupo||'').trim() || !String(o.nombre||'').trim())) return;
+      const opcionesGrupo=producto.opciones.filter(o=>o && String(o.grupo||'').trim().toLocaleLowerCase('es')===String(grupo||'').trim().toLocaleLowerCase('es'));
+      if (opcionesGrupo.length && !String(opcionesGrupo[opcionesGrupo.length-1].nombre||'').trim()) return;
+    } else {
+      const grupos=[...new Set(visibles.map(o=>String(o.grupo||'').trim().toLocaleLowerCase('es')))];
+      if (grupos.length && !grupos[grupos.length-1]) return;
+    }
     producto.opciones.push({ grupo: producto.opciones[indiceGrupo]?.grupo || '', nombre: '', descripcion: '' });
   } else if (producto.opciones[opcion]?.grupo !== '__velox_combo_family__') producto.opciones.splice(opcion, 1);
   guardarEdicionBorradorMenu();
@@ -768,6 +771,19 @@ function moverOpcionBorrador(indice, indiceOpcion, nombre) {
   guardarEdicionBorradorMenu();
   renderizarRevisionMenu(indice);
   document.getElementById(`revision-opciones-${indice}`).open = true;
+}
+
+function editarNombreGrupoBorrador(indice, indiceOpcion, nombre) {
+  const producto=borradorMenu?.productos[indice];
+  const original=producto?.opciones?.[indiceOpcion];
+  if(publicandoMenu || generandoFotoBorradorMenu || !producto || !original || original.grupo==='__velox_combo_family__') return;
+  const clave=String(original.grupo||'').trim().toLocaleLowerCase('es');
+  producto.opciones.forEach(o=>{if(o && o.grupo!=='__velox_combo_family__' && String(o.grupo||'').trim().toLocaleLowerCase('es')===clave)o.grupo=nombre;});
+  const encabezado=document.getElementById(`revision-grupo-titulo-${indice}-${indiceOpcion}`);
+  if(encabezado) encabezado.textContent=`${nombre.trim()||'Nuevo grupo'} (${producto.opciones.filter(o=>o && o.grupo!=='__velox_combo_family__' && String(o.grupo||'').trim().toLocaleLowerCase('es')===String(nombre||'').trim().toLocaleLowerCase('es')).length})`;
+  actualizarBotonesOpcionesBorrador(indice);
+  actualizarEjemploBorrador(indice);
+  if(borradorMenu.lectura_id){clearTimeout(guardadoBorradorMenu);guardadoBorradorMenu=setTimeout(guardarEdicionBorradorMenu,350);}
 }
 
 function renombrarGrupoBorrador(indice, indiceOpcion, nombre) {
@@ -838,18 +854,18 @@ function actualizarBotonesOpcionesBorrador(i) {
   const visibles=(producto.opciones||[]).filter(o=>o && o.grupo!=='__velox_combo_family__');
   const botonGrupo=document.querySelector(`[data-revision-agregar-grupo="${i}"]`);
   const ayudaGrupo=document.querySelector(`[data-revision-ayuda-grupo="${i}"]`);
-  const gruposCompletos=visibles.every(o=>String(o.grupo||'').trim() && String(o.nombre||'').trim());
-  if(botonGrupo) botonGrupo.disabled=!gruposCompletos;
-  if(ayudaGrupo) ayudaGrupo.hidden=gruposCompletos;
   const grupos=new Map();
   visibles.forEach(o=>{const clave=String(o.grupo||'').trim().toLocaleLowerCase('es');if(!grupos.has(clave))grupos.set(clave,[]);grupos.get(clave).push(o);});
+  const grupoListo=!grupos.size || Boolean([...grupos.keys()].at(-1));
+  if(botonGrupo) botonGrupo.disabled=!grupoListo;
+  if(ayudaGrupo) ayudaGrupo.hidden=grupoListo;
   for(const [clave,lista] of grupos){
     const primera=(producto.opciones||[]).findIndex(o=>o && o.grupo!=='__velox_combo_family__' && String(o.grupo||'').trim().toLocaleLowerCase('es')===clave);
-    const completo=Boolean(clave && lista.every(o=>String(o.nombre||'').trim()));
+    const opcionLista=Boolean(lista.length && String(lista[lista.length-1].nombre||'').trim());
     const boton=document.querySelector(`[data-revision-agregar-opcion="${i}-${primera}"]`);
     const ayuda=document.querySelector(`[data-revision-ayuda-opcion="${i}-${primera}"]`);
-    if(boton) boton.disabled=!completo;
-    if(ayuda) ayuda.hidden=completo;
+    if(boton) boton.disabled=!opcionLista;
+    if(ayuda) ayuda.hidden=opcionLista;
   }
 }
 
