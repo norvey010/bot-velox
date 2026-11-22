@@ -719,21 +719,14 @@ function renderizarRevisionMenu(i) {
               <button id="revision-foto-quitar" type="button" aria-label="Quitar foto" onclick="quitarFotoBorradorMenu(${i})" class="min-h-11 min-w-11 rounded-lg text-2xl">×</button>
             </div>
           </div>
-          <details class="velox-opciones-panel" id="revision-opciones-${i}"${p.revision_opciones ? ' open' : ''}>
-            <summary><span>Personalizar este producto<small class="mt-1 block text-xs font-normal text-slate-400">Agrega sabores, salsas o acompañamientos para elegir al pedir.</small></span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
-            ${p.revision_opciones ? '<p class="mb-2 text-xs text-amber-300">Compara con la descripción. Agrega las opciones de precio fijo que se eligen de una en una. Si hay precios distintos, revisa si deben ser productos separados.</p>' : ''}
-            <datalist id="revision-grupos-sugeridos"><option value="Proteína"><option value="Sabores"><option value="Gaseosas"><option value="Salsas"><option value="Acompañamiento"><option value="Tamaño"></datalist>
-            ${gruposParecidosCliente(p.opciones).map(([a,b])=>`<p class="p-2 text-xs text-amber-300">¿«${escaparHtmlUI(a)}» y «${escaparHtmlUI(b)}» son el mismo grupo? Revisa sus nombres.</p>`).join('')}
-            <p class="mt-3 px-2 text-sm font-semibold">Editar opciones</p>
-            <div class="space-y-2">${opciones}</div>
-            <button type="button" data-revision-agregar-grupo="${i}" onclick="cambiarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"${!gruposOpciones.size || String([...gruposOpciones.keys()].at(-1)||'').trim() ? '' : ' disabled'}>${cantidadOpciones ? '+ Añadir otro grupo' : '+ Añadir sabores u opciones'}</button>
-            <p data-revision-ayuda-grupo="${i}" class="px-2 text-xs text-slate-400"${!gruposOpciones.size || String([...gruposOpciones.keys()].at(-1)||'').trim() ? ' hidden' : ''}>Completa el nombre del grupo actual para habilitar otro.</p>
-            ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
-            <details class="velox-opcion-fila m-2" aria-label="Ejemplo de las elecciones del cliente">
-              <summary><span>Ver ejemplo si personalizas tu producto</span><svg class="velox-opcion-flecha" aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></summary>
-              <div id="revision-elecciones-previa-${i}" class="p-3">${crearVistaProductoCliente({...p, imagen_url:foto},`borrador-${i}`)}</div>
-            </details>
-          </details>
+          <section class="velox-editor-personalizacion mt-4 rounded-xl border border-slate-600 bg-slate-800/70 p-3" id="revision-opciones-${i}">
+            <h3 class="text-base font-bold">Personalizar este producto</h3>
+            <p class="mt-1 text-xs text-slate-300">Toca «Elegir sabores» para editar sus opciones.</p>
+            ${p.revision_opciones ? '<p class="mt-3 rounded-lg border border-amber-700 bg-amber-950/40 p-2 text-xs text-amber-200">Revisa que las opciones coincidan con la descripción del producto.</p>' : ''}
+            ${gruposParecidosCliente(p.opciones).map(([a,b])=>`<p class="mt-2 rounded-lg bg-amber-950/40 p-2 text-xs text-amber-200">¿«${escaparHtmlUI(a)}» y «${escaparHtmlUI(b)}» son el mismo grupo? Revisa sus nombres.</p>`).join('')}
+            ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="mt-2 min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
+            <div id="revision-elecciones-previa-${i}" class="mt-3">${crearVistaProductoCliente({...p, imagen_url:foto},`borrador-${i}`)}</div>
+          </section>
           <button type="button" onclick="quitarProductoBorrador(${i})" class="min-h-11 px-2 text-xs text-red-300">Eliminar del borrador</button>
         </div>
     </article>`;
@@ -818,6 +811,21 @@ function confirmarOpcionesBorrador(indice) {
   renderizarRevisionMenu(indice);
   estadoProductoBorrador('Opciones revisadas.', 'exito');
 }
+
+window.addEventListener('velox-editar-opciones-producto', event => {
+  const detalle = event.detail;
+  const coincidencia = /^borrador-(\\d+)$/.exec(String(detalle?.contexto || ''));
+  if (!coincidencia || !Array.isArray(detalle.opciones)) return;
+  const indice = Number(coincidencia[1]);
+  const producto = borradorMenu?.productos[indice];
+  if (!producto || publicandoMenu || generandoFotoBorradorMenu) return;
+  producto.opciones = detalle.opciones;
+  actualizarBotonesOpcionesBorrador(indice);
+  if (borradorMenu.lectura_id) {
+    clearTimeout(guardadoBorradorMenu);
+    guardadoBorradorMenu = setTimeout(guardarEdicionBorradorMenu, 350);
+  }
+});
 
 function actualizarEjemploBorrador(i) {
   const p = borradorMenu?.productos[i];
