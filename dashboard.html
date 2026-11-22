@@ -1324,7 +1324,7 @@
       actualizarAvisoGruposProducto();
     }
     function nombreGrupoProductoCompleto(g){return Boolean(g?.nombre?.trim() && !g.nombre.trim().startsWith('__'));}
-    function ultimaOpcionGrupoProductoCompleta(g){return Boolean(g?.opciones?.length && String(g.opciones[g.opciones.length-1].nombre||'').trim());}
+    function ultimaOpcionGrupoProductoCompleta(g){return !g?.opciones?.length || Boolean(String(g.opciones[g.opciones.length-1].nombre||'').trim());}
     function actualizarBotonesAgregarProducto(){
       const botonGrupo=document.getElementById('prod-agregar-grupo');
       const grupoAnterior=gruposProducto[gruposProducto.length-1];
