@@ -804,7 +804,6 @@ async function cargarAcumulado() {
   if (!token) return;
   if (cargandoAcumulado) { acumuladoPendiente = true; return; }
   cargandoAcumulado = true;
-  $('acumulado-nota').textContent = 'Calculando los costos de este período…';
   $('data-message').textContent = '';
   $('vida-equivalente').textContent = 'Cargando…';
   $('vida-ingresos-brutos').textContent = 'Cargando…';
@@ -830,24 +829,14 @@ async function cargarAcumulado() {
     $('vida-neto-nota').textContent = resumen.utilidad_neta_cop == null
       ? faltaTasa : 'Suscripciones + otros ingresos − costos del período.';
     const movimientosGasto = (periodoData.movimientos || []).filter(m => m.tipo === 'gasto');
-    const totalCopRegistrado = movimientosGasto.filter(m => m.moneda !== 'USD').reduce((s, m) => s + (Number(m.monto) || 0), 0);
     const costosUsdProveedor = resumen.ia_real_disponible ? Number(resumen.ia_real_usd) || 0 : Number(resumen.ia_estimado_usd) || 0;
-    $('acumulado-cop').textContent = mostrarMoneda(totalCopRegistrado, 'COP');
-    $('acumulado-usd').textContent = mostrarMoneda((Number(resumen.gastos_registrados_usd) || 0) + costosUsdProveedor, 'USD');
-    $('acumulado-equivalente').textContent = resumen.gastos_cop == null ? 'Falta tasa de cambio' : mostrarMoneda(resumen.gastos_cop, 'COP');
-    $('acumulado-sin-tasa').textContent = resumen.gastos_cop == null
-      ? 'Hay gastos en USD sin una tasa guardada para su fecha.'
-      : 'Incluye costos registrados y consumo de IA disponible.';
-    $('acumulado-nota').textContent = 'Costos agrupados por servicio para ' + periodoData.periodo + '.';
     $('acumulado-fecha').textContent = periodoData.periodo + ' · ' + numero.format(movimientosGasto.length) + ' gastos registrados.';
     const servicios = new Map();
-    const sumar = (categoria, monto, moneda, equivalente) => {
+    const sumar = (categoria, monto, moneda, equivalenteCop) => {
       const nombre = nombresCategoria[categoria] || 'Otros servicios';
-      const item = servicios.get(nombre) || { COP: 0, USD: 0, equivalente_cop: 0, sinTasa: false };
-      const valor = Number(monto) || 0;
-      item[moneda === 'USD' ? 'USD' : 'COP'] += valor;
-      if (equivalente == null) item.sinTasa = true;
-      else item.equivalente_cop += Number(equivalente) || 0;
+      const item = servicios.get(nombre) || { totalCop: 0, sinTasa: false };
+      if (equivalenteCop == null) item.sinTasa = true;
+      else item.totalCop += Number(equivalenteCop) || 0;
       servicios.set(nombre, item);
     };
     for (const mov of movimientosGasto) {
@@ -860,21 +849,18 @@ async function cargarAcumulado() {
     if (costosUsdProveedor > 0) {
       sumar('openai', costosUsdProveedor, 'USD', resumen.ia_costo_aplicado_cop);
     }
-    const filas = [...servicios.entries()].sort((a, b) => (b[1].equivalente_cop || 0) - (a[1].equivalente_cop || 0));
+    const filas = [...servicios.entries()].sort((a, b) => (b[1].totalCop || 0) - (a[1].totalCop || 0));
     const tbody = $('servicios-acumulado-body');
-    if (!filas.length) return filaVacia(tbody, 4, 'No hay gastos en este período.');
+    if (!filas.length) return filaVacia(tbody, 2, 'No hay gastos en este período.');
     const fragmento = document.createDocumentFragment();
     for (const [nombre, servicio] of filas) {
       const fila = document.createElement('tr'); fila.className = 'border-t border-[#E6D8C9]';
       celda(fila, nombre);
-      celda(fila, mostrarMoneda(servicio.COP, 'COP'));
-      celda(fila, mostrarMoneda(servicio.USD, 'USD'));
-      celda(fila, servicio.sinTasa ? 'Falta tasa' : mostrarMoneda(servicio.equivalente_cop, 'COP'));
+      celda(fila, servicio.sinTasa ? 'Falta tasa para convertir a COP' : mostrarMoneda(servicio.totalCop, 'COP'));
       fragmento.append(fila);
     }
     tbody.replaceChildren(fragmento);
   } catch (error) {
-    $('acumulado-nota').textContent = error.message;
     $('vida-equivalente').textContent = 'No disponible';
     $('vida-ingresos-brutos').textContent = 'No disponible';
     $('vida-ingreso-neto').textContent = 'No disponible';
