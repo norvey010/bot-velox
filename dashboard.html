@@ -471,15 +471,10 @@
 
       </div>
       </div>
-      <section id="prod-opciones-panel" class="sm:col-span-2">
-        <button type="button" onclick="abrirPanelPersonalizacionProducto()" class="flex min-h-16 w-full items-center gap-3 rounded-lg border border-slate-700 bg-slate-900 p-3 text-left hover:border-red-500">
-          <span class="min-w-0 flex-1"><strong class="block text-sm text-white">Personalizar este producto</strong><small class="block text-xs text-slate-400">Ver y editar lo que tu cliente verá al elegir sabores</small></span><span class="text-lg text-slate-400" aria-hidden="true">›</span>
-        </button>
-      </section>
-      <section id="producto-personalizar-panel" class="hidden sm:col-span-2 space-y-3" aria-labelledby="producto-personalizar-titulo">
-        <h3 id="producto-personalizar-titulo" tabindex="-1" class="text-base font-bold text-white">Personalizar este producto</h3>
-        <p class="text-xs text-slate-400">Así lo verá tu cliente. Al tocar «Elegir sabores», podrá elegir una opción y agregar el producto al pedido. Toca ese botón para editar las opciones aquí.</p>
-        <div id="producto-elecciones-previa" class="rounded-xl border border-slate-700 bg-slate-900 p-3"></div>
+      <section id="producto-personalizar-panel" class="sm:col-span-2 space-y-3 rounded-xl border border-slate-700 bg-slate-900 p-3" aria-labelledby="producto-personalizar-titulo">
+        <h3 id="producto-personalizar-titulo" class="text-base font-bold text-white">Personalizar este producto</h3>
+        <p class="text-sm text-slate-300">Toca «Elegir sabores» para editar sus opciones.</p>
+        <div id="producto-elecciones-previa" class="min-w-0"></div>
       </section>
       <div id="producto-opciones-editor-interno" hidden aria-hidden="true">
         <div id="prod-grupos" class="space-y-3"></div>
@@ -543,7 +538,7 @@
     </footer>
   </dialog>
 
-  <script src="/app.menu-categorias.js?v=personalizacion-en-vivo"></script>
+  <script src="/app.menu-categorias.js?v=personalizar-expandido"></script>
   <script>
     let RESTAURANTE_ID = null;
     let ANCHO_PAPEL_IMPRESORA = 80;
@@ -1181,41 +1176,7 @@
       if(boton) boton.disabled=!document.getElementById('form-producto').checkValidity();
     }
 
-    function abrirPanelPersonalizacionProducto() {
-      document.getElementById('producto-editor-formulario-principal').hidden = true;
-      document.getElementById('prod-opciones-panel').hidden = true;
-      document.getElementById('producto-personalizar-panel').classList.remove('hidden');
-      document.getElementById('producto-edicion-acciones').classList.add('hidden');
-      document.getElementById('producto-form-summary-text').textContent = 'Personalizar este producto';
-      const volver=document.querySelector('#editor-producto > div > button');
-      if(volver) volver.textContent='‹ Volver a editar producto';
-      actualizarVistaEleccionesProducto();
-      actualizarEstadoGuardarProducto();
-      document.getElementById('producto-personalizar-titulo').focus({preventScroll:true});
-    }
-
-    function cerrarPanelPersonalizacionProducto() {
-      const panel=document.getElementById('producto-personalizar-panel');
-      const activo=panel && !panel.classList.contains('hidden');
-      document.getElementById('producto-editor-formulario-principal').hidden = false;
-      document.getElementById('prod-opciones-panel').hidden = false;
-      if(panel) panel.classList.add('hidden');
-      if(activo) {
-        const id=document.getElementById('prod-id').value;
-        document.getElementById('producto-form-summary-text').textContent = id ? 'Editar producto' : 'Agregar producto';
-        const volver=document.querySelector('#editor-producto > div > button');
-        if(volver) volver.textContent='‹ Volver';
-        const acciones=document.getElementById('producto-edicion-acciones');
-        acciones.classList.toggle('hidden',!id);
-      }
-      actualizarEstadoGuardarProducto();
-    }
-
     function volverDesdeEditorProducto() {
-      if(!document.getElementById('producto-personalizar-panel').classList.contains('hidden')) {
-        cerrarPanelPersonalizacionProducto();
-        return;
-      }
       cerrarEditorProducto();
     }
 
@@ -1629,7 +1590,6 @@
 
     function limpiarFormProducto() {
       document.getElementById('form-producto').reset();
-      cerrarPanelPersonalizacionProducto();
       opcionesGuardadasProducto = [];
       cargarGruposProducto([]);
       actualizarVistaEleccionesProducto();
