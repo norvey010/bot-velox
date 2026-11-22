@@ -143,10 +143,6 @@ function renderizar(data) {
   datos = data;
   renderizarAlertaConsumoOpenAI(data.alerta_consumo_openai);
   const r = data.resumen;
-  $('ingresos-cop').textContent = r.ingresos_cop == null ? 'Falta tasa USD' : mostrarMoneda(r.ingresos_cop, 'COP');
-  $('ingresos-usd').textContent = mostrarMoneda(r.ingresos_usd, 'USD') + ' registrados en USD';
-  $('gastos-cop').textContent = r.gastos_cop == null ? 'Falta tasa USD' : mostrarMoneda(r.gastos_cop, 'COP');
-  $('gastos-usd').textContent = mostrarMoneda(r.gastos_usd, 'USD') + ' en USD, incluye OpenAI';
   const costoOpenAIUsd = r.ia_real_disponible ? r.ia_real_usd : r.ia_estimado_usd;
   $('openai-usd').textContent = mostrarMoneda(costoOpenAIUsd, 'USD');
   $('openai-cop').textContent = r.ia_costo_aplicado_cop == null
@@ -154,15 +150,6 @@ function renderizar(data) {
   $('openai-nota').textContent = r.ia_real_disponible
     ? 'Costo monetario reportado por OpenAI · ' + numero.format(r.operaciones_ia) + ' operaciones registradas en Velox'
     : 'Estimación local · ' + numero.format(r.operaciones_ia) + ' operaciones';
-  if (r.utilidad_neta_cop == null) {
-    $('neto-cop').textContent = 'Falta tasa USD';
-    $('neto-nota').textContent = 'Guarda la tasa mensual que falta usando el selector de tasa de cambio.';
-  } else {
-    $('neto-cop').textContent = mostrarMoneda(r.utilidad_neta_cop, 'COP');
-    $('neto-nota').textContent = r.ia_real_disponible
-      ? 'Incluye el gasto reportado por OpenAI y los movimientos del libro.'
-      : 'Incluye los movimientos del libro y el costo OpenAI estimado localmente.';
-  }
   $('finance-note').textContent = data.nota + ' ' + (data.costos_openai?.mensaje || '') +
     (r.ia_real_sin_asignar_usd > 0 ? ' OpenAI sin atribuir a restaurante: ' + mostrarMoneda(r.ia_real_sin_asignar_usd, 'USD') + '.' : '') +
     (r.compartidos_sin_asignar_cop > 0
