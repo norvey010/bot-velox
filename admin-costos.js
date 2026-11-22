@@ -579,7 +579,7 @@ function mostrarVista(session) {
     cargarAcumulado();
     cargarFacturas(true).catch(error => estadoFacturas(error.message));
     if (!autoRefresh) autoRefresh = setInterval(() => {
-      if (document.visibilityState === 'visible' && !$('vista-analisis').classList.contains('hidden')) cargar();
+      if (document.visibilityState === 'visible' && (!$('vista-analisis').classList.contains('hidden') || !$('vista-historial').classList.contains('hidden'))) cargar();
     }, 15000);
     if (!autoRefreshVersion) autoRefreshVersion = setInterval(() => {
       if (document.visibilityState === 'visible') void comprobarVersionPanel();
@@ -794,6 +794,8 @@ async function cargarAcumulado() {
       : 'No hay USD pendientes de conversión.';
     $('acumulado-sin-tasa').textContent = sinTasa;
     const periodoData = await solicitar('/api/admin/finanzas/rango?rango=' + encodeURIComponent(rangoActual));
+    renderizar(periodoData);
+    $('rango-actual').textContent = periodoData.periodo;
     const resumen = periodoData.resumen || {};
     const faltaTasa = 'Completa las tasas mensuales para ver el total en COP.';
     $('vida-equivalente').textContent = resumen.gastos_cop == null ? 'Falta tasa de cambio' : mostrarMoneda(resumen.gastos_cop, 'COP');
@@ -801,6 +803,8 @@ async function cargarAcumulado() {
     $('vida-ingresos-brutos').textContent = resumen.ingresos_suscripcion_cop == null ? 'Falta tasa de cambio' : mostrarMoneda(resumen.ingresos_suscripcion_cop, 'COP');
     $('vida-ingresos-detalle').textContent = resumen.ingresos_suscripcion_cop == null ? faltaTasa : 'Solo suscripciones del período.';
     $('vida-ingreso-neto').textContent = resumen.utilidad_neta_cop == null ? 'Falta tasa de cambio' : mostrarMoneda(resumen.utilidad_neta_cop, 'COP');
+    $('vida-ingreso-neto').classList.toggle('text-red-700', resumen.utilidad_neta_cop != null && Number(resumen.utilidad_neta_cop) < 0);
+    $('vida-ingreso-neto').classList.toggle('text-emerald-700', resumen.utilidad_neta_cop != null && Number(resumen.utilidad_neta_cop) >= 0);
     $('vida-neto-nota').textContent = resumen.utilidad_neta_cop == null ? faltaTasa : 'Suscripciones + otros ingresos − costos del período.';
     $('vida-nota').textContent = periodoData.periodo + ' · ' + numero.format(periodoData.movimientos?.length || 0) + ' movimientos activos.';
     $('acumulado-nota').textContent = data.nota + ' ' + data.nota_openai;
@@ -833,7 +837,6 @@ $('rango-selector').addEventListener('change', () => {
 });
 $('refresh').addEventListener('click', () => Promise.allSettled([cargar(), cargarAcumulado()]));
 $('actualizar-acumulado').addEventListener('click', cargarAcumulado);
-$('refresh-lifetime-top').addEventListener('click', cargarAcumulado);
 $('invoice-filter').addEventListener('change', () => {
   localStorage.setItem('velox-invoice-filter', $('invoice-filter').value);
   cargarFacturas(false);

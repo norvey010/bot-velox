@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261122-ajustes-vertical"></script>
+  <script type="module" src="admin-costos.js?v=20261122-centro-financiero"></script>
 </head>
 <body class="min-h-screen">
   <aside id="update-notice" class="hidden fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4 shadow-xl" role="status" aria-live="polite">
@@ -19,7 +19,7 @@
   <main class="mx-auto max-w-6xl p-4 sm:p-8">
     <header class="mb-6 flex items-center gap-3">
       <div class="grid h-11 w-11 place-items-center rounded-xl bg-red-600 text-xl font-black text-white">V</div>
-      <div><p class="text-xs uppercase tracking-widest text-red-700">Velox · privado</p><h1 class="text-xl font-bold">Finanzas de la plataforma</h1></div>
+      <div><p class="text-xs uppercase tracking-widest text-red-700">Velox · privado</p><h1 class="text-xl font-bold">Centro financiero Velox</h1><p class="mt-0.5 text-xs text-[#69544A]">Ingresos, costos y resultado neto · COP como base</p></div>
     </header>
 
     <section id="login-card" class="mx-auto max-w-md rounded-2xl border border-[#D7C2AD] bg-[#FFFBF5] p-5 shadow-lg">
@@ -58,9 +58,9 @@
 
     <section id="dashboard" class="hidden space-y-4">
       <nav class="grid grid-cols-2 gap-2 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-2 sm:grid-cols-3" aria-label="Secciones financieras">
-        <button id="tab-historial" type="button" class="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white" aria-selected="true">Historial</button>
-        <button id="tab-analisis" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Análisis</button>
-        <button id="tab-facturas" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Facturas</button>
+        <button id="tab-historial" type="button" class="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white" aria-selected="true">Resumen ejecutivo</button>
+        <button id="tab-analisis" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Análisis financiero</button>
+        <button id="tab-facturas" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Libro contable</button>
       </nav>
       <div class="flex justify-end"><button id="logout" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Salir</button></div>
 
@@ -83,31 +83,28 @@
         <div id="openai-consumption-alert" class="hidden rounded-xl border px-4 py-3 text-sm" role="status" aria-live="polite"></div>
         <section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
-            <h2 class="font-semibold">Resumen del período</h2>
-            <button id="refresh-lifetime-top" type="button" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs">Actualizar historial</button>
+            <h2 class="font-semibold">Indicadores del período</h2>
           </div>
-          <div class="mt-3 grid gap-3 sm:grid-cols-3">
-            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Costos totales registrados</p><strong id="vida-equivalente" class="mt-1 block text-xl">—</strong><p id="vida-sin-tasa" class="mt-1 text-xs text-[#69544A]"></p></article>
+          <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Costos del período</p><strong id="vida-equivalente" class="mt-1 block text-xl">—</strong><p id="vida-sin-tasa" class="mt-1 text-xs text-[#69544A]"></p></article>
             <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Ingresos brutos · suscripciones</p><strong id="vida-ingresos-brutos" class="mt-1 block text-xl">—</strong><p id="vida-ingresos-detalle" class="mt-1 text-xs text-[#69544A]"></p></article>
-            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Ingreso neto registrado</p><strong id="vida-ingreso-neto" class="mt-1 block text-xl">—</strong><p id="vida-neto-nota" class="mt-1 text-xs text-[#69544A]">Suscripciones + otros ingresos − costos.</p></article>
+            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Resultado neto</p><strong id="vida-ingreso-neto" class="mt-1 block text-xl">—</strong><p id="vida-neto-nota" class="mt-1 text-xs text-[#69544A]">Suscripciones + otros ingresos − costos.</p></article>
+            <article class="rounded-xl border border-[#D7C2AD] bg-gradient-to-br from-[#FFFBF5] to-[#F0E3D5] p-4 shadow-sm"><p class="text-sm text-[#69544A]">Consumo de OpenAI · USD</p><strong id="openai-usd" class="mt-1 block text-2xl">—</strong><p id="openai-cop" class="mt-1 text-sm font-semibold text-[#8A3D2C]">—</p><p id="openai-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
           </div>
           <p id="vida-nota" class="mt-3 text-xs text-[#69544A]" role="status">Cargando historial…</p>
         </section>
       </section>
       <section id="vista-analisis" class="hidden space-y-4">
-      <div class="grid gap-3 sm:max-w-md">
-        <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Costo OpenAI · USD</p><strong id="openai-usd" class="mt-1 block text-2xl">—</strong><p id="openai-cop" class="mt-1 text-sm font-semibold text-[#8A3D2C]">—</p><p id="openai-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
-      </div>
-
-        <nav class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] divide-y divide-[#E6D8C9]" aria-label="Vistas de análisis">
+      <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Análisis financiero</h2><p class="mt-1 text-xs text-[#69544A]">Desgloses, costos por servicio y movimientos del período.</p></header>
+      <nav class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] divide-y divide-[#E6D8C9]" aria-label="Vistas de análisis">
           <button type="button" data-open-finance-view="facturas" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
             <span>Ver facturas</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span>
           </button>
           <button type="button" data-open-finance-view="restaurantes" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
-            <span>Ver por restaurante</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span>
+            <span>Costos por restaurante</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span>
           </button>
           <button type="button" data-open-finance-view="acumulado" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
-            <span>Ver por servicio</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span>
+            <span>Costos por servicio</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span>
           </button>
         </nav>
 
@@ -121,7 +118,7 @@
 
 
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-          <div class="border-b border-[#D7C2AD] p-4"><div class="flex items-center justify-between gap-3"><h2 class="font-semibold">Movimientos del período</h2><button type="button" data-open-finance-view="facturas" class="shrink-0 text-sm font-semibold text-red-700 underline underline-offset-4">Ver facturas →</button></div><div class="mt-3"><p class="mb-2 text-xs font-medium text-[#69544A]">Ver facturas por servicio</p><div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar facturas por servicio"><button type="button" data-factura-shortcut="claro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Claro</button><button type="button" data-factura-shortcut="railway" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Railway</button><button type="button" data-factura-shortcut="supabase" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Supabase</button><button type="button" data-factura-shortcut="openai" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">OpenAI</button><button type="button" data-factura-shortcut="meta" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Meta</button><button type="button" data-factura-shortcut="otro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Otros</button></div></div></div>
+          <div class="border-b border-[#D7C2AD] p-4"><div class="flex items-center justify-between gap-3"><h2 class="font-semibold">Libro de movimientos</h2><button type="button" data-open-finance-view="facturas" class="shrink-0 text-sm font-semibold text-red-700 underline underline-offset-4">Ver facturas →</button></div><div class="mt-3"><p class="mb-2 text-xs font-medium text-[#69544A]">Ver facturas por servicio</p><div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar facturas por servicio"><button type="button" data-factura-shortcut="claro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Claro</button><button type="button" data-factura-shortcut="railway" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Railway</button><button type="button" data-factura-shortcut="supabase" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Supabase</button><button type="button" data-factura-shortcut="openai" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">OpenAI</button><button type="button" data-factura-shortcut="meta" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Meta</button><button type="button" data-factura-shortcut="otro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Otros</button></div></div></div>
           <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Fecha</th><th class="p-3">Tipo</th><th class="p-3">Detalle</th><th class="p-3">Restaurante</th><th class="p-3">Valor</th><th class="p-3">Acción</th></tr></thead><tbody id="movimientos-body"></tbody></table></div>
         </section>
       </section>
@@ -130,7 +127,7 @@
       <section id="vista-restaurantes" class="hidden space-y-4">
         <button type="button" data-back-analysis class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver a Análisis</button>
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Ingreso y costo por restaurante</h2></div>
+          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Rentabilidad por restaurante</h2></div>
           <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Ingresos COP</th><th class="p-3">Gastos directos COP</th><th class="p-3">Parte compartida COP</th><th class="p-3">OpenAI atribuido</th><th class="p-3">Neto estimado COP</th></tr></thead><tbody id="restaurantes-finanzas-body"></tbody></table></div>
         </section>
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
@@ -140,7 +137,7 @@
       </section>
       <section id="vista-acumulado" class="hidden space-y-4">
         <button type="button" data-back-analysis class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver a Análisis</button>
-        <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-lg font-semibold">Inversión acumulada por servicio</h2></div><button id="actualizar-acumulado" type="button" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Actualizar acumulado</button></div>
+        <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-lg font-semibold">Costo histórico por servicio</h2></div><button id="actualizar-acumulado" type="button" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Actualizar acumulado</button></div>
         <div class="grid gap-3 sm:grid-cols-3">
           <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Gastos registrados en COP</p><strong id="acumulado-cop" class="mt-1 block text-xl">—</strong></article>
           <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Gastos registrados en USD</p><strong id="acumulado-usd" class="mt-1 block text-xl">—</strong></article>
@@ -154,7 +151,7 @@
       </section>
       <section id="vista-facturas" class="hidden space-y-4">
       <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Registrar suscripción o gasto</summary>
+        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Registrar ingreso o gasto</summary>
         <div class="border-t border-[#D7C2AD] p-4"><section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
             
             
@@ -173,7 +170,7 @@
           </section></div>
       </details>
       <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Registrar otros ingresos</summary>
+        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Registrar ingresos adicionales</summary>
         <div class="border-t border-[#D7C2AD] p-4"><p class="mb-3 text-sm text-[#69544A]">Se suman al ingreso neto y no a los ingresos brutos por suscripciones.</p>
           <form id="otro-ingreso-form" class="grid gap-3 sm:grid-cols-2">
             <label class="text-sm">Descripción<input id="otro-ingreso-descripcion" maxlength="240" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
@@ -185,7 +182,7 @@
           </form><p id="otro-ingreso-mensaje" class="mt-2 text-sm" role="status" aria-live="polite"></p></div>
       </details>
       <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Tasa de cambio por mes</summary>
+        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Tasas de cambio</summary>
         <div class="border-t border-[#D7C2AD] p-4"><section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
             
             
@@ -239,7 +236,7 @@
       </section></div>
       </details>
       <section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
-  <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-semibold">Archivos de facturas · historial completo</h2></div><div class="flex gap-2"><button id="connect-gmail" class="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white">Conectar correo</button><button id="sync-invoices" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-sm">Sincronizar</button></div></div>
+  <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-semibold">Repositorio de comprobantes</h2></div><div class="flex gap-2"><button id="connect-gmail" class="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white">Conectar correo</button><button id="sync-invoices" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-sm">Sincronizar</button></div></div>
   <p id="gmail-status" class="rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-3 text-sm text-[#69544A]" role="status">Revisando conexión de facturas…</p>
   <div class="flex flex-wrap items-center justify-between gap-2"><p id="invoice-summary" class="text-xs text-[#69544A]">Los documentos aparecerán agrupados por servicio.</p><div class="flex flex-wrap gap-2"><label class="text-xs text-[#69544A]">Servicio <select id="invoice-provider-filter" class="ml-1 rounded-lg border border-[#D7C2AD] bg-white p-1.5"><option value="all">Todos</option><option value="railway">Railway</option><option value="supabase">Supabase</option><option value="openai">OpenAI</option><option value="meta">Meta</option><option value="claro">Claro</option><option value="otro">Otros</option></select></label><label class="text-xs text-[#69544A]">Estado <select id="invoice-filter" class="ml-1 rounded-lg border border-[#D7C2AD] bg-white p-1.5"><option value="active">Activas</option><option value="void">Anuladas</option><option value="all">Todas</option></select></label></div></div><div id="invoice-list" class="space-y-2"></div>
 </section>
