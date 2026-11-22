@@ -752,6 +752,9 @@ document.querySelectorAll('[data-back-analysis]').forEach(button => {
 document.querySelectorAll('[data-back-ledger]').forEach(button => {
   button.addEventListener('click', () => activarPestana('facturas'));
 });
+document.querySelectorAll('[data-back-comprobantes]').forEach(button => {
+  button.addEventListener('click', () => activarPestana('comprobantes'));
+});
 
 function vistaFinancieraVisible() {
   return ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura']
