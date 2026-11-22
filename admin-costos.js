@@ -568,7 +568,7 @@ function mostrarVista(session) {
   if (session && !enRecuperacion) {
     if (!rangoInicializado) { activarRango('MAX'); rangoInicializado = true; }
     const vistaGuardada = sessionStorage.getItem('velox-finanzas-vista');
-    if (vistaGuardada && ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado'].includes(vistaGuardada)) {
+    if (vistaGuardada && ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes'].includes(vistaGuardada)) {
       sessionStorage.removeItem('velox-finanzas-vista');
       activarPestana(vistaGuardada);
     }
@@ -700,13 +700,15 @@ $('password-form').addEventListener('submit', async event => {
 });
 
 function activarPestana(nombre) {
-  const vistasSecundarias = ['restaurantes', 'acumulado'];
+  const vistasSecundarias = ['restaurantes', 'acumulado', 'comprobantes'];
   const esVistaSecundaria = vistasSecundarias.includes(nombre);
-  const principal = esVistaSecundaria ? 'analisis' : nombre;
+  const principal = esVistaSecundaria
+    ? (nombre === 'comprobantes' ? 'facturas' : 'analisis')
+    : nombre;
   const vistasPrincipales = ['historial', 'analisis', 'facturas'];
 
   for (const id of vistasPrincipales) {
-    const activa = id === principal && !(id === 'analisis' && esVistaSecundaria);
+    const activa = id === principal && !esVistaSecundaria;
     $(`vista-${id}`).classList.toggle('hidden', !activa);
     const boton = $(`tab-${id}`);
     boton.className = id === principal
@@ -720,7 +722,7 @@ function activarPestana(nombre) {
 
   if (nombre === 'analisis' || nombre === 'restaurantes') cargar();
   if (nombre === 'acumulado' || nombre === 'historial') cargarAcumulado();
-  if (nombre === 'facturas') cargarFacturas(false).catch(error => estadoFacturas(error.message));
+  if (nombre === 'facturas' || nombre === 'comprobantes') cargarFacturas(false).catch(error => estadoFacturas(error.message));
 }
 $('tab-historial').addEventListener('click', () => activarPestana('historial'));
 $('tab-analisis').addEventListener('click', () => activarPestana('analisis'));
@@ -731,9 +733,12 @@ document.querySelectorAll('[data-open-finance-view]').forEach(button => {
 document.querySelectorAll('[data-back-analysis]').forEach(button => {
   button.addEventListener('click', () => activarPestana('analisis'));
 });
+document.querySelectorAll('[data-back-ledger]').forEach(button => {
+  button.addEventListener('click', () => activarPestana('facturas'));
+});
 
 function vistaFinancieraVisible() {
-  return ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado']
+  return ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes']
     .find(id => !$('vista-' + id).classList.contains('hidden')) || 'historial';
 }
 function hayCambiosFinancierosSinGuardar() {
@@ -850,7 +855,7 @@ document.querySelectorAll('[data-factura-shortcut]').forEach(button => {
     const proveedor = button.dataset.facturaShortcut;
     $('invoice-provider-filter').value = proveedor;
     localStorage.setItem('velox-invoice-provider-filter', proveedor);
-    activarPestana('facturas');
+    activarPestana('comprobantes');
   });
 });
 $('logout').addEventListener('click', () => supabase.auth.signOut());
