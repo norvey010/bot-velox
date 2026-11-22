@@ -52,6 +52,7 @@ function mensaje(id, texto, error) {
 async function solicitar(url, opciones) {
   const respuesta = await fetch(url, {
     ...opciones,
+    cache: 'no-store',
     headers: {
       Authorization: 'Bearer ' + token,
       ...(opciones && opciones.headers ? opciones.headers : {})

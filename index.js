@@ -419,6 +419,9 @@ async function consultarCostosOpenAIPeriodo(desde, hasta, proyectosForzados = nu
 }
 
 app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     try {
         const rangos = new Set(['1D', '1S', '1M', '6M', 'YTD', '1A', '5A', 'MAX', 'CUSTOM']);
         const rango = String(req.query.rango || 'MAX').toUpperCase();
