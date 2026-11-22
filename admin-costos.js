@@ -16,6 +16,7 @@ let token = null;
 let recoveryMode = false;
 let autoRefresh = null;
 let autoRefreshFacturas = null;
+let autoRefreshVersion = null;
 let cargando = false;
 let cargandoAcumulado = false;
 let acumuladoPendiente = false;
@@ -579,6 +580,11 @@ function mostrarVista(session) {
   $('dashboard').classList.toggle('hidden', !session || enRecuperacion);
   if (session && !enRecuperacion) {
     if (!rangoInicializado) { activarRango('MAX'); rangoInicializado = true; }
+    const vistaGuardada = sessionStorage.getItem('velox-finanzas-vista');
+    if (vistaGuardada && ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado'].includes(vistaGuardada)) {
+      sessionStorage.removeItem('velox-finanzas-vista');
+      activarPestana(vistaGuardada);
+    }
     const filtroGuardado = localStorage.getItem('velox-invoice-filter');
     if (filtroGuardado && ['active', 'void', 'all'].includes(filtroGuardado)) $('invoice-filter').value = filtroGuardado;
     const servicioGuardado = localStorage.getItem('velox-invoice-provider-filter');
@@ -588,12 +594,16 @@ function mostrarVista(session) {
     if (!autoRefresh) autoRefresh = setInterval(() => {
       if (document.visibilityState === 'visible' && !$('vista-analisis').classList.contains('hidden')) cargar();
     }, 15000);
+    if (!autoRefreshVersion) autoRefreshVersion = setInterval(() => {
+      if (document.visibilityState === 'visible') void comprobarVersionPanel();
+    }, 30000);
     if (!autoRefreshFacturas) autoRefreshFacturas = setInterval(() => {
       if (token && document.visibilityState === 'visible') cargarFacturas(false).catch(error => estadoFacturas(error.message));
     }, 10 * 60 * 1000);
   } else {
     if (autoRefresh) { clearInterval(autoRefresh); autoRefresh = null; }
     if (autoRefreshFacturas) { clearInterval(autoRefreshFacturas); autoRefreshFacturas = null; }
+    if (autoRefreshVersion) { clearInterval(autoRefreshVersion); autoRefreshVersion = null; }
   }
 }
 supabase.auth.getSession().then(({ data }) => mostrarVista(data.session));
@@ -733,6 +743,54 @@ document.querySelectorAll('[data-open-finance-view]').forEach(button => {
 });
 document.querySelectorAll('[data-back-analysis]').forEach(button => {
   button.addEventListener('click', () => activarPestana('analisis'));
+});
+
+function vistaFinancieraVisible() {
+  return ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado']
+    .find(id => !$('vista-' + id).classList.contains('hidden')) || 'historial';
+}
+function hayCambiosFinancierosSinGuardar() {
+  return Boolean(document.querySelector('#dashboard form[data-velox-dirty="true"]'));
+}
+function prepararRecargaPanel() {
+  sessionStorage.setItem('velox-finanzas-vista', vistaFinancieraVisible());
+}
+async function comprobarVersionPanel() {
+  const script = document.querySelector('script[src*="admin-costos.js"]');
+  if (!script) return;
+  const versionActual = new URL(script.src, location.origin).searchParams.get('v');
+  try {
+    const response = await fetch('/admin-costos?version-check=' + Date.now(), { cache: 'no-store' });
+    if (!response.ok) return;
+    const html = await response.text();
+    const versionNueva = html.match(/admin-costos.js.v=([^"'&]+)/i)?.[1];
+    if (!versionNueva || versionNueva === versionActual) return;
+    if (hayCambiosFinancierosSinGuardar()) {
+      $('update-notice-text').textContent = 'Hay una actualización. Guarda lo que estás editando y el panel se actualizará solo.';
+      $('update-notice').classList.remove('hidden');
+      return;
+    }
+    prepararRecargaPanel();
+    location.reload();
+  } catch {
+    // Si la conexión falla, se volverá a comprobar en el siguiente intervalo.
+  }
+}
+function marcarFormularioFinanciero(event) {
+  const formulario = event.target?.closest?.('#dashboard form');
+  if (formulario) formulario.dataset.veloxDirty = 'true';
+}
+document.addEventListener('input', marcarFormularioFinanciero, true);
+document.addEventListener('change', marcarFormularioFinanciero, true);
+document.addEventListener('reset', event => {
+  if (event.target instanceof HTMLFormElement) {
+    setTimeout(() => delete event.target.dataset.veloxDirty, 0);
+  }
+}, true);
+$('update-reload').addEventListener('click', () => {
+  if (hayCambiosFinancierosSinGuardar() && !window.confirm('Hay datos sin guardar. Si recargas ahora, podrías perderlos. ¿Quieres continuar?')) return;
+  prepararRecargaPanel();
+  location.reload();
 });
 async function cargarAcumulado() {
   if (!token) return;
