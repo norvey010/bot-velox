@@ -195,12 +195,12 @@
         <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-red-500/80 to-transparent"></div>
         <div class="flex justify-between items-start gap-4 mb-5 border-b border-white/10 pb-4">
             <div><p id="etiqueta-personalizar" class="inline-flex items-center gap-2 text-[11px] uppercase tracking-[.18em] text-white font-extrabold"><span class="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,.9)]"></span>Personaliza tu pedido</p><h3 id="titulo-personalizar" class="text-xl font-extrabold text-white mt-2">Elige cómo lo quieres</h3><p id="nombre-personalizar" class="text-sm text-slate-400 mt-1"></p></div>
-            <button type="button" onclick="cerrarModalPersonalizar()" aria-label="Cerrar" class="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:border-red-400/50 hover:bg-red-700/10 hover:text-white text-2xl leading-none transition">&times;</button>
+            <button id="cerrar-modal-personalizar" type="button" onclick="cerrarModalPersonalizar()" aria-label="Cerrar" class="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:border-red-400/50 hover:bg-red-700/10 hover:text-white text-2xl leading-none transition">&times;</button>
         </div>
         <div id="campos-personalizar" class="space-y-4"></div>
         <div id="personalizar-acciones" class="mt-6 flex gap-3">
-            <button type="button" onclick="cerrarModalPersonalizar()" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl text-sm font-semibold">Cancelar</button>
-            <button type="submit" class="w-2/3 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm">Agregar al pedido</button>
+            <button id="cancelar-personalizacion" type="button" onclick="cerrarModalPersonalizar()" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl text-sm font-semibold">Cancelar</button>
+            <button id="aplicar-personalizacion" type="submit" class="w-2/3 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm">Agregar al pedido</button>
         </div>
     </form>
 </div>
@@ -258,7 +258,7 @@
         <form method="dialog" class="mt-4"><button class="min-h-11 rounded-lg bg-red-600 px-4 text-white">Listo</button></form>
     </dialog>
 
-    <script src="/app.menu-categorias.js?v=etiqueta-eleccion-editable"></script>
+    <script src="/app.menu-categorias.js?v=botones-aplicar-personalizacion"></script>
     <script>
         var cart = [];
         var numeroWhatsAppRestaurante = '';
@@ -678,6 +678,7 @@ function escaparHtml(valor) {
 
 let productoPersonalizacionActual = null;
 let gruposEditablesEjemplo = [];
+let gruposOriginalesEdicionEjemplo = [];
 
 function etiquetaPorDefectoGrupo(nombre) {
     return /^(sabor|sabores|especialidad|especialidades)$/i.test(normalizarTexto(nombre)) ? 'Elige un sabor' : `Elige ${String(nombre||'').toLowerCase()}`;
@@ -807,15 +808,28 @@ function quitarGrupoEjemplo(i) {
 function abrirEditorPersonalizacionEjemplo(producto) {
     productoPersonalizacionActual={producto,selectores:[]};
     gruposEditablesEjemplo=agruparOpcionesParaEditar(producto);
+    gruposOriginalesEdicionEjemplo=JSON.parse(JSON.stringify(gruposEditablesEjemplo));
     document.getElementById('etiqueta-personalizar').textContent='EDICIÓN EN VIVO';
     document.getElementById('titulo-personalizar').textContent='Personalizar este producto';
     document.getElementById('nombre-personalizar').textContent=producto.nombre||'Producto';
-    document.getElementById('personalizar-acciones').hidden=true;
+    document.getElementById('personalizar-acciones').hidden=false;
+    document.getElementById('cancelar-personalizacion').textContent='Cancelar';
+    document.getElementById('cancelar-personalizacion').setAttribute('onclick','cancelarEdicionPersonalizacionEjemplo()');
+    document.getElementById('aplicar-personalizacion').textContent='Aplicar cambios';
+    document.getElementById('cerrar-modal-personalizar').setAttribute('onclick','cancelarEdicionPersonalizacionEjemplo()');
     renderizarEditorOpcionesEjemplo();
     const modal=document.getElementById('modal-personalizar');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     document.querySelector('#campos-personalizar input')?.focus();
+}
+
+function cancelarEdicionPersonalizacionEjemplo() {
+    if(productoPersonalizacionActual) {
+        gruposEditablesEjemplo=JSON.parse(JSON.stringify(gruposOriginalesEdicionEjemplo));
+        sincronizarOpcionesEditadasEjemplo();
+    }
+    cerrarModalPersonalizar();
 }
 
 function iniciarPersonalizacion(id) {
@@ -826,6 +840,10 @@ function iniciarPersonalizacion(id) {
     if(modoEjemploProducto==='tarjeta') { window.parent.postMessage({tipo:'velox-ejemplo-abrir'},window.location.origin); return; }
     if(modoEjemploProducto==='opciones' && window.VELOX_EDITAR_PERSONALIZACION) { abrirEditorPersonalizacionEjemplo(producto); return; }
     document.getElementById('personalizar-acciones').hidden=false;
+    document.getElementById('cancelar-personalizacion').textContent='Cancelar';
+    document.getElementById('cancelar-personalizacion').setAttribute('onclick','cerrarModalPersonalizar()');
+    document.getElementById('aplicar-personalizacion').textContent='Agregar al pedido';
+    document.getElementById('cerrar-modal-personalizar').setAttribute('onclick','cerrarModalPersonalizar()');
     document.getElementById('etiqueta-personalizar').textContent='Personaliza tu pedido';
     document.getElementById('titulo-personalizar').textContent='Elige cómo lo quieres';
     const personalizacion = obtenerPersonalizacionProducto(producto);
@@ -871,7 +889,10 @@ function cerrarModalPersonalizar() {
 function confirmarPersonalizacion(event) {
     event.preventDefault();
     if (!productoPersonalizacionActual) return;
-    if(modoEjemploProducto==='opciones' && window.VELOX_EDITAR_PERSONALIZACION) return;
+    if(modoEjemploProducto==='opciones' && window.VELOX_EDITAR_PERSONALIZACION) {
+        cerrarModalPersonalizar();
+        return;
+    }
     if(modoEjemploProducto) { cerrarModalPersonalizar(); return; }
 
     const { producto, selectores } = productoPersonalizacionActual;
