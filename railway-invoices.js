@@ -52,8 +52,8 @@ function googleConfig() {
     return redirectUri ? { clientId, clientSecret, redirectUri } : null;
 }
 
-function firmarEstado(userId) {
-    const payload = Buffer.from(JSON.stringify({ userId, exp: Date.now() + 10 * 60 * 1000, nonce: crypto.randomBytes(18).toString('base64url') })).toString('base64url');
+function firmarEstado(userId, accountEmail = INVOICE_ACCOUNT) {
+    const payload = Buffer.from(JSON.stringify({ userId, accountEmail, exp: Date.now() + 10 * 60 * 1000, nonce: crypto.randomBytes(18).toString('base64url') })).toString('base64url');
     const signature = crypto.createHmac('sha256', keyFor('gmail-oauth-state')).update(payload).digest('base64url');
     return `${payload}.${signature}`;
 }
@@ -370,10 +370,13 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
         try {
             const config = googleConfig();
             if (!config) return res.status(503).json({ error: 'Falta configurar el cliente OAuth de Google en Railway.' });
-            const state = firmarEstado(req.adminPlataforma.id);
+            const accountEmail = String(req.body?.email || INVOICE_ACCOUNT).trim().toLowerCase();
+            if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(accountEmail)) return res.status(400).json({ error: 'Escribe un correo electrónico válido.' });
+            const state = firmarEstado(req.adminPlataforma.id, accountEmail);
             const params = new URLSearchParams({
                 client_id: config.clientId, redirect_uri: config.redirectUri, response_type: 'code',
-                scope: 'openid email https://www.googleapis.com/auth/gmail.readonly', access_type: 'offline', prompt: 'consent', state
+                scope: 'openid email https://www.googleapis.com/auth/gmail.readonly', access_type: 'offline', prompt: 'consent',
+                login_hint: accountEmail, state
             });
             res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` });
         } catch (error) { res.status(503).json({ error: 'No se pudo iniciar la conexión segura con Gmail.' }); }
@@ -389,7 +392,8 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
             const tokens = await tokenRequest(config, { code: String(req.query.code), grant_type: 'authorization_code', redirect_uri: config.redirectUri });
             const { data: profile } = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${tokens.access_token}` }, timeout: 15000 });
             const email = String(profile.email || '').toLowerCase();
-            if (profile.verified_email !== true || email !== INVOICE_ACCOUNT) return callbackError(res, `Conecta el correo autorizado ${INVOICE_ACCOUNT}.`);
+            const accountEmail = String(state.accountEmail || INVOICE_ACCOUNT).trim().toLowerCase();
+            if (profile.verified_email !== true || email !== accountEmail) return callbackError(res, `Google autorizó ${email || 'otra cuenta'}; seleccionaste ${accountEmail}. Vuelve a iniciar sesión con el correo indicado.`);
             const previous = await getIntegration(supabaseAdmin);
             const old = previous ? decrypt(previous.credentials_ciphertext) : {};
             const refreshToken = tokens.refresh_token || old.refresh_token;

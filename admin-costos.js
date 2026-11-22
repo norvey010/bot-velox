@@ -288,6 +288,7 @@ async function abrirComprobante(id, indice) {
 }
 async function cargarFacturas(auto = true) {
   const status = await solicitarAdmin('/api/admin/integraciones/gmail/estado');
+  if (!$('gmail-account-email').value) $('gmail-account-email').value = localStorage.getItem('velox-gmail-account-email') || status.correo || '';
   $('connect-gmail').disabled = !status.configurado;
   $('sync-invoices').disabled = !status.conectado;
   if (!status.configurado) {
@@ -537,10 +538,27 @@ $('manual-invoice-form').addEventListener('submit', async event => {
     button.textContent = 'Guardar comprobante y gasto';
   }
 });
-$('connect-gmail').addEventListener('click', async () => {
-  $('connect-gmail').disabled = true;
-  try { const result = await solicitarAdmin('/api/admin/integraciones/gmail/conectar', { method: 'POST' }); window.location.assign(result.url); }
-  catch (error) { estadoFacturas(error.message); $('connect-gmail').disabled = false; }
+$('gmail-connect-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.reportValidity()) return;
+  const button = $('connect-gmail');
+  button.disabled = true;
+  button.textContent = 'Abriendo Google…';
+  try {
+    const email = $('gmail-account-email').value.trim().toLowerCase();
+    const result = await solicitarAdmin('/api/admin/integraciones/gmail/conectar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    localStorage.setItem('velox-gmail-account-email', email);
+    window.location.assign(result.url);
+  } catch (error) {
+    estadoFacturas(error.message);
+    button.disabled = false;
+    button.textContent = 'Vincular con Google';
+  }
 });
 $('sync-invoices').addEventListener('click', async () => {
   $('sync-invoices').disabled = true;
@@ -568,7 +586,7 @@ function mostrarVista(session) {
   if (session && !enRecuperacion) {
     if (!rangoInicializado) { activarRango('MAX'); rangoInicializado = true; }
     const vistaGuardada = sessionStorage.getItem('velox-finanzas-vista');
-    if (vistaGuardada && ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'correo', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura'].includes(vistaGuardada)) {
+    if (vistaGuardada && ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura'].includes(vistaGuardada)) {
       sessionStorage.removeItem('velox-finanzas-vista');
       activarPestana(vistaGuardada);
     }
@@ -700,7 +718,7 @@ $('password-form').addEventListener('submit', async event => {
 });
 
 function activarPestana(nombre) {
-  const vistasSecundarias = ['restaurantes', 'acumulado', 'comprobantes', 'correo', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura'];
+  const vistasSecundarias = ['restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura'];
   const vistasDeAnalisis = ['restaurantes', 'acumulado', 'categorias', 'movimientos'];
   const esVistaSecundaria = vistasSecundarias.includes(nombre);
   const principal = esVistaSecundaria
@@ -723,7 +741,7 @@ function activarPestana(nombre) {
 
   if (['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos'].includes(nombre)) cargar();
   if (nombre === 'acumulado' || nombre === 'historial') cargarAcumulado();
-  if (['comprobantes', 'correo', 'carga-factura'].includes(nombre)) cargarFacturas(false).catch(error => estadoFacturas(error.message));
+  if (['comprobantes', 'carga-factura'].includes(nombre)) cargarFacturas(false).catch(error => estadoFacturas(error.message));
 }
 $('tab-historial').addEventListener('click', () => activarPestana('historial'));
 $('tab-analisis').addEventListener('click', () => activarPestana('analisis'));
@@ -739,7 +757,7 @@ document.querySelectorAll('[data-back-ledger]').forEach(button => {
 });
 
 function vistaFinancieraVisible() {
-  return ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'correo', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura']
+  return ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura']
     .find(id => !$('vista-' + id).classList.contains('hidden')) || 'historial';
 }
 function hayCambiosFinancierosSinGuardar() {
