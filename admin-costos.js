@@ -17,7 +17,7 @@ let recoveryMode = false;
 let autoRefresh = null;
 let autoRefreshFacturas = null;
 let cargando = false;
-let cargandoAcumulado = false;
+let cargandoAcumulado = false;\nlet acumuladoPendiente = false;\nlet cargaPendiente = false;
 let rangoActual = 'MAX';
 let rangoInicializado = false;
 let datos = null;
@@ -230,7 +230,8 @@ function renderizarRestaurantes(restaurantes) {
   ia.replaceChildren(fragmentoIa);
 }
 async function cargar() {
-  if (!token || cargando) return;
+  if (!token) return;
+  if (cargando) { cargaPendiente = true; return; }
   cargando = true;
   $('data-message').textContent = '';
   try {
@@ -241,6 +242,7 @@ async function cargar() {
     $('data-message').textContent = error.message;
   } finally {
     cargando = false;
+    if (cargaPendiente) { cargaPendiente = false; void cargar(); }
   }
 }
 
@@ -695,7 +697,8 @@ $('tab-facturas').addEventListener('click', () => activarPestana('facturas'));
 $('tab-restaurantes').addEventListener('click', () => activarPestana('restaurantes'));
 $('tab-acumulado').addEventListener('click', () => activarPestana('acumulado'));
 async function cargarAcumulado() {
-  if (!token || cargandoAcumulado) return;
+  if (!token) return;
+  if (cargandoAcumulado) { acumuladoPendiente = true; return; }
   cargandoAcumulado = true;
   $('acumulado-nota').textContent = 'Sumando los gastos guardados y consultando el costo histórico disponible…';
   try {
@@ -736,6 +739,9 @@ async function cargarAcumulado() {
   } catch (error) {
     $('acumulado-nota').textContent = error.message;
     $('vida-nota').textContent = error.message;
+  } finally {
+    cargandoAcumulado = false;
+    if (acumuladoPendiente) { acumuladoPendiente = false; void cargarAcumulado(); }
   }
 }
 $('rango-selector').addEventListener('change', () => {
