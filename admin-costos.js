@@ -144,15 +144,7 @@ function renderizarAlertaConsumoOpenAI(alerta) {
 }
 function renderizar(data) {
   datos = data;
-  renderizarAlertaConsumoOpenAI(data.alerta_consumo_openai);
   const r = data.resumen;
-  const costoOpenAIUsd = r.ia_real_disponible ? r.ia_real_usd : r.ia_estimado_usd;
-  $('openai-usd').textContent = mostrarMoneda(costoOpenAIUsd, 'USD');
-  $('openai-cop').textContent = r.ia_costo_aplicado_cop == null
-    ? 'Equivalente COP: falta tasa' : '≈ ' + mostrarMoneda(r.ia_costo_aplicado_cop, 'COP');
-  $('openai-nota').textContent = r.ia_real_disponible
-    ? 'Costo monetario reportado por OpenAI · ' + numero.format(r.operaciones_ia) + ' operaciones registradas en Velox'
-    : 'Estimación local · ' + numero.format(r.operaciones_ia) + ' operaciones';
   $('finance-note').textContent = data.nota + ' ' + (data.costos_openai?.mensaje || '') +
     (r.ia_real_sin_asignar_usd > 0 ? ' OpenAI sin atribuir a restaurante: ' + mostrarMoneda(r.ia_real_sin_asignar_usd, 'USD') + '.' : '') +
     (r.compartidos_sin_asignar_cop > 0
@@ -616,7 +608,7 @@ function mostrarVista(session) {
     cargarAcumulado();
     cargarFacturas(true).catch(error => estadoFacturas(error.message));
     if (!autoRefresh) autoRefresh = setInterval(() => {
-      if (document.visibilityState === 'visible' && (!$('vista-historial').classList.contains('hidden') || ['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos'].some(id => !$('vista-' + id).classList.contains('hidden')))) cargar();
+      if (document.visibilityState === 'visible' && (!$('vista-historial').classList.contains('hidden') || ['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos'].some(id => !$('vista-' + id).classList.contains('hidden')))) cargarAcumulado();
     }, 15000);
     if (!autoRefreshVersion) autoRefreshVersion = setInterval(() => {
       if (document.visibilityState === 'visible') void comprobarVersionPanel();
@@ -838,6 +830,10 @@ async function cargarAcumulado() {
   if (cargandoAcumulado) { acumuladoPendiente = true; return; }
   cargandoAcumulado = true;
   $('acumulado-nota').textContent = 'Calculando los costos de este período…';
+  $('data-message').textContent = '';
+  $('vida-equivalente').textContent = 'Cargando…';
+  $('vida-ingresos-brutos').textContent = 'Cargando…';
+  $('vida-ingreso-neto').textContent = 'Cargando…';
   try {
     const periodoData = await solicitar(urlRangoFinanciero());
     renderizar(periodoData);
@@ -889,7 +885,10 @@ async function cargarAcumulado() {
     tbody.replaceChildren(fragmento);
   } catch (error) {
     $('acumulado-nota').textContent = error.message;
-    $('vida-nota').textContent = error.message;
+    $('vida-equivalente').textContent = 'No disponible';
+    $('vida-ingresos-brutos').textContent = 'No disponible';
+    $('vida-ingreso-neto').textContent = 'No disponible';
+    $('data-message').textContent = error.message;
   } finally {
     cargandoAcumulado = false;
     if (acumuladoPendiente) { acumuladoPendiente = false; void cargarAcumulado(); }
