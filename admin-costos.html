@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261122-fix-acceso"></script>
+  <script type="module" src="admin-costos.js?v=20261122-panel-analisis"></script>
 </head>
 <body class="min-h-screen">
   <main class="mx-auto max-w-6xl p-4 sm:p-8">
@@ -51,16 +51,15 @@
     </section>
 
     <section id="dashboard" class="hidden space-y-4">
-      <nav class="grid grid-cols-2 gap-2 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-2 sm:grid-cols-5" aria-label="Secciones financieras">
+      <nav class="grid grid-cols-2 gap-2 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-2 sm:grid-cols-3" aria-label="Secciones financieras">
         <button id="tab-historial" type="button" class="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white" aria-selected="true">Historial</button>
         <button id="tab-analisis" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Análisis</button>
         <button id="tab-facturas" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Facturas</button>
-        <button id="tab-restaurantes" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Por restaurante</button>
-        <button id="tab-acumulado" type="button" class="rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]" aria-selected="false">Por servicio</button>
       </nav>
       <div class="flex justify-end"><button id="logout" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Salir</button></div>
 
-      <section id="vista-historial" class="space-y-4">\n<div class="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-3">
+      <section id="vista-historial" class="space-y-4">
+<div class="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-3">
         <div class="min-w-0">
           <label for="rango-selector" class="mb-2 block text-sm font-semibold">Período de análisis</label>
           <select id="rango-selector" class="min-w-56 rounded-lg border border-[#D7C2AD] bg-white px-3 py-2 text-sm text-[#241A15]" aria-label="Período del análisis">
@@ -97,6 +96,12 @@
           <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Costo OpenAI · USD</p><strong id="openai-usd" class="mt-1 block text-2xl">—</strong><p id="openai-cop" class="mt-1 text-sm font-semibold text-[#8A3D2C]">—</p><p id="openai-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
         </div>
 
+        <nav class="flex flex-wrap gap-x-5 gap-y-2 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3 text-sm font-semibold text-red-700" aria-label="Vistas de análisis">
+          <button type="button" data-open-finance-view="facturas" class="underline underline-offset-4">Ver facturas →</button>
+          <button type="button" data-open-finance-view="restaurantes" class="underline underline-offset-4">Ver por restaurante →</button>
+          <button type="button" data-open-finance-view="acumulado" class="underline underline-offset-4">Ver por servicio →</button>
+        </nav>
+
         <p id="finance-note" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] p-3 text-sm text-[#69544A]" role="status"></p>
 
             <div class="mt-4 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
@@ -107,13 +112,14 @@
 
 
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-          <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Movimientos del rango seleccionado</h2><div class="mt-3"><p class="mb-2 text-xs font-medium text-[#69544A]">Ver facturas por servicio</p><div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar facturas por servicio"><button type="button" data-factura-shortcut="claro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Claro</button><button type="button" data-factura-shortcut="railway" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Railway</button><button type="button" data-factura-shortcut="supabase" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Supabase</button><button type="button" data-factura-shortcut="openai" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">OpenAI</button><button type="button" data-factura-shortcut="meta" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Meta</button><button type="button" data-factura-shortcut="otro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Otros</button></div></div></div>
+          <div class="border-b border-[#D7C2AD] p-4"><div class="flex items-center justify-between gap-3"><h2 class="font-semibold">Movimientos del período</h2><button type="button" data-open-finance-view="facturas" class="shrink-0 text-sm font-semibold text-red-700 underline underline-offset-4">Ver facturas →</button></div><div class="mt-3"><p class="mb-2 text-xs font-medium text-[#69544A]">Ver facturas por servicio</p><div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar facturas por servicio"><button type="button" data-factura-shortcut="claro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Claro</button><button type="button" data-factura-shortcut="railway" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Railway</button><button type="button" data-factura-shortcut="supabase" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Supabase</button><button type="button" data-factura-shortcut="openai" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">OpenAI</button><button type="button" data-factura-shortcut="meta" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Meta</button><button type="button" data-factura-shortcut="otro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Otros</button></div></div></div>
           <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Fecha</th><th class="p-3">Tipo</th><th class="p-3">Detalle</th><th class="p-3">Restaurante</th><th class="p-3">Valor</th><th class="p-3">Acción</th></tr></thead><tbody id="movimientos-body"></tbody></table></div>
         </section>
       </section>
 
 
       <section id="vista-restaurantes" class="hidden space-y-4">
+        <button type="button" data-back-analysis class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver a Análisis</button>
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
           <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Ingreso y costo por restaurante</h2></div>
           <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Restaurante</th><th class="p-3">Ingresos COP</th><th class="p-3">Gastos directos COP</th><th class="p-3">Parte compartida COP</th><th class="p-3">OpenAI atribuido</th><th class="p-3">Neto estimado COP</th></tr></thead><tbody id="restaurantes-finanzas-body"></tbody></table></div>
@@ -124,6 +130,7 @@
         </section>
       </section>
       <section id="vista-acumulado" class="hidden space-y-4">
+        <button type="button" data-back-analysis class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver a Análisis</button>
         <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-lg font-semibold">Inversión acumulada por servicio</h2></div><button id="actualizar-acumulado" type="button" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Actualizar acumulado</button></div>
         <div class="grid gap-3 sm:grid-cols-3">
           <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Gastos registrados en COP</p><strong id="acumulado-cop" class="mt-1 block text-xl">—</strong></article>
