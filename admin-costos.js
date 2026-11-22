@@ -159,8 +159,8 @@ function renderizar(data) {
       : '');
   $('tasa-usd-cop').value = data.tasas_por_mes?.[$('tasa-periodo').value] || '';
   $('ai-period-note').textContent = data.costos_openai?.disponible
-    ? 'Período ' + data.periodo + '. Costo monetario real de OpenAI; el reparto por restaurante es estimado según la telemetría de Velox.'
-    : 'Período ' + data.periodo + '. Se muestra el costo OpenAI estimado localmente hasta conectar el reporte monetario del proveedor.';
+    ? 'Período ' + data.periodo + '. El costo total real de OpenAI se convierte a COP con la tasa guardada para cada mes; el reparto por restaurante se estima según el uso registrado.'
+    : 'Período ' + data.periodo + '. El costo por restaurante es una estimación local en COP; aún no se recibe el costo monetario real de OpenAI.';
   renderizarCategorias(data.gastos_por_categoria || {});
   renderizarMovimientos(data.movimientos || [], data.restaurantes || []);
   renderizarRestaurantes(data.restaurantes || []);
@@ -216,7 +216,7 @@ function renderizarMovimientos(movimientos, restaurantes) {
 function renderizarRestaurantes(restaurantes) {
   llenarSelectorRestaurantes(restaurantes);
   const ordenUtilidad = [...restaurantes].sort((a, b) => a.neto_cop == null ? 1 : b.neto_cop == null ? -1 : a.neto_cop - b.neto_cop);
-  const ordenIa = [...restaurantes].sort((a, b) => (b.ia_usd || 0) - (a.ia_usd || 0));
+  const ordenIa = [...restaurantes].sort((a, b) => a.ia_cop == null ? 1 : b.ia_cop == null ? -1 : b.ia_cop - a.ia_cop);
   const tbody = $('restaurantes-finanzas-body');
   if (!restaurantes.length) filaVacia(tbody, 6, 'Aún no hay restaurantes registrados.');
   else {
@@ -235,14 +235,13 @@ function renderizarRestaurantes(restaurantes) {
     tbody.replaceChildren(fragmento);
   }
   const ia = $('ia-restaurantes-body');
+  if (!ordenIa.length) { filaVacia(ia, 2, 'Aún no hay restaurantes para este período.'); return; }
   const fragmentoIa = document.createDocumentFragment();
   for (const r of ordenIa) {
     const fila = document.createElement('tr');
     fila.className = 'border-t border-[#E6D8C9]';
     celda(fila, r.restaurante);
-    celda(fila, numero.format(r.operaciones_ia || 0));
-    celda(fila, mostrarMoneda(r.ia_usd, 'USD'));
-    celda(fila, r.ia_cop == null ? 'Falta tasa USD' : mostrarMoneda(r.ia_cop, 'COP'));
+    celda(fila, r.ia_cop == null ? 'No disponible · falta tarifa o tasa' : mostrarMoneda(r.ia_cop, 'COP'));
     fragmentoIa.append(fila);
   }
   ia.replaceChildren(fragmentoIa);
