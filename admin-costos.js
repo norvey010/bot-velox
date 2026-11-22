@@ -703,25 +703,37 @@ $('password-form').addEventListener('submit', async event => {
 });
 
 function activarPestana(nombre) {
-  const ids = ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado'];
-  for (const id of ids) {
-    const activa = id === nombre;
+  const vistasSecundarias = ['restaurantes', 'acumulado'];
+  const esVistaSecundaria = vistasSecundarias.includes(nombre);
+  const principal = esVistaSecundaria ? 'analisis' : nombre;
+  const vistasPrincipales = ['historial', 'analisis', 'facturas'];
+
+  for (const id of vistasPrincipales) {
+    const activa = id === principal && !(id === 'analisis' && esVistaSecundaria);
     $(`vista-${id}`).classList.toggle('hidden', !activa);
     const boton = $(`tab-${id}`);
-    boton.className = activa
+    boton.className = id === principal
       ? 'rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white'
       : 'rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]';
-    boton.setAttribute('aria-selected', String(activa));
+    boton.setAttribute('aria-selected', String(id === principal));
   }
-  if (nombre === 'analisis') cargar();
+  for (const id of vistasSecundarias) {
+    $(`vista-${id}`).classList.toggle('hidden', nombre !== id);
+  }
+
+  if (nombre === 'analisis' || nombre === 'restaurantes') cargar();
   if (nombre === 'acumulado' || nombre === 'historial') cargarAcumulado();
   if (nombre === 'facturas') cargarFacturas(false).catch(error => estadoFacturas(error.message));
 }
 $('tab-historial').addEventListener('click', () => activarPestana('historial'));
 $('tab-analisis').addEventListener('click', () => activarPestana('analisis'));
 $('tab-facturas').addEventListener('click', () => activarPestana('facturas'));
-$('tab-restaurantes').addEventListener('click', () => activarPestana('restaurantes'));
-$('tab-acumulado').addEventListener('click', () => activarPestana('acumulado'));
+document.querySelectorAll('[data-open-finance-view]').forEach(button => {
+  button.addEventListener('click', () => activarPestana(button.dataset.openFinanceView));
+});
+document.querySelectorAll('[data-back-analysis]').forEach(button => {
+  button.addEventListener('click', () => activarPestana('analisis'));
+});
 async function cargarAcumulado() {
   if (!token) return;
   if (cargandoAcumulado) { acumuladoPendiente = true; return; }
