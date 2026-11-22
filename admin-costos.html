@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261121-facturas-y-movimientos"></script>
+  <script type="module" src="admin-costos.js?v=20261121-historial-cop-neto"></script>
 </head>
 <body class="min-h-screen">
   <main class="mx-auto max-w-6xl p-4 sm:p-8">
@@ -60,24 +60,9 @@
       </nav>
       <div class="flex justify-end"><button id="logout" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] px-3 py-2 text-sm">Salir</button></div>
 
-      <section id="vista-historial" class="space-y-4">
-        <section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <h2 class="font-semibold">Desde el inicio de Velox</h2>
-            <button id="refresh-lifetime-top" type="button" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs">Actualizar historial</button>
-          </div>
-          <div class="mt-3 grid gap-3 sm:grid-cols-3">
-            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Costos totales registrados</p><strong id="vida-equivalente" class="mt-1 block text-xl">—</strong><p id="vida-sin-tasa" class="mt-1 text-xs text-[#69544A]"></p></article>
-            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Ingresos brutos por suscripción registrados</p><strong id="vida-ingresos-brutos" class="mt-1 block text-xl">—</strong><p id="vida-ingresos-detalle" class="mt-1 text-xs text-[#69544A]"></p></article>
-            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Ingreso neto registrado</p><strong id="vida-ingreso-neto" class="mt-1 block text-xl">—</strong><p id="vida-neto-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
-          </div>
-          <p id="vida-nota" class="mt-3 text-xs text-[#69544A]" role="status">Cargando historial…</p>
-        </section>
-      </section>
-      <section id="vista-analisis" class="hidden space-y-4">
-      <div class="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-3">
+      <section id="vista-historial" class="space-y-4">\n<div class="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-3">
         <div class="min-w-0">
-          <label for="rango-selector" class="mb-2 block text-sm font-semibold">Período del análisis</label>
+          <label for="rango-selector" class="mb-2 block text-sm font-semibold">Período de análisis</label>
           <select id="rango-selector" class="min-w-56 rounded-lg border border-[#D7C2AD] bg-white px-3 py-2 text-sm text-[#241A15]" aria-label="Período del análisis">
             <option value="1D">Hoy</option><option value="1S">Últimos 7 días</option><option value="1M">Último mes</option>
             <option value="6M">Últimos 6 meses</option><option value="YTD">Este año · YTD</option>
@@ -90,7 +75,21 @@
           
         </div>
       </div>
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <h2 class="font-semibold">Resumen del período</h2>
+            <button id="refresh-lifetime-top" type="button" class="rounded-lg border border-[#D7C2AD] px-3 py-2 text-xs">Actualizar historial</button>
+          </div>
+          <div class="mt-3 grid gap-3 sm:grid-cols-3">
+            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Costos totales registrados</p><strong id="vida-equivalente" class="mt-1 block text-xl">—</strong><p id="vida-sin-tasa" class="mt-1 text-xs text-[#69544A]"></p></article>
+            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Ingresos brutos · suscripciones</p><strong id="vida-ingresos-brutos" class="mt-1 block text-xl">—</strong><p id="vida-ingresos-detalle" class="mt-1 text-xs text-[#69544A]"></p></article>
+            <article class="rounded-lg border border-[#E6D8C9] p-3"><p class="text-xs text-[#69544A]">Ingreso neto registrado</p><strong id="vida-ingreso-neto" class="mt-1 block text-xl">—</strong><p id="vida-neto-nota" class="mt-1 text-xs text-[#69544A]">Suscripciones + otros ingresos − costos.</p></article>
+          </div>
+          <p id="vida-nota" class="mt-3 text-xs text-[#69544A]" role="status">Cargando historial…</p>
+        </section>
+      </section>
+      <section id="vista-analisis" class="hidden space-y-4">
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Ingresos registrados</p><strong id="ingresos-cop" class="mt-1 block text-2xl">—</strong><p id="ingresos-usd" class="mt-1 text-xs text-[#69544A]"></p></article>
           <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Gastos totales</p><strong id="gastos-cop" class="mt-1 block text-2xl">—</strong><p id="gastos-usd" class="mt-1 text-xs text-[#69544A]"></p></article>
           <article class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4"><p class="text-sm text-[#69544A]">Utilidad neta estimada</p><strong id="neto-cop" class="mt-1 block text-2xl text-red-700">—</strong><p id="neto-nota" class="mt-1 text-xs text-[#69544A]"></p></article>
@@ -138,7 +137,7 @@
       </section>
       <section id="vista-facturas" class="hidden space-y-4">
       <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Registrar ingreso o gasto</summary>
+        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Registrar suscripción o gasto</summary>
         <div class="border-t border-[#D7C2AD] p-4"><section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
             
             
@@ -155,6 +154,18 @@
             </form>
             <p id="mov-mensaje" class="mt-2 text-sm" role="status" aria-live="polite"></p>
           </section></div>
+      </details>
+      <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
+        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Registrar otros ingresos</summary>
+        <div class="border-t border-[#D7C2AD] p-4"><p class="mb-3 text-sm text-[#69544A]">Se suman al ingreso neto y no a los ingresos brutos por suscripciones.</p>
+          <form id="otro-ingreso-form" class="grid gap-3 sm:grid-cols-2">
+            <label class="text-sm">Descripción<input id="otro-ingreso-descripcion" maxlength="240" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
+            <label class="text-sm">Valor<input id="otro-ingreso-monto" type="number" min="0.01" step="0.01" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
+            <label class="text-sm">Moneda<select id="otro-ingreso-moneda" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="COP">COP · pesos</option><option value="USD">USD · dólares</option></select></label>
+            <label class="text-sm">Fecha<input id="otro-ingreso-fecha" type="date" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
+            <label class="text-sm sm:col-span-2">Referencia (opcional)<input id="otro-ingreso-ref" maxlength="120" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
+            <button id="otro-ingreso-guardar" class="rounded-lg bg-red-600 p-3 font-semibold text-white sm:col-span-2">Guardar otro ingreso</button>
+          </form><p id="otro-ingreso-mensaje" class="mt-2 text-sm" role="status" aria-live="polite"></p></div>
       </details>
       <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
         <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Tasa de cambio por mes</summary>

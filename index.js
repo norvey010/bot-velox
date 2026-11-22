@@ -444,8 +444,8 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             compartidos_sin_asignar: { COP: 0, USD: 0 }
         };
         const copTotals = {
-            ingresos: 0, gastosRegistrados: 0, gastosCompartidos: 0,
-            ingresosSinTasa: false, gastosSinTasa: false, compartidosSinTasa: false
+            ingresos: 0, ingresosSuscripcion: 0, gastosRegistrados: 0, gastosCompartidos: 0,
+            ingresosSinTasa: false, ingresosSuscripcionSinTasa: false, gastosSinTasa: false, compartidosSinTasa: false
         };
         const restaurantMap = new Map();
         const pesoRestaurante = new Map();
@@ -473,7 +473,11 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             if (mov.tipo === 'ingreso') {
                 totales.ingresos[moneda] += monto;
                 if (equivalente == null) copTotals.ingresosSinTasa = true;
-                else copTotals.ingresos += equivalente;
+                else {
+                    copTotals.ingresos += equivalente;
+                    if (mov.categoria === 'suscripcion') copTotals.ingresosSuscripcion += equivalente;
+                }
+                if (mov.categoria === 'suscripcion' && equivalente == null) copTotals.ingresosSuscripcionSinTasa = true;
                 if (restaurante) {
                     restaurante.ingresos[moneda] += monto;
                     if (equivalente == null) restaurante.ingresos_tasa_faltante = true;
@@ -597,7 +601,8 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
         return res.json({
             rango, desde, hasta: hoy, periodo: fechaPeriodo, tasa_cop_por_usd: null, tasas_por_mes: tasasPorMes,
             resumen: {
-                ingresos_cop: ingresosCop, gastos_registrados_cop: gastosRegistradosCop, gastos_cop: gastosConIAcop,
+                ingresos_cop: ingresosCop, ingresos_suscripcion_cop: copTotals.ingresosSuscripcionSinTasa ? null : copTotals.ingresosSuscripcion,
+                gastos_registrados_cop: gastosRegistradosCop, gastos_cop: gastosConIAcop,
                 gastos_usd: totales.gastos.USD + aplicadoUsd, ia_estimado_usd: totales.ia_usd,
                 ia_real_usd: costosOpenAI.disponible ? Number(costosOpenAI.monto_usd) || 0 : null,
                 ia_real_disponible: Boolean(costosOpenAI.disponible), ia_real_sin_asignar_usd: iaSinAsignarUsd,
@@ -879,18 +884,23 @@ app.get('/api/admin/finanzas/acumulado', autenticarAdminPlataforma, async (_req,
             }
         };
         const ingresosBrutos = { COP: 0, USD: 0, equivalente_cop: 0, usd_sin_tasa: 0 };
-        for (const row of movimientos) {
-            if (row.tipo !== 'ingreso' || row.categoria !== 'suscripcion' || row.anulado_en) continue;
+        const otrosIngresos = { COP: 0, USD: 0, equivalente_cop: 0, usd_sin_tasa: 0 };
+        const agregarIngreso = (destino, row) => {
             const valor = Number(row.monto) || 0;
             if (row.moneda === 'USD') {
-                ingresosBrutos.USD += valor;
+                destino.USD += valor;
                 const tasa = tasas.get(String(row.fecha || '').slice(0, 7));
-                if (Number.isFinite(tasa) && tasa > 0) ingresosBrutos.equivalente_cop += valor * tasa;
-                else ingresosBrutos.usd_sin_tasa += valor;
+                if (Number.isFinite(tasa) && tasa > 0) destino.equivalente_cop += valor * tasa;
+                else destino.usd_sin_tasa += valor;
             } else {
-                ingresosBrutos.COP += valor;
-                ingresosBrutos.equivalente_cop += valor;
+                destino.COP += valor;
+                destino.equivalente_cop += valor;
             }
+        };
+        for (const row of movimientos) {
+            if (row.tipo !== 'ingreso' || row.anulado_en) continue;
+            if (row.categoria === 'suscripcion') agregarIngreso(ingresosBrutos, row);
+            if (row.categoria === 'otro') agregarIngreso(otrosIngresos, row);
         }
 
         const nombres = { railway: 'Railway', supabase: 'Supabase', meta: 'Meta', claro: 'Claro', openai: 'OpenAI', otro: 'Otros servicios' };
@@ -902,17 +912,17 @@ app.get('/api/admin/finanzas/acumulado', autenticarAdminPlataforma, async (_req,
         if (costosOpenAI.disponible) {
             for (const [dia, valor] of Object.entries(costosOpenAI.por_dia || {})) sumar('OpenAI', valor, 'USD', dia);
         }
-        const netoCop = ingresosBrutos.usd_sin_tasa === 0 && totales.usd_sin_tasa === 0
-            ? ingresosBrutos.equivalente_cop - totales.equivalente_cop
+        const netoCop = ingresosBrutos.usd_sin_tasa === 0 && otrosIngresos.usd_sin_tasa === 0 && totales.usd_sin_tasa === 0
+            ? ingresosBrutos.equivalente_cop + otrosIngresos.equivalente_cop - totales.equivalente_cop
             : null;
         const netoNota = netoCop == null
             ? 'Faltan tasas de cambio mensuales para convertir todos los movimientos en USD.'
-            : 'Ingresos brutos por suscripción menos costos totales registrados.';
+            : 'Suscripciones y otros ingresos menos costos totales registrados.';
         const filas = Object.entries(servicios).map(([servicio, montos]) => ({ servicio, ...montos }))
             .sort((a, b) => b.equivalente_cop - a.equivalente_cop);
         return res.json({
             inicio, actualizado_en: fechaHasta, monedas: totales, servicios: filas,
-            ingresos_brutos: ingresosBrutos, neto_cop: netoCop, neto_nota: netoNota,
+            ingresos_brutos: ingresosBrutos, otros_ingresos: otrosIngresos, neto_cop: netoCop, neto_nota: netoNota,
             movimientos_contados: movimientos.filter(row => row.tipo === 'gasto' && !row.anulado_en).length,
             ingresos_suscripcion_contados: movimientos.filter(row => row.tipo === 'ingreso' && row.categoria === 'suscripcion' && !row.anulado_en).length,
             costos_openai_disponibles: Boolean(costosOpenAI.disponible),
@@ -965,8 +975,8 @@ app.post('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
     }
     if ((tipo === 'ingreso' && !['suscripcion', 'otro'].includes(categoria)) ||
         (tipo === 'gasto' && categoria === 'suscripcion') ||
-        (tipo === 'ingreso' && !restauranteId)) {
-        return res.status(400).json({ error: 'Los ingresos requieren un restaurante y la categoría Suscripción u Otro.' });
+        (tipo === 'ingreso' && categoria === 'suscripcion' && !restauranteId)) {
+        return res.status(400).json({ error: 'Las suscripciones requieren un restaurante; los otros ingresos pueden registrarse a nivel Velox.' });
     }
     const fechaValida = new Date(`${fecha}T00:00:00.000Z`);
     if (!Number.isFinite(fechaValida.getTime()) || fechaValida.toISOString().slice(0, 10) !== fecha) {
