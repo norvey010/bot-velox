@@ -1270,7 +1270,9 @@
       renderizarGruposProducto();
     }
     window.addEventListener('velox-editar-opciones-producto', event => {
-      if(Array.isArray(event.detail)) cargarGruposProducto(event.detail, false);
+      const detalle = event.detail;
+      if (Array.isArray(detalle)) cargarGruposProducto(detalle, false);
+      else if (detalle?.contexto === 'producto' && Array.isArray(detalle.opciones)) cargarGruposProducto(detalle.opciones, false);
     });
 
     function opcionesGruposProducto() {
