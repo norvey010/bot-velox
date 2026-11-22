@@ -489,7 +489,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
                 .select('id, nombre_restaurante, created_at')
                 .order('created_at', { ascending: true }).limit(10000),
             cargarPaginas(() => supabaseAdmin.from('velox_financial_entries')
-                .select('id, tipo, categoria, restaurante_id, descripcion, monto, moneda, fecha, periodo, referencia, creado_en')
+                .select('id, tipo, categoria, restaurante_id, descripcion, monto, moneda, fecha, periodo, referencia, creado_en, servicio_personalizado')
                 .gte('fecha', desde).lte('fecha', hasta).is('anulado_en', null)
                 .order('fecha', { ascending: false })),
             cargarPaginas(() => supabaseAdmin.from('velox_ai_usage')
@@ -568,8 +568,9 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             if (mov.tipo !== 'gasto') continue;
             totales.gastos[moneda] += monto;
             const categoria = mov.categoria || 'otro';
-            if (!totales.gastos_por_categoria[categoria]) totales.gastos_por_categoria[categoria] = { COP: 0, USD: 0 };
-            totales.gastos_por_categoria[categoria][moneda] += monto;
+            const servicio = mov.servicio_personalizado || categoria;
+            if (!totales.gastos_por_categoria[servicio]) totales.gastos_por_categoria[servicio] = { COP: 0, USD: 0 };
+            totales.gastos_por_categoria[servicio][moneda] += monto;
             if (equivalente == null) copTotals.gastosSinTasa = true;
             else copTotals.gastosRegistrados += equivalente;
             if (restaurante) {
@@ -751,7 +752,7 @@ app.get('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
             .order('created_at', { ascending: true })
             .limit(10000),
         supabaseAdmin.from('velox_financial_entries')
-            .select('id, tipo, categoria, restaurante_id, descripcion, monto, moneda, fecha, periodo, referencia, creado_en')
+            .select('id, tipo, categoria, restaurante_id, descripcion, monto, moneda, fecha, periodo, referencia, creado_en, servicio_personalizado')
             .eq('periodo', periodoInicio)
             .is('anulado_en', null)
             .order('fecha', { ascending: false })
@@ -946,7 +947,7 @@ app.get('/api/admin/finanzas/acumulado', autenticarAdminPlataforma, async (_req,
         const pageSize = 1000;
         for (let offset = 0; ; offset += pageSize) {
             const { data, error } = await supabaseAdmin.from('velox_financial_entries')
-                .select('id, tipo, categoria, monto, moneda, fecha, anulado_en, factura_id')
+                .select('id, tipo, categoria, monto, moneda, fecha, anulado_en, factura_id, servicio_personalizado')
                 .order('fecha', { ascending: true })
                 .range(offset, offset + pageSize - 1);
             if (error) throw error;
@@ -1018,7 +1019,7 @@ app.get('/api/admin/finanzas/acumulado', autenticarAdminPlataforma, async (_req,
         for (const row of movimientos) {
             if (row.tipo !== 'gasto' || row.anulado_en) continue;
             const categoria = row.categoria || 'otro';
-            sumar(nombres[categoria] || nombres.otro, row.monto, row.moneda, row.fecha);
+            sumar(row.servicio_personalizado || nombres[categoria] || nombres.otro, row.monto, row.moneda, row.fecha);
         }
         if (costosOpenAI.disponible) {
             for (const [dia, valor] of Object.entries(costosOpenAI.por_dia || {})) sumar('OpenAI', valor, 'USD', dia);
@@ -1057,8 +1058,10 @@ app.post('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
     const fecha = String(body.fecha || '');
     const restauranteId = String(body.restaurante_id || '').trim() || null;
     const referencia = String(body.referencia || '').trim().slice(0, 120) || null;
+    const servicioPersonalizado = String(body.servicio_personalizado || '').trim().slice(0, 80) || null;
     const categorias = new Set(['suscripcion', 'railway', 'supabase', 'claro', 'meta', 'otro']);
     if (!['ingreso', 'gasto'].includes(tipo) || !categorias.has(categoria) || !descripcion ||
+        (categoria === 'otro' && !servicioPersonalizado) ||
         !Number.isFinite(monto) || monto <= 0 || monto > 1000000000000 ||
         !['COP', 'USD'].includes(moneda) || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
         return res.status(400).json({ error: 'Revisa el tipo, categoría, descripción, fecha, moneda e importe.' });
@@ -1099,7 +1102,9 @@ app.post('/api/admin/finanzas', autenticarAdminPlataforma, async (req, res) => {
     }
     const { data, error } = await supabaseAdmin.from('velox_financial_entries').insert({
         tipo, categoria, restaurante_id: restauranteId, descripcion, monto, moneda,
-        fecha, periodo: `${fecha.slice(0, 7)}-01`, referencia, creado_por: req.adminPlataforma.id
+        fecha, periodo: `${fecha.slice(0, 7)}-01`, referencia,
+        servicio_personalizado: categoria === 'otro' ? servicioPersonalizado : null,
+        creado_por: req.adminPlataforma.id
     }).select('id').single();
     if (error) {
         console.error('No se pudo registrar movimiento financiero:', error.message);

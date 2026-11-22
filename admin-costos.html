@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261122-facturas-paginadas"></script>
+  <script type="module" src="admin-costos.js?v=20261122-servicios-personalizados"></script>
 </head>
 <body class="min-h-screen">
   <aside id="update-notice" class="hidden fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4 shadow-xl" role="status" aria-live="polite">
@@ -182,6 +182,9 @@
             <form id="movimiento-form" class="grid gap-3 sm:grid-cols-2">
               <label class="text-sm">Tipo<select id="mov-tipo" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="ingreso">Ingreso recibido</option><option value="gasto">Gasto</option></select></label>
               <label class="text-sm">Categoría<select id="mov-categoria" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></select></label>
+              <label id="mov-service-custom-wrap" class="hidden text-sm sm:col-span-2">Nombre del servicio / concepto
+                <input id="mov-service-custom" list="finance-service-suggestions" maxlength="80" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Ej.: Codex, dominio web, venta ocasional">
+              </label>
               <label class="text-sm sm:col-span-2"><span id="mov-restaurante-label">Atribuir gasto a restaurante</span><select id="mov-restaurante" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="">Gasto compartido de Velox</option></select><span id="mov-restaurante-help" class="hidden"></span></label>
               <label class="text-sm">Valor<input id="mov-monto" type="number" min="0.01" step="0.01" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Ej: 30000"></label>
               <label class="text-sm">Moneda<select id="mov-moneda" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="COP">COP · pesos</option><option value="USD">USD · dólares</option></select></label>
@@ -194,6 +197,7 @@
           </section></div>
       </section>
       
+      <datalist id="finance-service-suggestions"></datalist>
       <section id="vista-tasas" class="hidden space-y-4">
         <button type="button" data-back-ledger class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver al Libro contable</button>
         <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Tasas de cambio</h2></header>
@@ -222,6 +226,9 @@
             <select name="provider" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-white p-2 text-sm text-[#241A15]">
               <option value="">Selecciona</option><option value="railway">Railway</option><option value="supabase">Supabase</option><option value="openai">OpenAI</option><option value="meta">Meta</option><option value="claro">Claro</option><option value="otro">Otro / Codex o ChatGPT</option>
             </select>
+          </label>
+          <label id="invoice-provider-custom-wrap" class="hidden block text-xs text-[#69544A]">Nombre del servicio
+            <input name="provider_custom" id="invoice-provider-custom" list="finance-service-suggestions" maxlength="80" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-white p-2 text-sm text-[#241A15]" placeholder="Ej.: Codex, Adobe, Google Workspace">
           </label>
           <label class="block text-xs text-[#69544A]">Factura en PDF · máximo 12 MB
             <input name="comprobante" type="file" accept="application/pdf,.pdf" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-white p-2 text-sm text-[#241A15]">

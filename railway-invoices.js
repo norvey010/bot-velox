@@ -454,11 +454,14 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                     return res.status(400).json({ error: 'Selecciona un archivo PDF válido.' });
                 }
                 const provider = String(req.body.provider || '').trim().toLowerCase();
+                const providerCustom = String(req.body.provider_custom || '').trim().slice(0, 80) || null;
                 const allowedProviders = new Set(['railway', 'supabase', 'openai', 'meta', 'claro', 'otro']);
                 if (!allowedProviders.has(provider)) return res.status(400).json({ error: 'Selecciona el proveedor de la factura.' });
+                if (provider === 'otro' && !providerCustom) return res.status(400).json({ error: 'Escribe el nombre del servicio o proveedor.' });
                 const pdfText = await pdfParse(file.buffer);
                 const proveedorDetectado = detectarProveedorDocumento(pdfText.text);
-                if (proveedorDetectado && proveedorDetectado !== provider) {
+                const esCodexOpenAI = provider === 'otro' && proveedorDetectado === 'openai' && /codex|chatgpt/i.test(providerCustom || '');
+                if (proveedorDetectado && proveedorDetectado !== provider && !esCodexOpenAI) {
                     const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro' };
                     return res.status(422).json({ error: `El PDF parece ser de ${nombres[proveedorDetectado]}. Cambia el proveedor seleccionado antes de guardarlo.` });
                 }
@@ -494,7 +497,8 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                 if (!['paid', 'open'].includes(status)) return res.status(400).json({ error: 'Indica si la factura está pagada o pendiente.' });
 
                 const invoiceNumber = String(req.body.invoice_number || '').trim().slice(0, 120) || null;
-                const externalId = invoiceNumber ? 'invoice:' + invoiceNumber : null;
+                const providerIdentity = provider === 'otro' ? (providerCustom || 'otro').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-') : provider;
+                const externalId = invoiceNumber ? 'invoice:' + providerIdentity + ':' + invoiceNumber : null;
                 if (externalId) {
                     const { data: duplicate, error: duplicateError } = await supabaseAdmin.from('velox_platform_invoices')
                         .select('id').eq('provider', provider).eq('source_external_id', externalId).maybeSingle();
@@ -524,7 +528,8 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                     amount,
                     paid_amount: status === 'paid' ? amount : null,
                     currency,
-                    description: 'Factura cargada manualmente de ' + provider,
+                    provider_custom: provider === 'otro' ? providerCustom : null,
+                    description: 'Factura cargada manualmente de ' + (providerCustom || provider),
                     email_subject: 'Archivo subido manualmente',
                     email_from: null,
                     source_received_at: receivedAt,
@@ -550,6 +555,24 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
             }
         });
 
+    app.get('/api/admin/finanzas/servicios-personalizados', autenticarAdminPlataforma, async (_req, res) => {
+        try {
+            const [movimientos, facturas] = await Promise.all([
+                supabaseAdmin.from('velox_financial_entries').select('servicio_personalizado').not('servicio_personalizado', 'is', null).limit(10000),
+                supabaseAdmin.from('velox_platform_invoices').select('provider_custom').not('provider_custom', 'is', null).limit(10000)
+            ]);
+            if (movimientos.error || facturas.error) throw movimientos.error || facturas.error;
+            const servicios = [...new Set([
+                ...(movimientos.data || []).map(row => row.servicio_personalizado),
+                ...(facturas.data || []).map(row => row.provider_custom)
+            ].map(value => String(value || '').trim().slice(0, 80)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+            return res.json({ servicios });
+        } catch (error) {
+            console.error('No se pudieron cargar servicios personalizados:', error.message);
+            return res.status(503).json({ error: 'No se pudieron cargar las sugerencias de servicios.' });
+        }
+    });
+
     app.get('/api/admin/facturas', autenticarAdminPlataforma, async (req, res) => {
         try {
             const pageValue = Number.parseInt(req.query.page, 10);
@@ -566,8 +589,8 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
             const from = validDate(req.query.from);
             const to = validDate(req.query.to);
             const knownProviders = '(railway,supabase,openai,meta,claro)';
-            const invoiceColumns = 'id, provider, invoice_number, invoice_date, status, amount, paid_amount, currency, description, email_subject, source_received_at, file_paths, extraction_note, imported_at';
-            const movementColumns = 'id, categoria, descripcion, monto, moneda, fecha, referencia, anulado_en, factura_id';
+            const invoiceColumns = 'id, provider, provider_custom, invoice_number, invoice_date, status, amount, paid_amount, currency, description, email_subject, source_received_at, file_paths, extraction_note, imported_at';
+            const movementColumns = 'id, categoria, servicio_personalizado, descripcion, monto, moneda, fecha, referencia, anulado_en, factura_id';
 
             const filterQuery = (query, providerColumn, invoiceTable) => {
                 if (provider !== 'all') {
@@ -580,13 +603,13 @@ function registrarRutasFacturas({ app, supabaseAdmin, autenticarAdminPlataforma,
                     if (status === 'void') query = query.in('status', ['void', 'refunded']);
                     if (from) query = query.gte('invoice_date', from);
                     if (to) query = query.lte('invoice_date', to);
-                    if (search) query = query.or('invoice_number.ilike.%' + search + '%,email_subject.ilike.%' + search + '%,description.ilike.%' + search + '%');
+                    if (search) query = query.or('invoice_number.ilike.%' + search + '%,email_subject.ilike.%' + search + '%,description.ilike.%' + search + '%,provider_custom.ilike.%' + search + '%');
                 } else {
                     if (status === 'active') query = query.is('anulado_en', null);
                     if (status === 'void') query = query.not('anulado_en', 'is', null);
                     if (from) query = query.gte('fecha', from);
                     if (to) query = query.lte('fecha', to);
-                    if (search) query = query.or('descripcion.ilike.%' + search + '%,referencia.ilike.%' + search + '%');
+                    if (search) query = query.or('descripcion.ilike.%' + search + '%,referencia.ilike.%' + search + '%,servicio_personalizado.ilike.%' + search + '%');
                 }
                 return query;
             };

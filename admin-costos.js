@@ -93,14 +93,34 @@ function llenarSelectorRestaurantes(restaurantes) {
   select.replaceChildren(...opciones);
   if ([...select.options].some(o => o.value === elegido)) select.value = elegido;
 }
+async function cargarServiciosPersonalizados() {
+  try {
+    const data = await solicitarAdmin('/api/admin/finanzas/servicios-personalizados');
+    const datalist = $('finance-service-suggestions');
+    datalist.replaceChildren(...(data.servicios || []).map(nombre => {
+      const option = document.createElement('option');
+      option.value = nombre;
+      return option;
+    }));
+  } catch (error) {
+    console.warn('No se pudieron cargar sugerencias de servicios:', error.message);
+  }
+}
 function actualizarCategorias(reiniciarAtribucion = false) {
   const tipo = $('mov-tipo').value;
   const categoria = $('mov-categoria');
   const selector = $('mov-restaurante');
   const opciones = tipo === 'ingreso'
-    ? [['suscripcion', 'Suscripción']]
+    ? [['suscripcion', 'Suscripción'], ['otro', 'Otro ingreso']]
     : [['railway', 'Railway'], ['supabase', 'Supabase'], ['claro', 'Claro'], ['meta', 'Meta'], ['otro', 'Otro gasto']];
   categoria.replaceChildren(...opciones.map(([valor, texto]) => new Option(texto, valor)));
+  const customWrap = $('mov-service-custom-wrap');
+  const customInput = $('mov-service-custom');
+  const requiereNombre = categoria.value === 'otro';
+  customWrap.classList.toggle('hidden', !requiereNombre);
+  customInput.required = requiereNombre;
+  customInput.placeholder = tipo === 'ingreso' ? 'Ej.: Venta de implementación' : 'Ej.: Codex, dominio web, suscripción';
+  customWrap.firstChild.textContent = tipo === 'ingreso' ? 'Concepto del ingreso' : 'Nombre del servicio o proveedor';
   selector.required = tipo === 'ingreso';
   selector.options[0].textContent = tipo === 'ingreso'
     ? 'Selecciona el restaurante que pagó'
@@ -187,7 +207,7 @@ function renderizarMovimientos(movimientos, restaurantes) {
     const fila = document.createElement('tr');
     fila.className = 'border-t border-[#E6D8C9]';
     celda(fila, mov.fecha);
-    celda(fila, mov.tipo === 'ingreso' ? 'Ingreso' : nombresCategoria[mov.categoria] || 'Gasto');
+    celda(fila, mov.tipo === 'ingreso' ? (mov.servicio_personalizado || 'Ingreso') : (mov.servicio_personalizado || nombresCategoria[mov.categoria] || 'Gasto'));
     const detalle = mov.descripcion + (mov.referencia ? ' · ' + mov.referencia : '');
     celda(fila, detalle);
     celda(fila, mov.restaurante_id ? (porId.get(mov.restaurante_id) || 'Restaurante') : 'Velox · compartido');
@@ -310,7 +330,7 @@ async function cargarFacturas(auto = true) {
     paginaFacturas = paginas;
     return cargarFacturas(false);
   }
-  const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro', otro: 'Otro / Codex' };
+  const nombres = { railway: 'Railway', supabase: 'Supabase', openai: 'OpenAI', meta: 'Meta', claro: 'Claro', otro: 'Otro' };
   const registros = [
     ...facturas.map(invoice => ({ ...invoice, tipoRegistro: 'factura', fechaOrden: invoice.invoice_date || invoice.source_received_at || invoice.imported_at })),
     ...movimientos.map(movimiento => ({
@@ -354,7 +374,7 @@ async function cargarFacturas(auto = true) {
     const valor = document.createElement('span');
     valor.className = 'shrink-0 text-sm font-semibold text-[#241A15]';
     if (registro.tipoRegistro === 'movimiento') {
-      titulo.textContent = (nombres[registro.provider] || registro.provider || 'Otro') + ' · Movimiento de gasto';
+      titulo.textContent = (registro.servicio_personalizado || nombres[registro.provider] || registro.provider || 'Otro') + ' · Movimiento de gasto';
       detalle.textContent = fechaFactura(registro.fecha) + ' · ' + (registro.anulado_en ? 'Anulado' : 'Movimiento manual');
       valor.textContent = dineroFactura(registro.monto, registro.moneda);
       texto.append(titulo, detalle);
@@ -370,7 +390,7 @@ async function cargarFacturas(auto = true) {
       list.append(card);
       continue;
     }
-    const proveedor = nombres[registro.provider] || registro.provider || 'Otro';
+    const proveedor = registro.provider_custom || nombres[registro.provider] || registro.provider || 'Otro';
     titulo.textContent = proveedor + ' · ' + (registro.invoice_number ? 'Factura ' + registro.invoice_number : registro.email_subject || 'Comprobante');
     const estado = registro.status === 'paid' ? 'Pagada'
       : registro.status === 'open' ? 'Pendiente'
@@ -445,7 +465,7 @@ async function anularFactura(invoice, button) {
       body: JSON.stringify({ amount: invoice.amount, invoice_date: invoice.invoice_date, currency: invoice.currency, invoice_number: invoice.invoice_number, status: 'void' })
     });
     $('data-message').textContent = result.message;
-    await Promise.allSettled([cargar(), cargarFacturas(false), cargarAcumulado()]);
+    await Promise.allSettled([cargar(), cargarFacturas(false), cargarAcumulado(), cargarServiciosPersonalizados()]);
   } catch (error) {
     $('data-message').textContent = error.message;
     button.disabled = false;
@@ -481,6 +501,15 @@ formularioEdicionFactura.addEventListener('submit', async event => {
   }
 });
 const formularioFactura = $('manual-invoice-form');
+const providerInvoiceSelect = formularioFactura.elements.provider;
+const providerInvoiceCustom = formularioFactura.elements.provider_custom;
+function actualizarProveedorPersonalizado() {
+  const esOtro = providerInvoiceSelect.value === 'otro';
+  $('invoice-provider-custom-wrap').classList.toggle('hidden', !esOtro);
+  providerInvoiceCustom.required = esOtro;
+}
+providerInvoiceSelect.addEventListener('change', actualizarProveedorPersonalizado);
+actualizarProveedorPersonalizado();
 formularioFactura.elements.comprobante.addEventListener('change', () => {
   for (const name of ['invoice_date', 'amount', 'currency', 'invoice_number']) formularioFactura.elements[name].value = '';
   $('manual-invoice-message').textContent = '';
@@ -538,6 +567,7 @@ $('manual-invoice-form').addEventListener('submit', async event => {
   try {
     const result = await solicitarAdmin('/api/admin/facturas/manual', { method: 'POST', body: new FormData(form) });
     form.reset();
+    actualizarProveedorPersonalizado();
     message.textContent = result.message + ' ' + dineroFactura(result.amount, result.currency) + ' · ' + fechaFactura(result.invoice_date) + '.';
     message.className = 'text-sm text-[#256444]';
     await Promise.allSettled([cargar(), cargarFacturas(false), cargarAcumulado()]);
@@ -616,6 +646,7 @@ function mostrarVista(session) {
       sessionStorage.removeItem('velox-finanzas-vista');
       activarPestana(vistaGuardada);
     }
+    void cargarServiciosPersonalizados();
     const filtroGuardado = localStorage.getItem('velox-invoice-filter');
     if (filtroGuardado && ['active', 'void', 'all'].includes(filtroGuardado)) $('invoice-filter').value = filtroGuardado;
     const tamanoGuardado = localStorage.getItem('velox-invoice-page-size');
@@ -977,6 +1008,7 @@ document.querySelectorAll('[data-factura-shortcut]').forEach(button => {
 $('logout').addEventListener('click', () => supabase.auth.signOut());
 
 $('mov-tipo').addEventListener('change', () => actualizarCategorias(true));
+$('mov-categoria').addEventListener('change', () => actualizarCategorias());
 actualizarCategorias();
 $('mov-fecha').value = hoyBogota();
 $('tasa-periodo').value = periodoBogota();
@@ -993,7 +1025,8 @@ $('movimiento-form').addEventListener('submit', async event => {
     moneda: $('mov-moneda').value,
     fecha,
     referencia: $('mov-ref').value.trim(),
-    descripcion: $('mov-descripcion').value.trim()
+    descripcion: $('mov-descripcion').value.trim(),
+    servicio_personalizado: $('mov-service-custom').value.trim() || null
   };
   try {
     await solicitar('/api/admin/finanzas', {
@@ -1002,11 +1035,13 @@ $('movimiento-form').addEventListener('submit', async event => {
       body: JSON.stringify(body)
     });
     $('movimiento-form').reset();
+    $('mov-service-custom').value = '';
     $('mov-fecha').value = hoyBogota();
     $('mov-tipo').value = 'ingreso';
     actualizarCategorias();
     mensaje('mov-mensaje', 'Movimiento guardado. El resumen del mes y el historial ya están actualizados.', false);
     await void cargarAcumulado();
+    await cargarServiciosPersonalizados();
   } catch (error) {
     mensaje('mov-mensaje', error.message, true);
   } finally {
