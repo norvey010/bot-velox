@@ -179,7 +179,7 @@ function textoBotonVariantesCliente(grupos) {
 }
 
 function datosEjemploProductoCliente(producto, prefijo) {
-    const edicion=prefijo==='producto';
+    const edicion=prefijo==='producto' || /^borrador-\d+$/.test(String(prefijo||''));
     const origen=Array.isArray(producto.opciones) ? producto.opciones : [];
     const validas=origen.filter(o=>o && typeof o==='object' && String(o.grupo||'').trim() && String(o.nombre||'').trim() && !String(o.grupo).startsWith('__'));
     const opciones=edicion
@@ -200,10 +200,10 @@ let secuenciaEjemplosProductoCliente=0;
 function crearVistaProductoCliente(producto, prefijo) {
     const datos=datosEjemploProductoCliente(producto,prefijo);
     const escapar = valor => String(valor ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const editor=prefijo==='producto';
+    const editor=prefijo==='producto' || /^borrador-\d+$/.test(String(prefijo||''));
     const id='velox-ejemplo-producto-'+(++secuenciaEjemplosProductoCliente);
     const src='/menu.html?vista=borrador&ejemplo=tarjeta'+(editor?'&editor=1':'')+'&v=personalizar-expandido';
-    return `${datos.muestra && !editor ? '<p class="velox-ejemplo-aviso">Ejemplo ilustrativo. Los datos de muestra no se guardan.</p>' : ''}<iframe id="${id}" class="velox-ejemplo-carta-real" title="Ejemplo del producto en la carta real" src="${src}" data-editor-personalizacion="${editor ? 'true' : 'false'}" data-ejemplo-producto="${escapar(JSON.stringify(datos.producto))}" onload="enviarEjemploCartaReal(this)"></iframe>`;
+    return `${datos.muestra && !editor ? '<p class="velox-ejemplo-aviso">Ejemplo ilustrativo. Los datos de muestra no se guardan.</p>' : ''}<iframe id="${id}" class="velox-ejemplo-carta-real" title="Ejemplo del producto en la carta real" src="${src}" data-editor-personalizacion="${editor ? 'true' : 'false'}" data-editor-context="${escapar(prefijo)}" data-ejemplo-producto="${escapar(JSON.stringify(datos.producto))}" onload="enviarEjemploCartaReal(this)"></iframe>`;
 }
 
 function enviarEjemploCartaReal(marco, abrir=false) {
@@ -239,6 +239,7 @@ if(typeof window!=='undefined' && window.addEventListener) window.addEventListen
       const panel=dialogo.querySelector('iframe');
       panel.dataset.ejemploProducto=marco.dataset.ejemploProducto;
       panel.dataset.editorPersonalizacion=editor?'true':'false';
+      panel.dataset.editorContext=marco.dataset.editorContext || 'producto';
       panel.dataset.ejemploOrigen=marco.id;
       panel.onload=()=>enviarEjemploCartaReal(panel,true);
       dialogo.addEventListener('close',()=>{dialogo.remove();marco.focus();});
@@ -252,7 +253,7 @@ if(typeof window!=='undefined' && window.addEventListener) window.addEventListen
           producto.opciones=Array.isArray(event.data.opciones)?event.data.opciones:[];
           origen.dataset.ejemploProducto=JSON.stringify(producto);
           enviarEjemploCartaReal(origen);
-          window.dispatchEvent(new CustomEvent('velox-editar-opciones-producto',{detail:producto.opciones}));
+          window.dispatchEvent(new CustomEvent('velox-editar-opciones-producto',{detail:{opciones:producto.opciones,contexto:origen.dataset.editorContext || 'producto'}}));
         } catch {}
       }
     }
