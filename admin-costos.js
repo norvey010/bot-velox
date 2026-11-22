@@ -113,8 +113,32 @@ function actualizarCategorias(reiniciarAtribucion = false) {
     ? (categoria.value === 'otro' ? 'Ej.: Ingreso por servicio adicional' : 'Ej.: Suscripción mensual Velox')
     : (categoria.value === 'otro' ? 'Ej.: Suscripción Codex/ChatGPT (OpenAI)' : 'Ej.: Factura del servicio');
 }
+function renderizarAlertaConsumoOpenAI(alerta) {
+  const caja = $('openai-consumption-alert');
+  caja.className = 'rounded-xl border px-4 py-3 text-sm';
+  if (!alerta?.disponible) {
+    caja.classList.add('hidden');
+    return;
+  }
+  if (!alerta.limite_configurado) {
+    caja.classList.add('border-[#D7C2AD]', 'bg-[#FFFBF5]', 'text-[#69544A]');
+    caja.textContent = 'Consumo OpenAI conectado. Para calcular el porcentaje restante hace falta un límite mensual de gasto en OpenAI.';
+    return;
+  }
+  const restante = Math.floor(alerta.restante_porcentaje);
+  if (alerta.alerta) {
+    caja.classList.add('border-red-300', 'bg-red-50', 'font-semibold', 'text-red-800');
+    caja.textContent = alerta.excedido
+      ? 'Alerta OpenAI: se superó el límite mensual de gasto. Revisa el consumo en OpenAI.'
+      : 'Alerta OpenAI: queda ' + restante + '% o menos del límite mensual de gasto.';
+  } else {
+    caja.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-900');
+    caja.textContent = 'OpenAI: queda ' + restante + '% del límite mensual de gasto.';
+  }
+}
 function renderizar(data) {
   datos = data;
+  renderizarAlertaConsumoOpenAI(data.alerta_consumo_openai);
   const r = data.resumen;
   $('ingresos-cop').textContent = r.ingresos_cop == null ? 'Falta tasa USD' : mostrarMoneda(r.ingresos_cop, 'COP');
   $('ingresos-usd').textContent = mostrarMoneda(r.ingresos_usd, 'USD') + ' registrados en USD';

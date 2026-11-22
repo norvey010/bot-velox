@@ -314,10 +314,78 @@ function periodoActualBogota() {
     return `${partes.find(p => p.type === 'year').value}-${partes.find(p => p.type === 'month').value}`;
 }
 
-async function consultarCostosOpenAIPeriodo(desde, hasta) {
+let cacheAlertaConsumoOpenAI = { vence: 0, datos: null };
+async function consultarAlertaConsumoOpenAI() {
+    if (cacheAlertaConsumoOpenAI.datos && Date.now() < cacheAlertaConsumoOpenAI.vence) return cacheAlertaConsumoOpenAI.datos;
     const adminKey = String(process.env.OPENAI_ADMIN_KEY || '').trim();
     const projectIds = String(process.env.OPENAI_PROJECT_ID || '').split(',').map(id => id.trim()).filter(Boolean);
-    if (!adminKey || !projectIds.length) return { disponible: false, configurado: false, monto_usd: null, por_dia: {}, sin_asignar_usd: 0, mensaje: 'Pendiente de conectar OpenAI: configura OPENAI_ADMIN_KEY y OPENAI_PROJECT_ID en Railway.' };
+    const guardar = datos => {
+        cacheAlertaConsumoOpenAI = { datos, vence: Date.now() + 5 * 60 * 1000 };
+        return datos;
+    };
+    if (!adminKey || !projectIds.length) return guardar({ disponible: false, motivo: 'OpenAI no está conectado al panel.' });
+    const obtenerLimite = async url => {
+        try {
+            const r = await axios.get(url, { headers: { Authorization: 'Bearer ' + adminKey }, timeout: 15000 });
+            return r.data;
+        } catch (error) {
+            if (error.response?.status === 404) return null;
+            throw error;
+        }
+    };
+    try {
+        const ahora = new Date();
+        const desde = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), 1)).toISOString();
+        const hasta = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate() + 1)).toISOString();
+        let limiteUsd = 0;
+        let consumoUsd = 0;
+        let origen = 'proyecto';
+        const limitesProyecto = await Promise.all(projectIds.map(id =>
+            obtenerLimite('https://api.openai.com/v1/organization/projects/' + encodeURIComponent(id) + '/spend_limit')));
+        const limitesValidos = limitesProyecto.length > 0 && limitesProyecto.every(limite =>
+            limite && String(limite.interval || '').toLowerCase().includes('month') &&
+            String(limite.currency || 'usd').toLowerCase() === 'usd' &&
+            Number(limite.threshold_amount) > 0);
+        if (limitesValidos) {
+            for (let i = 0; i < projectIds.length; i++) {
+                limiteUsd += Number(limitesProyecto[i].threshold_amount);
+                const gasto = await consultarCostosOpenAIPeriodo(desde, hasta, [projectIds[i]]);
+                if (!gasto.disponible) return guardar({ disponible: false, motivo: gasto.mensaje || 'No se pudo consultar el costo de OpenAI.' });
+                consumoUsd += Number(gasto.monto_usd) || 0;
+            }
+        } else {
+            const limiteOrg = await obtenerLimite('https://api.openai.com/v1/organization/spend_limit');
+            if (!limiteOrg || !String(limiteOrg.interval || '').toLowerCase().includes('month') ||
+                String(limiteOrg.currency || 'usd').toLowerCase() !== 'usd' || !(Number(limiteOrg.threshold_amount) > 0)) {
+                return guardar({ disponible: true, limite_configurado: false });
+            }
+            origen = 'organización';
+            limiteUsd = Number(limiteOrg.threshold_amount);
+            const gasto = await consultarCostosOpenAIPeriodo(desde, hasta, []);
+            if (!gasto.disponible) return guardar({ disponible: false, motivo: gasto.mensaje || 'No se pudo consultar el costo de OpenAI.' });
+            consumoUsd = Number(gasto.monto_usd) || 0;
+        }
+        const restante = (limiteUsd - consumoUsd) / limiteUsd * 100;
+        return guardar({
+            disponible: true, limite_configurado: true, periodo: ahora.toISOString().slice(0, 7),
+            consumo_porcentaje: consumoUsd / limiteUsd * 100,
+            restante_porcentaje: Math.max(0, restante),
+            excedido: restante < 0, alerta: restante <= 20,
+            origen
+        });
+    } catch (error) {
+        console.error('No se pudo consultar el límite mensual de OpenAI:', error.response?.status || error.code || 'error');
+        return guardar({ disponible: false, motivo: error.response?.status === 401 || error.response?.status === 403
+            ? 'OpenAI no autorizó leer el límite de gasto.' : 'No se pudo consultar el límite mensual de OpenAI.' });
+    }
+}
+
+async function consultarCostosOpenAIPeriodo(desde, hasta, proyectosForzados = null) {
+    const adminKey = String(process.env.OPENAI_ADMIN_KEY || '').trim();
+    const projectIds = Array.isArray(proyectosForzados)
+        ? proyectosForzados
+        : String(process.env.OPENAI_PROJECT_ID || '').split(',').map(id => id.trim()).filter(Boolean);
+    if (!adminKey || (proyectosForzados === null && !projectIds.length)) return { disponible: false, configurado: false, monto_usd: null, por_dia: {}, sin_asignar_usd: 0, mensaje: 'Pendiente de conectar OpenAI: configura OPENAI_ADMIN_KEY y OPENAI_PROJECT_ID en Railway.' };
     try {
         const params = new URLSearchParams({ start_time: String(Math.floor(Date.parse(desde) / 1000)), end_time: String(Math.floor(Date.parse(hasta) / 1000)), bucket_width: '1d', limit: '180' });
         for (const id of projectIds) params.append('project_ids', id);
@@ -547,7 +615,10 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             }
         }
 
-        const costosOpenAI = await consultarCostosOpenAIPeriodo(desdeUtc, hastaUtc);
+        const [costosOpenAI, alertaConsumoOpenAI] = await Promise.all([
+            consultarCostosOpenAIPeriodo(desdeUtc, hastaUtc),
+            consultarAlertaConsumoOpenAI()
+        ]);
         const aplicadoUsd = costosOpenAI.disponible ? Number(costosOpenAI.monto_usd) || 0 : totales.ia_usd;
         let iaRealCop = 0, iaRealSinTasa = false, iaSinAsignarUsd = 0;
         const costosPorDia = costosOpenAI.por_dia || {};
@@ -617,7 +688,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
             },
             gastos_por_categoria: totales.gastos_por_categoria,
             restaurantes, movimientos,
-            costos_openai: costosOpenAI,
+            costos_openai: costosOpenAI, alerta_consumo_openai: alertaConsumoOpenAI,
             nota: 'Resumen de movimientos dentro del rango elegido. Los gastos se agrupan por la categoría guardada; MAX recorre todo el historial. Los valores en USD se convierten con la tasa guardada para el mes de cada movimiento. Los gastos compartidos se reparten por días activos durante el rango seleccionado.'
         });
     } catch (error) {
