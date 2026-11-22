@@ -568,7 +568,7 @@ function mostrarVista(session) {
   if (session && !enRecuperacion) {
     if (!rangoInicializado) { activarRango('MAX'); rangoInicializado = true; }
     const vistaGuardada = sessionStorage.getItem('velox-finanzas-vista');
-    if (vistaGuardada && ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes'].includes(vistaGuardada)) {
+    if (vistaGuardada && ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura'].includes(vistaGuardada)) {
       sessionStorage.removeItem('velox-finanzas-vista');
       activarPestana(vistaGuardada);
     }
@@ -579,7 +579,7 @@ function mostrarVista(session) {
     cargarAcumulado();
     cargarFacturas(true).catch(error => estadoFacturas(error.message));
     if (!autoRefresh) autoRefresh = setInterval(() => {
-      if (document.visibilityState === 'visible' && (!$('vista-analisis').classList.contains('hidden') || !$('vista-historial').classList.contains('hidden'))) cargar();
+      if (document.visibilityState === 'visible' && (!$('vista-historial').classList.contains('hidden') || ['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos'].some(id => !$('vista-' + id).classList.contains('hidden')))) cargar();
     }, 15000);
     if (!autoRefreshVersion) autoRefreshVersion = setInterval(() => {
       if (document.visibilityState === 'visible') void comprobarVersionPanel();
@@ -700,10 +700,11 @@ $('password-form').addEventListener('submit', async event => {
 });
 
 function activarPestana(nombre) {
-  const vistasSecundarias = ['restaurantes', 'acumulado', 'comprobantes'];
+  const vistasSecundarias = ['restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura'];
+  const vistasDeAnalisis = ['restaurantes', 'acumulado', 'categorias', 'movimientos'];
   const esVistaSecundaria = vistasSecundarias.includes(nombre);
   const principal = esVistaSecundaria
-    ? (nombre === 'comprobantes' ? 'facturas' : 'analisis')
+    ? (vistasDeAnalisis.includes(nombre) ? 'analisis' : 'facturas')
     : nombre;
   const vistasPrincipales = ['historial', 'analisis', 'facturas'];
 
@@ -720,9 +721,9 @@ function activarPestana(nombre) {
     $(`vista-${id}`).classList.toggle('hidden', nombre !== id);
   }
 
-  if (nombre === 'analisis' || nombre === 'restaurantes') cargar();
+  if (['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos'].includes(nombre)) cargar();
   if (nombre === 'acumulado' || nombre === 'historial') cargarAcumulado();
-  if (nombre === 'facturas' || nombre === 'comprobantes') cargarFacturas(false).catch(error => estadoFacturas(error.message));
+  if (['comprobantes', 'carga-factura'].includes(nombre)) cargarFacturas(false).catch(error => estadoFacturas(error.message));
 }
 $('tab-historial').addEventListener('click', () => activarPestana('historial'));
 $('tab-analisis').addEventListener('click', () => activarPestana('analisis'));
@@ -738,7 +739,7 @@ document.querySelectorAll('[data-back-ledger]').forEach(button => {
 });
 
 function vistaFinancieraVisible() {
-  return ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes']
+  return ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'ingresos-adicionales', 'tasas', 'carga-factura']
     .find(id => !$('vista-' + id).classList.contains('hidden')) || 'historial';
 }
 function hayCambiosFinancierosSinGuardar() {

@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261122-facturas-panel"></script>
+  <script type="module" src="admin-costos.js?v=20261122-centro-paneles"></script>
 </head>
 <body class="min-h-screen">
   <aside id="update-notice" class="hidden fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4 shadow-xl" role="status" aria-live="polite">
@@ -96,35 +96,41 @@
       </section>
       <section id="vista-analisis" class="hidden space-y-4">
       <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Análisis financiero</h2><p class="mt-1 text-xs text-[#69544A]">Desgloses, costos por servicio y movimientos del período.</p></header>
-      <nav class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] divide-y divide-[#E6D8C9]" aria-label="Vistas de análisis">
-          <button type="button" data-open-finance-view="comprobantes" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
-            <span>Ver facturas</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span>
-          </button>
-          <button type="button" data-open-finance-view="restaurantes" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
-            <span>Costos por restaurante</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span>
-          </button>
-          <button type="button" data-open-finance-view="acumulado" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600">
-            <span>Costos por servicio</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span>
-          </button>
+      <nav class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] divide-y divide-[#E6D8C9]" aria-label="Paneles de análisis">
+          <button type="button" data-open-finance-view="restaurantes" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Costos por restaurante</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+          <button type="button" data-open-finance-view="acumulado" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Costos por servicio</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+          <button type="button" data-open-finance-view="movimientos" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Libro de movimientos</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+          <button type="button" data-open-finance-view="categorias" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Distribución de gastos</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+          <button type="button" data-open-finance-view="comprobantes" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Facturas y comprobantes</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
         </nav>
 
         <p id="finance-note" class="rounded-lg border border-[#D7C2AD] bg-[#FFFBF5] p-3 text-sm text-[#69544A]" role="status"></p>
 
-            <div class="mt-4 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
+            
+
+
+
+        
+      </section>
+
+
+            <section id="vista-categorias" class="hidden space-y-4">
+        <button type="button" data-back-analysis class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver al Análisis</button>
+        <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Distribución de gastos</h2></header>
+        <div class="mt-4 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
               <h3 class="font-semibold">Gastos por servicio</h3>
               <div id="gastos-categorias" class="mt-2 space-y-2 text-sm text-[#69544A]"></div>
             </div>
-
-
-
+      </section>
+      <section id="vista-movimientos" class="hidden space-y-4">
+        <button type="button" data-back-analysis class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver al Análisis</button>
+        <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Libro de movimientos</h2></header>
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
           <div class="border-b border-[#D7C2AD] p-4"><div class="flex items-center justify-between gap-3"><h2 class="font-semibold">Libro de movimientos</h2><button type="button" data-open-finance-view="comprobantes" class="shrink-0 text-sm font-semibold text-red-700 underline underline-offset-4">Ver facturas →</button></div><div class="mt-3"><p class="mb-2 text-xs font-medium text-[#69544A]">Ver facturas por servicio</p><div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar facturas por servicio"><button type="button" data-factura-shortcut="claro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Claro</button><button type="button" data-factura-shortcut="railway" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Railway</button><button type="button" data-factura-shortcut="supabase" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Supabase</button><button type="button" data-factura-shortcut="openai" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">OpenAI</button><button type="button" data-factura-shortcut="meta" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Meta</button><button type="button" data-factura-shortcut="otro" class="rounded-full border border-[#D7C2AD] px-3 py-1.5 text-xs">Otros</button></div></div></div>
           <div class="overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="bg-[#F0E3D5] text-[#69544A]"><tr><th class="p-3">Fecha</th><th class="p-3">Tipo</th><th class="p-3">Detalle</th><th class="p-3">Restaurante</th><th class="p-3">Valor</th><th class="p-3">Acción</th></tr></thead><tbody id="movimientos-body"></tbody></table></div>
         </section>
       </section>
-
-
-      <section id="vista-restaurantes" class="hidden space-y-4">
+<section id="vista-restaurantes" class="hidden space-y-4">
         <button type="button" data-back-analysis class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver a Análisis</button>
         <section class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
           <div class="border-b border-[#D7C2AD] p-4"><h2 class="font-semibold">Rentabilidad por restaurante</h2></div>
@@ -150,12 +156,18 @@
         </section>
       </section>
       <section id="vista-facturas" class="hidden space-y-4">
-      <header class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3">
-        <div><h2 class="font-semibold">Registrar operaciones</h2><p class="mt-1 text-xs text-[#69544A]">Ingresos, gastos, tasas y carga de soportes.</p></div>
-        <button type="button" data-open-finance-view="comprobantes" class="text-sm font-semibold text-red-700 underline underline-offset-4">Ver facturas y comprobantes →</button>
-      </header>
-      <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Registrar ingreso o gasto</summary>
+      <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Libro contable</h2><p class="mt-1 text-xs text-[#69544A]">Selecciona una tarea para abrir solo ese panel.</p></header>
+      <nav class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] divide-y divide-[#E6D8C9]" aria-label="Tareas del libro contable">
+        <button type="button" data-open-finance-view="movimiento" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Registrar ingreso o gasto</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+        <button type="button" data-open-finance-view="ingresos-adicionales" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Registrar ingresos adicionales</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+        <button type="button" data-open-finance-view="tasas" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Tasas de cambio</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+        <button type="button" data-open-finance-view="carga-factura" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Subir facturas y costos</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+        <button type="button" data-open-finance-view="comprobantes" class="flex w-full items-center justify-between gap-3 px-4 py-4 text-left text-sm font-semibold text-[#2B211B] hover:bg-[#F7EEE4]"><span>Facturas y comprobantes</span><span class="text-lg text-[#8A3D2C]" aria-hidden="true">›</span></button>
+      </nav>
+    </section>
+      <section id="vista-movimiento" class="hidden space-y-4">
+        <button type="button" data-back-ledger class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver al Libro contable</button>
+        <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Registrar ingreso o gasto</h2></header>
         <div class="border-t border-[#D7C2AD] p-4"><section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
             
             
@@ -172,9 +184,10 @@
             </form>
             <p id="mov-mensaje" class="mt-2 text-sm" role="status" aria-live="polite"></p>
           </section></div>
-      </details>
-      <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Registrar ingresos adicionales</summary>
+      </section>
+      <section id="vista-ingresos-adicionales" class="hidden space-y-4">
+        <button type="button" data-back-ledger class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver al Libro contable</button>
+        <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Registrar ingresos adicionales</h2></header>
         <div class="border-t border-[#D7C2AD] p-4"><p class="mb-3 text-sm text-[#69544A]">Se suman al ingreso neto y no a los ingresos brutos por suscripciones.</p>
           <form id="otro-ingreso-form" class="grid gap-3 sm:grid-cols-2">
             <label class="text-sm">Descripción<input id="otro-ingreso-descripcion" maxlength="240" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
@@ -184,9 +197,10 @@
             <label class="text-sm sm:col-span-2">Referencia (opcional)<input id="otro-ingreso-ref" maxlength="120" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
             <button id="otro-ingreso-guardar" class="rounded-lg bg-red-600 p-3 font-semibold text-white sm:col-span-2">Guardar otro ingreso</button>
           </form><p id="otro-ingreso-mensaje" class="mt-2 text-sm" role="status" aria-live="polite"></p></div>
-      </details>
-      <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Tasas de cambio</summary>
+      </section>
+      <section id="vista-tasas" class="hidden space-y-4">
+        <button type="button" data-back-ledger class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver al Libro contable</button>
+        <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Tasas de cambio</h2></header>
         <div class="border-t border-[#D7C2AD] p-4"><section class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
             
             
@@ -198,9 +212,10 @@
             <p id="tasa-mensaje" class="mt-2 text-sm" role="status" aria-live="polite"></p>
 
           </section></div>
-      </details>
-      <details class="overflow-hidden rounded-xl border border-[#D7C2AD] bg-[#FFFBF5]">
-        <summary class="cursor-pointer list-none px-4 py-3 font-semibold">Subir facturas y costos</summary>
+      </section>
+      <section id="vista-carga-factura" class="hidden space-y-4">
+        <button type="button" data-back-ledger class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver al Libro contable</button>
+        <header class="rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] px-4 py-3"><h2 class="font-semibold">Subir facturas y costos</h2></header>
         <div class="border-t border-[#D7C2AD] p-4"><section class="space-y-3 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4">
         <div>
           <h2 class="font-semibold">Subir factura y registrar costo</h2>
@@ -238,10 +253,8 @@
         </form>
         <p id="manual-invoice-message" class="text-sm text-[#69544A]" role="status" aria-live="polite"></p>
       </section></div>
-      </details>
-      
       </section>
-      <section id="vista-comprobantes" class="hidden space-y-4">
+<section id="vista-comprobantes" class="hidden space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div><button type="button" data-back-ledger class="text-sm font-semibold text-red-700 underline underline-offset-4">← Volver al libro contable</button><h2 class="mt-2 text-lg font-semibold">Facturas y comprobantes</h2><p class="text-sm text-[#69544A]">Documentos guardados, agrupados por servicio.</p></div>
         </div>
