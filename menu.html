@@ -644,7 +644,7 @@ function opcionesValidasProducto(producto) {
         const normalizada = normalizarTexto(nombre);
         if (!normalizada || (esVarianteGenerica && (esOpcionDeTamano(nombre) || esEtiquetaOpcion(nombre) || categorias.has(normalizada)))) return;
         const llave = `${normalizarTexto(grupo)}|${normalizada}`;
-        if (!unicas.has(llave)) unicas.set(llave, { grupo, nombre, descripcion: opcion.descripcion || '' });
+        if (!unicas.has(llave)) unicas.set(llave, { grupo, nombre, descripcion: opcion.descripcion || '', etiqueta: opcion.etiqueta || '' });
     });
     return [...unicas.values()];
 }
@@ -753,7 +753,7 @@ function renderizarEditorOpcionesEjemplo() {
     if(agregarGrupo) agregarGrupo.disabled=Boolean(ultimo && !nombreGrupoEditadoCompleto(ultimo));
 }
 
-function editarNombreGrupoEjemplo(i,valor) {
+function editarEtiquetaGrupoEjemplo(i,valor) {
     if(!gruposEditablesEjemplo[i]) return;
     gruposEditablesEjemplo[i].etiqueta=valor;
     if(!String(gruposEditablesEjemplo[i].nombre||'').trim()) {
