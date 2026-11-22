@@ -258,7 +258,7 @@
         <form method="dialog" class="mt-4"><button class="min-h-11 rounded-lg bg-red-600 px-4 text-white">Listo</button></form>
     </dialog>
 
-    <script src="/app.menu-categorias.js?v=personalizacion-en-vivo"></script>
+    <script src="/app.menu-categorias.js?v=modal-edicion-fiel"></script>
     <script>
         var cart = [];
         var numeroWhatsAppRestaurante = '';
@@ -721,18 +721,25 @@ function nombreGrupoEditadoCompleto(grupo) {
 function renderizarEditorOpcionesEjemplo() {
     const escapar=escaparHtml;
     const campos=document.getElementById('campos-personalizar');
-    const gruposHtml=gruposEditablesEjemplo.map((grupo,i)=>`<section class="velox-editor-grupo space-y-3 rounded-xl border border-slate-700 bg-slate-900 p-3">
+    const gruposHtml=gruposEditablesEjemplo.map((grupo,i)=>`<section class="velox-editor-grupo space-y-3">
       <div class="flex items-center gap-2">
-        <input type="text" maxlength="120" value="${escapar(grupo.nombre)}" placeholder="Nombre del grupo · ej. Sabores" aria-label="Nombre del grupo ${i+1}" oninput="editarNombreGrupoEjemplo(${i},this.value)" class="min-w-0 flex-1 rounded-lg border border-slate-700 bg-[#FFF8EF] px-3 py-2.5 text-sm font-semibold text-slate-900">
-        <button type="button" aria-label="Eliminar grupo ${escapar(grupo.nombre||i+1)}" title="Eliminar grupo" onclick="quitarGrupoEjemplo(${i})" class="min-h-11 min-w-11 rounded-lg text-xl text-red-300">×</button>
+        <span class="h-7 w-1 shrink-0 rounded-full bg-red-400"></span>
+        <input type="text" maxlength="120" value="${escapar(grupo.nombre)}" placeholder="Ej. Elige un sabor" aria-label="Nombre de la elección ${i+1}" oninput="editarNombreGrupoEjemplo(${i},this.value)" class="min-w-0 flex-1 bg-transparent py-1 text-base font-bold text-slate-800 placeholder:text-slate-500 focus:outline-none">
+        <button type="button" aria-label="Eliminar grupo ${escapar(grupo.nombre||i+1)}" title="Eliminar grupo" onclick="quitarGrupoEjemplo(${i})" class="min-h-11 min-w-11 rounded-lg text-xl text-red-700">×</button>
       </div>
-      <div class="space-y-2">${grupo.opciones.map((opcion,j)=>`<div class="flex items-center gap-2 rounded-lg border border-slate-700 bg-[#FFFBF5] p-2">
-        <input type="text" maxlength="200" value="${escapar(opcion.nombre)}" placeholder="Opción · ej. Pollo desmechado" aria-label="Opción ${j+1} del grupo ${escapar(grupo.nombre||'nuevo')}" oninput="editarOpcionEjemplo(${i},${j},this.value)" class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900">
-        <button type="button" aria-label="Quitar opción ${escapar(opcion.nombre||j+1)}" title="Quitar opción" onclick="quitarOpcionEjemplo(${i},${j})" class="min-h-11 min-w-11 rounded-lg text-xl text-red-700">×</button>
-      </div>`).join('')}</div>
-      <button type="button" data-ejemplo-agregar-opcion="${i}" onclick="agregarOpcionEjemplo(${i})" class="min-h-11 rounded-lg px-2 text-sm font-semibold text-red-300 disabled:cursor-not-allowed disabled:opacity-40">+ Añadir opción</button>
+      <div class="velox-option-list max-h-[42vh] space-y-2 overflow-y-auto rounded-2xl border border-white/5 bg-black/15 p-2">
+        ${grupo.opciones.map((opcion,j)=>`<label class="velox-option flex items-start gap-3 rounded-xl border border-slate-700/70 bg-[#FFF8EF] px-3.5 py-3 transition">
+          <span aria-hidden="true" class="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 border-slate-400 bg-white"></span>
+          <span class="min-w-0 flex-1">
+            <input type="text" maxlength="200" value="${escapar(opcion.nombre)}" placeholder="Ej. Pollo desmechado" aria-label="Opción ${j+1} del grupo ${escapar(grupo.nombre||'nuevo')}" oninput="editarOpcionEjemplo(${i},${j},this.value)" class="block w-full min-w-0 border-0 bg-transparent p-0 text-sm font-bold leading-snug text-slate-900 placeholder:text-slate-500 focus:outline-none">
+            ${opcion.descripcion ? `<span class="mt-1 block text-xs leading-relaxed text-slate-600">${escapar(opcion.descripcion)}</span>` : ''}
+          </span>
+          <button type="button" aria-label="Quitar opción ${escapar(opcion.nombre||j+1)}" title="Quitar opción" onclick="quitarOpcionEjemplo(${i},${j})" class="min-h-11 min-w-11 shrink-0 rounded-lg text-xl text-red-700">×</button>
+        </label>`).join('')}
+        <button type="button" data-ejemplo-agregar-opcion="${i}" onclick="agregarOpcionEjemplo(${i})" class="min-h-11 rounded-lg px-2 text-sm font-semibold text-red-700 disabled:cursor-not-allowed disabled:opacity-40">+ Añadir opción</button>
+      </div>
     </section>`).join('');
-    campos.innerHTML=`<p class="mb-3 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-xs leading-relaxed text-slate-300">Toca un grupo o una opción para editarla. Los cambios se ven en la tarjeta.</p>${gruposHtml}<button type="button" id="ejemplo-agregar-grupo" onclick="agregarGrupoEjemplo()" class="mt-3 min-h-11 rounded-lg border border-slate-600 px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">+ Añadir grupo</button>`;
+    campos.innerHTML=`<p class="mb-4 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-xs leading-relaxed text-slate-600">Edita los nombres aquí. Así se verá esta elección en el menú del cliente.</p>${gruposHtml}<button type="button" id="ejemplo-agregar-grupo" onclick="agregarGrupoEjemplo()" class="mt-3 min-h-11 rounded-lg border border-slate-600 px-3 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">+ Añadir grupo</button>`;
     gruposEditablesEjemplo.forEach((grupo,i)=>{
         const boton=campos.querySelector(`[data-ejemplo-agregar-opcion="${i}"]`);
         if(boton) boton.disabled=!ultimaOpcionEditadaCompleta(grupo);
