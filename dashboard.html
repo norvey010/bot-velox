@@ -178,10 +178,6 @@
 
     <!-- SECCIÓN 1: PEDIDOS -->
     <section id="sec-pedidos" class="hidden space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-800 p-3">
-        <p id="estado-recepcion-pedidos" class="text-sm font-semibold" role="status">Cargando disponibilidad…</p>
-        <button id="control-recepcion-pedidos" type="button" onclick="cambiarRecepcionPedidos()" class="min-h-11 rounded-lg bg-slate-700 px-3 text-sm" hidden></button>
-      </div>
       <section id="resumen-pedidos" aria-labelledby="resumen-pedidos-titulo" class="space-y-3 rounded-xl border border-slate-700 bg-slate-800 p-3 sm:p-4">
         <div><h2 id="resumen-pedidos-titulo" class="text-lg font-bold text-white">Resumen de pedidos</h2><p class="mt-1 text-xs text-slate-400">Elige un período o una fecha para ver sus cifras y pedidos.</p></div>
       <div class="flex flex-wrap items-end gap-2">
@@ -391,12 +387,8 @@
             <button type="submit" class="w-full rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-700">Guardar número</button>
           </form>
           <form id="form-ajuste-horario" onsubmit="guardarConfiguracionMenu(event)" class="hidden space-y-3">
-            <label class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900 px-3 py-3">
-              <span><span class="block text-sm font-semibold text-white">Aceptar pedidos</span><span class="block text-xs text-slate-400">Pausa o activa los pedidos en línea.</span></span>
-              <input id="menu-activo" type="checkbox" class="h-5 w-5 accent-red-600">
-            </label>
             <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-200"><input id="horario-usar" type="checkbox" class="h-4 w-4 accent-red-600"> Aplicar horario semanal</label>
-            <p class="text-xs text-slate-400">Si no activas el horario, los pedidos estarán disponibles cuando la carta esté activa.</p>
+            <p class="text-xs text-slate-400">Los pedidos se recibirán automáticamente dentro del horario de cada día. Fuera de horario, la carta seguirá visible y mostrará un aviso.</p>
             <div id="horario-lista" class="space-y-2"></div>
             <button type="submit" id="btn-guardar-menu-config" class="w-full rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700">Guardar horario</button>
           </form>
@@ -1813,7 +1805,7 @@
     async function cargarConfiguracion() {
       if (!RESTAURANTE_ID) return;
       const { data, error } = await supabaseClient.from('restaurantes')
-        .select('nombre_restaurante, telefono, printer_paper_width, menu_activo, horario_atencion')
+        .select('nombre_restaurante, telefono, printer_paper_width, horario_atencion')
         .eq('id', RESTAURANTE_ID).single();
       if (error || !data) {
         console.error('No se pudo cargar la configuración:', error);
@@ -1822,40 +1814,10 @@
       }
       document.getElementById('ajustes-inicio-status').classList.add('hidden');
       CONFIGURACION_ACTUAL = data;
-      mostrarRecepcionPedidos();
       document.getElementById('conf-nombre').value = data.nombre_restaurante || '';
       document.getElementById('conf-phone').value = data.telefono || '';
       document.getElementById('conf-printer-width').value = Number(data.printer_paper_width) === 58 ? '58' : '80';
-      document.getElementById('menu-activo').checked = data.menu_activo !== false;
       actualizarVistaPreviaImpresora(false);
-    }
-
-    function mostrarRecepcionPedidos() {
-      const activo = CONFIGURACION_ACTUAL.menu_activo !== false;
-      document.getElementById('estado-recepcion-pedidos').textContent = activo ? 'Pedidos habilitados según horario' : 'Pedidos pausados';
-      const boton = document.getElementById('control-recepcion-pedidos');
-      boton.textContent = activo ? 'Pausar pedidos' : 'Activar pedidos';
-      boton.hidden = false;
-    }
-
-    async function cambiarRecepcionPedidos() {
-      const boton = document.getElementById('control-recepcion-pedidos');
-      if (!RESTAURANTE_ID || boton.disabled) return;
-      boton.disabled = true;
-      try {
-        const { data, error } = await supabaseClient.from('restaurantes')
-          .update({ menu_activo: CONFIGURACION_ACTUAL.menu_activo === false })
-          .eq('id', RESTAURANTE_ID).select('menu_activo').single();
-        if (error || !data) throw error || new Error();
-        CONFIGURACION_ACTUAL.menu_activo = data.menu_activo;
-        document.getElementById('menu-activo').checked = data.menu_activo;
-        mostrarRecepcionPedidos();
-        actualizarVistaPreviaCarta();
-      } catch {
-        document.getElementById('estado-recepcion-pedidos').textContent = 'No se pudo cambiar. Intenta de nuevo.';
-      } finally {
-        boton.disabled = false;
-      }
     }
 
     function renderizarHorarioMenu(horario = {}) {
@@ -1912,19 +1874,15 @@
       boton.disabled = true;
       boton.textContent = 'Guardando…';
       try {
-        const cambios = {
-          menu_activo: document.getElementById('menu-activo').checked,
-          horario_atencion: { usar_horario: usarHorario, dias }
-        };
+        const cambios = { horario_atencion: { usar_horario: usarHorario, dias } };
         const { data, error } = await supabaseClient.from('restaurantes')
           .update(cambios).eq('id', RESTAURANTE_ID)
-          .select('menu_activo, horario_atencion').maybeSingle();
+          .select('horario_atencion').maybeSingle();
         if (error) throw error;
         if (!data) throw new Error('No se confirmó el guardado. Revisa tu sesión e inténtalo de nuevo.');
         CONFIGURACION_ACTUAL = { ...CONFIGURACION_ACTUAL, ...data };
-        mostrarRecepcionPedidos();
         abrirCategoriaAjustes('negocio');
-        mostrarAviso(document.getElementById('ajustes-status'), data.menu_activo ? 'Horario y disponibilidad guardados.' : 'Cambios guardados. Los pedidos están pausados.', 'exito', 4500);
+        mostrarAviso(document.getElementById('ajustes-status'), 'Horario guardado. Los pedidos se activan automáticamente durante las horas configuradas.', 'exito', 4500);
       } catch (error) {
         console.error('Error al guardar la configuración de la carta:', error);
         mostrarAviso(estado, error.message || 'No se pudo guardar la configuración de la carta.', 'error');
