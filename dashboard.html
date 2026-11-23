@@ -122,8 +122,10 @@
     #revision-carta-ampliada > footer { padding: .55rem .8rem; }
       .velox-foto-producto { border: 1px solid var(--velox-border, #d1c2b0); border-radius: 12px; padding: 12px; min-width: 0; }
     .velox-foto-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-    .velox-foto-acciones button { flex: 1 1 125px; min-height: 44px; border: 1px solid var(--velox-border, #d1c2b0); border-radius: 10px; padding: 8px 12px; font-size: 14px; font-weight: 600; }
-    .velox-foto-acciones button:disabled { opacity: .5; cursor: wait; }
+    .velox-foto-acciones button { flex: 1 1 125px; min-height: 44px; border: 1px solid var(--velox-primary, #A53D24); border-radius: 10px; padding: 8px 12px; background: var(--velox-primary, #A53D24); color: #fff; font-size: 14px; font-weight: 700; box-shadow: 0 4px 10px rgb(165 61 36 / 18%); }
+    .velox-foto-acciones button:hover:not(:disabled) { background: var(--velox-primary-hover, #84301C); border-color: var(--velox-primary-hover, #84301C); }
+    .velox-foto-acciones button:focus-visible { outline: 2px solid var(--velox-focus, #A53D24); outline-offset: 2px; }
+    .velox-foto-acciones button:disabled { opacity: .55; cursor: wait; }
       .velox-producto-ejemplo { display:flex; align-items:flex-start; overflow:hidden; border:1px solid #d1c2b0; border-radius:14px; background:#FFFBF5; color:#29251f; }
     .velox-producto-ejemplo-foto { width:35%; flex-shrink:0; background:#F0E3D5; aspect-ratio:1; display:grid; place-items:center; }
     .velox-producto-ejemplo-foto img { width:100%; height:100%; object-fit:contain; }
