@@ -900,26 +900,44 @@ async function cargarAcumulado() {
     $('rango-actual').textContent = periodoData.periodo;
     const resumen = periodoData.resumen || {};
     const faltaTasa = 'Falta tasa de cambio';
-    $('vida-equivalente').textContent = resumen.gastos_cop == null ? faltaTasa : mostrarMoneda(resumen.gastos_cop, 'COP');
-    $('vida-sin-tasa').textContent = resumen.gastos_cop == null
-      ? 'Hay costos en USD sin tasa guardada para su fecha.'
-      : 'Incluye costos registrados y costos de IA disponibles.';
+    const openai = periodoData.costos_openai || {};
+    const openaiDisponible = Boolean(openai.disponible);
+    const costoIAIncierto = !openaiDisponible &&
+      (Number(resumen.ia_sin_tarifa) > 0 || (!openai.configurado && Number(resumen.operaciones_ia) > 0));
+    const avisoOpenAI = !openaiDisponible && Number(resumen.operaciones_ia) > 0
+      ? (openai.configurado
+        ? (Number(resumen.ia_estimado_usd) > 0
+          ? 'OpenAI no respondió; el costo de IA mostrado es una estimación.'
+          : 'OpenAI no respondió y no hay un costo de IA confiable registrado.')
+        : 'OpenAI no está conectado; el costo de IA no está incluido.')
+      : '';
+    const faltaDato = 'No disponible · falta un costo de IA confiable';
+    $('vida-equivalente').textContent = resumen.gastos_cop == null
+      ? (costoIAIncierto ? faltaDato : faltaTasa) : mostrarMoneda(resumen.gastos_cop, 'COP');
+    $('vida-sin-tasa').textContent = costoIAIncierto
+      ? avisoOpenAI
+      : resumen.gastos_cop == null
+        ? 'Hay costos en USD sin tasa guardada para su fecha.'
+        : (resumen.utilidad_parcial ? 'Incluye una estimación parcial de los costos de IA.' : 'Incluye costos registrados y costos de IA disponibles.');
     $('vida-ingresos-brutos').textContent = resumen.ingresos_suscripcion_cop == null
       ? faltaTasa : mostrarMoneda(resumen.ingresos_suscripcion_cop, 'COP');
     $('vida-ingresos-detalle').textContent = resumen.ingresos_suscripcion_cop == null
       ? faltaTasa : 'Solo suscripciones del período.';
     $('vida-ingreso-neto').textContent = resumen.utilidad_neta_cop == null
-      ? faltaTasa : mostrarMoneda(resumen.utilidad_neta_cop, 'COP');
+      ? (costoIAIncierto ? faltaDato : faltaTasa) : mostrarMoneda(resumen.utilidad_neta_cop, 'COP');
     $('vida-ingreso-neto').classList.toggle('text-red-700', resumen.utilidad_neta_cop != null && Number(resumen.utilidad_neta_cop) < 0);
     $('vida-ingreso-neto').classList.toggle('text-emerald-700', resumen.utilidad_neta_cop != null && Number(resumen.utilidad_neta_cop) >= 0);
-    $('vida-neto-nota').textContent = resumen.utilidad_neta_cop == null
-      ? faltaTasa : 'Suscripciones + otros ingresos − costos del período.';
+    $('vida-neto-nota').textContent = costoIAIncierto
+      ? avisoOpenAI
+      : resumen.utilidad_neta_cop == null
+        ? faltaTasa
+        : (resumen.utilidad_parcial ? 'Resultado parcial; incluye una estimación de IA.' : 'Suscripciones + otros ingresos − costos del período.');
     const movimientosGasto = (periodoData.movimientos || []).filter(m => m.tipo === 'gasto');
     const costosUsdProveedor = resumen.ia_real_disponible ? Number(resumen.ia_real_usd) || 0 : Number(resumen.ia_estimado_usd) || 0;
     $('acumulado-fecha').textContent = periodoData.periodo + ' · ' + numero.format(movimientosGasto.length) + ' gastos registrados.';
     const servicios = new Map();
-    const sumar = (categoria, monto, moneda, equivalenteCop) => {
-      const nombre = nombresCategoria[categoria] || 'Otros servicios';
+    const sumar = (nombreServicio, equivalenteCop) => {
+      const nombre = nombreServicio || 'Otros servicios';
       const item = servicios.get(nombre) || { totalCop: 0, sinTasa: false };
       if (equivalenteCop == null) item.sinTasa = true;
       else item.totalCop += Number(equivalenteCop) || 0;
@@ -930,10 +948,10 @@ async function cargarAcumulado() {
       const tasa = periodoData.tasas_por_mes?.[String(mov.fecha || '').slice(0, 7)];
       const equivalente = moneda === 'COP' ? Number(mov.monto) || 0
         : Number.isFinite(Number(tasa)) && Number(tasa) > 0 ? Number(mov.monto) * Number(tasa) : null;
-      sumar(mov.categoria || 'otro', mov.monto, moneda, equivalente);
+      sumar(mov.servicio_personalizado || nombresCategoria[mov.categoria] || 'Otros servicios', equivalente);
     }
     if (costosUsdProveedor > 0) {
-      sumar('openai', costosUsdProveedor, 'USD', resumen.ia_costo_aplicado_cop);
+      sumar(nombresCategoria.openai || 'OpenAI', resumen.ia_costo_aplicado_cop);
     }
     const filas = [...servicios.entries()].sort((a, b) => (b[1].totalCop || 0) - (a[1].totalCop || 0));
     const tbody = $('servicios-acumulado-body');

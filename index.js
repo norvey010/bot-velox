@@ -686,7 +686,11 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
                 }
             }
         }
-        const iaAplicadoCop = costosOpenAI.disponible ? (iaRealSinTasa ? null : iaRealCop) : (iaEstimadoSinTasa ? null : iaEstimadoCop);
+        const iaEstimacionIncompleta = !costosOpenAI.disponible &&
+            (totales.ia_sin_tarifa > 0 || (!costosOpenAI.configurado && totales.operaciones_ia > 0));
+        const iaAplicadoCop = costosOpenAI.disponible
+            ? (iaRealSinTasa ? null : iaRealCop)
+            : (iaEstimadoSinTasa || iaEstimacionIncompleta ? null : iaEstimadoCop);
         const categoriaOpenAI = { COP: iaAplicadoCop || 0, USD: aplicadoUsd };
         if (aplicadoUsd > 0) totales.gastos_por_categoria.openai = categoriaOpenAI;
         for (const restaurante of restaurantMap.values()) {
@@ -720,7 +724,7 @@ app.get('/api/admin/finanzas/rango', autenticarAdminPlataforma, async (req, res)
                 ia_real_disponible: Boolean(costosOpenAI.disponible), ia_real_sin_asignar_usd: iaSinAsignarUsd, ia_real_compartida_usd: iaRealCompartidaUsd,
                 ia_costo_aplicado_usd: aplicadoUsd, ia_costo_aplicado_cop: iaAplicadoCop,
                 utilidad_neta_cop: netoCop,
-                utilidad_parcial: ingresosCop == null || gastosConIAcop == null || totales.ia_sin_tarifa > 0 || Boolean(costosOpenAI.error),
+                utilidad_parcial: ingresosCop == null || gastosConIAcop == null || iaEstimacionIncompleta || Boolean(costosOpenAI.error),
                 operaciones_ia: totales.operaciones_ia, ia_sin_tarifa: totales.ia_sin_tarifa,
                 gastos_compartidos_cop: copTotals.compartidosSinTasa ? null : copTotals.gastosCompartidos,
                 compartidos_sin_asignar_cop: pesosTotales > 0 ? 0 : copTotals.gastosCompartidos,
