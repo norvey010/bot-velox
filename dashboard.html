@@ -1118,9 +1118,12 @@
         const agotado = p.disponible === false;
         const descripcion = String(p.descripcion || '').trim();
         return `<article class="relative rounded-lg border border-slate-700 bg-slate-900 p-3">
-          <div class="flex items-stretch gap-3">
-            ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="${escaparHtmlUI(p.nombre)}" loading="lazy" width="220" height="220" class="aspect-square w-[36%] max-w-56 shrink-0 rounded-lg object-cover">` : '<div class="flex aspect-square w-[36%] max-w-56 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-center text-sm text-slate-400">Sin foto</div>'}
-            <div class="flex min-w-0 flex-1 flex-col">
+          <div class="flex items-start gap-3">
+            <div class="flex w-[36%] max-w-56 shrink-0 flex-col gap-2">
+              ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="${escaparHtmlUI(p.nombre)}" loading="lazy" width="220" height="220" class="aspect-square w-full rounded-lg object-cover">` : '<div class="flex aspect-square w-full items-center justify-center rounded-lg bg-slate-800 text-center text-sm text-slate-400">Sin foto</div>'}
+              <button type="button" onclick="prepararEdicionProducto(${id})" style="background-color:#A53D24;color:#fff" aria-label="Editar ${escaparHtmlUI(p.nombre)}" aria-haspopup="dialog" class="relative z-10 min-h-10 w-full rounded-lg px-1.5 py-1.5 text-xs font-semibold hover:brightness-90">Editar producto</button>
+            </div>
+            <div class="flex min-w-0 flex-1 flex-col self-stretch">
               <h3 class="break-words text-base font-bold text-white">${escaparHtmlUI(p.nombre)}</h3>
               ${descripcion ? `<p class="mt-1 text-sm leading-5 text-slate-400" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${escaparHtmlUI(descripcion)}</p>` : ''}
               <div class="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-2">
@@ -1131,7 +1134,6 @@
                   <span aria-hidden="true" class="text-[10px]">⌄</span>
                 </button>
               </div>
-              <button type="button" onclick="prepararEdicionProducto(${id})" style="background-color:#A53D24;color:#fff" aria-label="Editar ${escaparHtmlUI(p.nombre)}" aria-haspopup="dialog" class="relative z-10 mt-2 min-h-11 w-full rounded-lg px-2 py-2 text-sm font-semibold hover:brightness-90">Editar producto</button>
             </div>
           </div>
           <button type="button" data-editar-tarjeta onclick="prepararEdicionProducto(${id})" aria-label="Editar ${escaparHtmlUI(p.nombre)}" aria-haspopup="dialog"></button>
