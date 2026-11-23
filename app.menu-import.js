@@ -751,7 +751,7 @@ function renderizarRevisionMenu(i) {
           </div>
           <section class="velox-editor-personalizacion mt-4 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-3 text-[#34251E]" id="revision-opciones-${i}">
             <h3 class="text-base font-bold">Personalizar este producto</h3>
-            <p class="mt-1 text-sm text-[#76695F]">Toca el botón para cambiar las opciones.</p>
+            <p class="mt-1 text-sm text-[#76695F]">Toca «Cambiar opciones» para editar sus opciones.</p>
             ${p.revision_opciones ? '<p class="mt-3 rounded-lg border border-amber-700 bg-amber-950/40 p-2 text-xs text-amber-200">Revisa que las opciones coincidan con la descripción del producto.</p>' : ''}
             ${gruposParecidosCliente(p.opciones).map(([a,b])=>`<p class="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">¿«${escaparHtmlUI(a)}» y «${escaparHtmlUI(b)}» son el mismo grupo? Revisa sus nombres.</p>`).join('')}
             ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="mt-2 min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
