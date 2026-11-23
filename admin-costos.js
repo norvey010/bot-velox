@@ -19,6 +19,7 @@ let autoRefreshFacturas = null;
 let autoRefreshVersion = null;
 let cargando = false;
 let cargandoAcumulado = false;
+let resumenFinancieroCargado = false;
 let acumuladoPendiente = false;
 let cargaPendiente = false;
 let rangoActual = 'MAX';
@@ -907,9 +908,11 @@ async function cargarAcumulado() {
   if (cargandoAcumulado) { acumuladoPendiente = true; return; }
   cargandoAcumulado = true;
   $('data-message').textContent = '';
-  $('vida-equivalente').textContent = 'Cargando…';
-  $('vida-ingresos-brutos').textContent = 'Cargando…';
-  $('vida-ingreso-neto').textContent = 'Cargando…';
+  if (!resumenFinancieroCargado) {
+    $('vida-equivalente').textContent = 'Cargando…';
+    $('vida-ingresos-brutos').textContent = 'Cargando…';
+    $('vida-ingreso-neto').textContent = 'Cargando…';
+  }
   try {
     const periodoData = await solicitar(urlRangoFinanciero());
     renderizar(periodoData);
@@ -948,6 +951,7 @@ async function cargarAcumulado() {
       : resumen.utilidad_neta_cop == null
         ? faltaTasa
         : (resumen.utilidad_parcial ? 'Resultado parcial; incluye una estimación de IA.' : 'Suscripciones + otros ingresos − costos del período.');
+    resumenFinancieroCargado = true;
     const movimientosGasto = (periodoData.movimientos || []).filter(m => m.tipo === 'gasto');
     const costosUsdProveedor = resumen.ia_real_disponible ? Number(resumen.ia_real_usd) || 0 : Number(resumen.ia_estimado_usd) || 0;
     $('acumulado-fecha').textContent = periodoData.periodo + ' · ' + numero.format(movimientosGasto.length) + ' gastos registrados.';
@@ -981,10 +985,12 @@ async function cargarAcumulado() {
     }
     tbody.replaceChildren(fragmento);
   } catch (error) {
-    $('vida-equivalente').textContent = 'No disponible';
-    $('vida-ingresos-brutos').textContent = 'No disponible';
-    $('vida-ingreso-neto').textContent = 'No disponible';
-    $('data-message').textContent = error.message;
+    if (!resumenFinancieroCargado) {
+      $('vida-equivalente').textContent = 'No disponible';
+      $('vida-ingresos-brutos').textContent = 'No disponible';
+      $('vida-ingreso-neto').textContent = 'No disponible';
+      $('data-message').textContent = error.message;
+    }
   } finally {
     cargandoAcumulado = false;
     if (acumuladoPendiente) { acumuladoPendiente = false; void cargarAcumulado(); }
