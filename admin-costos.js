@@ -798,36 +798,53 @@ $('password-form').addEventListener('submit', async event => {
 });
 
 function activarPestana(nombre) {
+  const vistasPrincipales = ['historial', 'analisis', 'facturas'];
   const vistasSecundarias = ['restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'tasas', 'carga-factura'];
   const vistasDeAnalisis = ['restaurantes', 'acumulado', 'categorias', 'movimientos'];
-  const esVistaSecundaria = vistasSecundarias.includes(nombre);
+  const destino = String(nombre || '').trim();
+  const esVistaSecundaria = vistasSecundarias.includes(destino);
+  if (!vistasPrincipales.includes(destino) && !esVistaSecundaria) {
+    $('data-message').textContent = 'No se encontró el panel solicitado. Vuelve al Libro contable e inténtalo otra vez.';
+    return false;
+  }
+  const vistaSeleccionada = $('vista-' + destino);
+  if (!vistaSeleccionada) {
+    $('data-message').textContent = 'El panel solicitado no está disponible. Recarga la página e inténtalo otra vez.';
+    return false;
+  }
   const principal = esVistaSecundaria
-    ? (vistasDeAnalisis.includes(nombre) ? 'analisis' : 'facturas')
-    : nombre;
-  const vistasPrincipales = ['historial', 'analisis', 'facturas'];
+    ? (vistasDeAnalisis.includes(destino) ? 'analisis' : 'facturas')
+    : destino;
+
+  // Oculta todas las vistas antes de mostrar una sola; evita dejar el centro vacío
+  // si algún botón trae un destino inválido o una vista fue renombrada.
+  for (const id of [...vistasPrincipales, ...vistasSecundarias]) {
+    $('vista-' + id)?.classList.add('hidden');
+  }
+  vistaSeleccionada.classList.remove('hidden');
 
   for (const id of vistasPrincipales) {
-    const activa = id === principal && !esVistaSecundaria;
-    $(`vista-${id}`).classList.toggle('hidden', !activa);
-    const boton = $(`tab-${id}`);
-    boton.className = id === principal
+    const boton = $('tab-' + id);
+    const activa = id === principal;
+    boton.className = activa
       ? 'rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white'
       : 'rounded-lg px-3 py-2 text-sm font-semibold text-[#69544A]';
-    boton.setAttribute('aria-selected', String(id === principal));
-  }
-  for (const id of vistasSecundarias) {
-    $(`vista-${id}`).classList.toggle('hidden', nombre !== id);
+    boton.setAttribute('aria-selected', String(activa));
   }
 
-  if (['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos', 'movimiento'].includes(nombre)) cargar();
-  if (nombre === 'acumulado' || nombre === 'historial') cargarAcumulado();
-  if (['comprobantes', 'carga-factura'].includes(nombre)) cargarFacturas(false).catch(error => estadoFacturas(error.message));
+  if (['analisis', 'restaurantes', 'acumulado', 'categorias', 'movimientos', 'movimiento'].includes(destino)) cargar();
+  if (destino === 'acumulado' || destino === 'historial') cargarAcumulado();
+  if (['comprobantes', 'carga-factura'].includes(destino)) cargarFacturas(false).catch(error => estadoFacturas(error.message));
+  return true;
 }
 $('tab-historial').addEventListener('click', () => activarPestana('historial'));
 $('tab-analisis').addEventListener('click', () => activarPestana('analisis'));
 $('tab-facturas').addEventListener('click', () => activarPestana('facturas'));
 document.querySelectorAll('[data-open-finance-view]').forEach(button => {
-  button.addEventListener('click', () => activarPestana(button.dataset.openFinanceView));
+  button.addEventListener('click', () => {
+    const destino = button.getAttribute('data-open-finance-view');
+    if (!activarPestana(destino)) console.error('Destino no válido en la navegación financiera.');
+  });
 });
 document.querySelectorAll('[data-back-analysis]').forEach(button => {
   button.addEventListener('click', () => activarPestana('analisis'));
@@ -838,7 +855,6 @@ document.querySelectorAll('[data-back-ledger]').forEach(button => {
 document.querySelectorAll('[data-back-comprobantes]').forEach(button => {
   button.addEventListener('click', () => activarPestana('comprobantes'));
 });
-
 function vistaFinancieraVisible() {
   return ['historial', 'analisis', 'facturas', 'restaurantes', 'acumulado', 'comprobantes', 'categorias', 'movimientos', 'movimiento', 'tasas', 'carga-factura']
     .find(id => !$('vista-' + id).classList.contains('hidden')) || 'historial';
