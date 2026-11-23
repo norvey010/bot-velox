@@ -126,6 +126,11 @@ function actualizarCategorias(reiniciarAtribucion = false) {
   customInput.placeholder = tipo === 'ingreso' ? 'Escribe el concepto del ingreso' : 'Escribe el nombre del servicio o proveedor';
   customWrap.firstChild.textContent = tipo === 'ingreso' ? 'Concepto del ingreso' : 'Nombre del servicio o proveedor';
   const esSuscripcion = tipo === 'ingreso' && categoria.value === 'suscripcion';
+  const selectorRestaurante = $('mov-restaurante-wrap');
+  const ocultarAtribucionGasto = tipo === 'gasto';
+  selectorRestaurante.classList.toggle('hidden', ocultarAtribucionGasto);
+  selectorRestaurante.hidden = ocultarAtribucionGasto;
+  if (ocultarAtribucionGasto) selector.value = '';
   selector.required = esSuscripcion;
   selector.options[0].textContent = tipo === 'ingreso'
     ? (esSuscripcion ? 'Selecciona el restaurante que pagó' : 'Ingreso general de Velox · sin restaurante')
@@ -1029,7 +1034,7 @@ $('movimiento-form').addEventListener('submit', async event => {
   const body = {
     tipo: $('mov-tipo').value,
     categoria: $('mov-categoria').value,
-    restaurante_id: $('mov-restaurante').value || null,
+    restaurante_id: $('mov-tipo').value === 'gasto' ? null : ($('mov-restaurante').value || null),
     monto: Number($('mov-monto').value),
     moneda: $('mov-moneda').value,
     fecha,

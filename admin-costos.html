@@ -7,7 +7,7 @@
   <title>Finanzas privadas | Velox</title>
   <link rel="stylesheet" href="/velox-theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module" src="admin-costos.js?v=20261122-otro-selector-fix"></script>
+  <script type="module" src="admin-costos.js?v=20261122-gasto-compartido-auto"></script>
 </head>
 <body class="min-h-screen">
   <aside id="update-notice" class="hidden fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-4 shadow-xl" role="status" aria-live="polite">
@@ -185,7 +185,7 @@
               <label id="mov-service-custom-wrap" class="hidden text-sm sm:col-span-2">Nombre del servicio / concepto
                 <input id="mov-service-custom" list="finance-service-suggestions" maxlength="80" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Ej.: Codex, dominio web, venta ocasional">
               </label>
-              <label class="text-sm sm:col-span-2"><span id="mov-restaurante-label">Atribuir gasto a restaurante</span><select id="mov-restaurante" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="">Gasto compartido de Velox</option></select><span id="mov-restaurante-help" class="hidden"></span></label>
+              <label id="mov-restaurante-wrap" class="text-sm sm:col-span-2"><span id="mov-restaurante-label">Atribuir gasto a restaurante</span><select id="mov-restaurante" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="">Gasto compartido de Velox</option></select><span id="mov-restaurante-help" class="hidden"></span></label>
               <label class="text-sm">Valor<input id="mov-monto" type="number" min="0.01" step="0.01" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5" placeholder="Ej: 30000"></label>
               <label class="text-sm">Moneda<select id="mov-moneda" class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"><option value="COP">COP · pesos</option><option value="USD">USD · dólares</option></select></label>
               <label class="text-sm">Fecha · define el período<input id="mov-fecha" type="date" required class="mt-1 w-full rounded-lg border border-[#D7C2AD] bg-[#FFF8EF] p-2.5"></label>
