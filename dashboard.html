@@ -1908,7 +1908,7 @@
       const estado = document.getElementById('logo-config-status');
       const archivoOriginal = document.getElementById('logo-archivo').files?.[0];
       const archivo = archivoLogoLineal;
-      if (!archivoOriginal) {
+      if (!archivoOriginal || !archivo) {
         mostrarAviso(estado, CONFIGURACION_ACTUAL.logo_url ? 'Selecciona una imagen para cambiar el logo.' : 'Selecciona una imagen para subir el logo.', 'error');
         return;
       }
