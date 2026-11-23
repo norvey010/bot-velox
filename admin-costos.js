@@ -88,7 +88,12 @@ function filaVacia(tbody, columnas, texto) {
 function llenarSelectorRestaurantes(restaurantes) {
   const select = $('mov-restaurante');
   const elegido = select.value;
-  const opciones = [new Option('Gasto compartido de Velox', '')];
+  const tipo = $('mov-tipo').value;
+  const categoria = $('mov-categoria').value;
+  const marcador = tipo === 'ingreso'
+    ? (categoria === 'suscripcion' ? 'Selecciona el restaurante que pagó' : 'Ingreso general de Velox · sin restaurante')
+    : 'Gasto compartido de Velox · repartir entre restaurantes activos';
+  const opciones = [new Option(marcador, '')];
   for (const r of restaurantes) opciones.push(new Option(r.restaurante, r.restaurante_id));
   select.replaceChildren(...opciones);
   if ([...select.options].some(o => o.value === elegido)) select.value = elegido;
