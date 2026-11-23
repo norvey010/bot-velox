@@ -691,3 +691,19 @@ body .hover\:bg-slate-600:hover, body .hover\:bg-slate-700:hover { background-co
 body .hover\:text-white:hover { color: var(--velox-text); }
 
 body:has(#tab-menu) > header > div:first-child > div:first-child { color: #fff; }
+
+
+/* Acciones de foto destacadas en Editar carta y en el borrador de IA. */
+#form-producto .velox-foto-acciones button,
+#revision-edicion .velox-foto-acciones button {
+  background-color: var(--velox-primary, #A53D24) !important;
+  border-color: var(--velox-primary, #A53D24) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 10px rgb(165 61 36 / 20%);
+}
+#form-producto .velox-foto-acciones button:hover:not(:disabled),
+#revision-edicion .velox-foto-acciones button:hover:not(:disabled) {
+  background-color: var(--velox-primary-hover, #84301C) !important;
+  border-color: var(--velox-primary-hover, #84301C) !important;
+}
