@@ -1115,15 +1115,27 @@
         const id = escaparHtmlUI(JSON.stringify(String(p.id)));
         let foto = '';
         try { const url = new URL(p.imagen_url); if (['https:', 'http:'].includes(url.protocol)) foto = url.href; } catch {}
+        const agotado = p.disponible === false;
         return `<article class="relative rounded-lg border border-slate-700 bg-slate-900 p-3">
           <div class="flex items-center gap-3">
-            ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="${escaparHtmlUI(p.nombre)}" loading="lazy" width="56" height="56" class="h-14 w-14 shrink-0 rounded-lg object-cover">` : '<div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-center text-xs text-slate-400">Sin foto</div>'}
-            <div class="min-w-0 flex-1"><h3 class="break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre)}</h3><p class="text-sm font-bold text-slate-200">$${Number(p.precio).toLocaleString('es-CO')}</p><p class="truncate text-xs text-slate-400">${escaparHtmlUI(resolverCategoriaCombo(p))}</p></div>
+            ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="${escaparHtmlUI(p.nombre)}" loading="lazy" width="80" height="80" class="h-20 w-20 shrink-0 rounded-lg object-cover">` : '<div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-center text-xs text-slate-400">Sin foto</div>'}
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-2">
+                <h3 class="min-w-0 break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre)}</h3>
+                <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${agotado}, this)" aria-label="Cambiar estado de ${escaparHtmlUI(p.nombre)}. Actualmente ${agotado ? 'agotado' : 'disponible'}" aria-pressed="${!agotado}" class="relative z-10 inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${agotado ? 'border-amber-700 text-amber-800' : 'border-emerald-700 text-emerald-800'}">
+                  <span aria-hidden="true" class="h-2 w-2 rounded-full ${agotado ? 'bg-amber-700' : 'bg-emerald-700'}"></span>
+                  ${agotado ? 'Agotado' : 'Disponible'}
+                  <span aria-hidden="true" class="text-[10px]">⌄</span>
+                </button>
+              </div>
+              <p class="mt-1 text-sm font-bold text-slate-200">${Number(p.precio).toLocaleString('es-CO')}</p>
+              <p class="truncate text-xs text-slate-400">${escaparHtmlUI(resolverCategoriaCombo(p))}</p>
+            </div>
           </div>
           <button type="button" data-editar-tarjeta onclick="prepararEdicionProducto(${id})" aria-label="Editar ${escaparHtmlUI(p.nombre)}" aria-haspopup="dialog"></button>
-          <div class="mt-2 flex justify-between">
-          <button type="button" onclick="prepararEdicionProducto(${id})" class="relative z-10 min-h-11 px-2 font-semibold text-red-400">Editar</button>
-          <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${p.disponible === false}, this)" aria-label="${p.disponible === false ? 'Volver a ofrecer' : 'Marcar agotado'}: ${escaparHtmlUI(p.nombre)}" aria-pressed="${p.disponible !== false}" class="relative z-10 min-h-11 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold ${p.disponible === false ? 'text-amber-300' : 'text-emerald-300'}">${p.disponible === false ? 'Agotado · Activar' : 'Marcar agotado'}</button></div>
+          <div class="mt-3">
+            <button type="button" onclick="prepararEdicionProducto(${id})" class="relative z-10 min-h-11 w-full rounded-lg bg-red-800 px-3 py-2 text-sm font-semibold text-white hover:bg-red-900">Editar producto</button>
+          </div>
         </article>`;
       }).join('');
     }
