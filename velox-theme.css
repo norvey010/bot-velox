@@ -924,8 +924,12 @@ body:not(.velox-ticket) button {
 }
 
 
-/* Destaca el nombre del producto en las tarjetas de edición y borrador. */
+/* Mantén el nombre y la descripción del editor como aparecen en la carta pública. */
 #productos-body > article h3,
 #revision-menu-lista [id^="revision-nombre-"] {
-  color: var(--velox-primary) !important;
+  color: #29251F !important;
+}
+#form-producto #prod-descripcion,
+#revision-menu-lista textarea[id^="revision-descripcion-"] {
+  text-transform: lowercase !important;
 }
