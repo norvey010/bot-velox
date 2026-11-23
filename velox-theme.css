@@ -30,7 +30,7 @@
   --velox-radius-panel: .35rem 1.35rem;
   --velox-radius-card: .3rem .85rem;
   --velox-radius-control: .45rem;
-  --velox-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --velox-font: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --velox-font-display: "Space Grotesk", var(--velox-font);
   --velox-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
@@ -713,4 +713,38 @@ body:has(#tab-menu) > header > div:first-child > div:first-child { color: #fff; 
 #revision-edicion #revision-menu-lista label.text-slate-300 {
   color: #2B211B !important;
   font-weight: 600;
+}
+
+
+/* Jerarquía global de acciones: terracota relleno para avanzar y contorno para acciones secundarias. */
+body:not(.velox-ticket) :is(h1, h2, h3) {
+  font-family: var(--velox-font-display);
+  letter-spacing: -.025em;
+}
+body:not(.velox-ticket) button {
+  font-family: var(--velox-font);
+  transition: color .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+body:not(.velox-ticket) button:not([class*="bg-red-"]):not([aria-pressed]):not([aria-checked]):not([role="switch"]):not(.velox-volver):not(.velox-marca):not(.carta-miniatura):not([data-editar-tarjeta]):not([data-open-finance-view]):not(#menu-acceso-importar):not(#menu-acceso-editar):not(#togglePassword):not([data-toggle-password]):not(#producto-imagen-quitar) {
+  border: 1px solid rgb(165 61 36 / 46%) !important;
+  border-radius: 999px !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  color: var(--velox-primary) !important;
+  box-shadow: none !important;
+  font-weight: 650;
+}
+body:not(.velox-ticket) button:not([class*="bg-red-"]):not([aria-pressed]):not([aria-checked]):not([role="switch"]):not(.velox-volver):not(.velox-marca):not(.carta-miniatura):not([data-editar-tarjeta]):not([data-open-finance-view]):not(#menu-acceso-importar):not(#menu-acceso-editar):not(#togglePassword):not([data-toggle-password]):not(#producto-imagen-quitar):hover:not(:disabled) {
+  border-color: var(--velox-primary) !important;
+  background-color: rgb(165 61 36 / 7%) !important;
+  color: var(--velox-primary-hover) !important;
+}
+body:not(.velox-ticket) button:disabled {
+  opacity: .58;
+}
+body:not(.velox-ticket) button:focus-visible {
+  outline-color: var(--velox-primary);
+}
+@media (prefers-reduced-motion: reduce) {
+  body:not(.velox-ticket) button { transition: none; }
 }
