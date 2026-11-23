@@ -922,3 +922,10 @@ body:not(.velox-ticket) button {
   height: 1rem;
   flex: none;
 }
+
+
+/* Destaca el nombre del producto en las tarjetas de edición y borrador. */
+#productos-body > article h3,
+#revision-menu-lista [id^="revision-nombre-"] {
+  color: var(--velox-primary) !important;
+}
