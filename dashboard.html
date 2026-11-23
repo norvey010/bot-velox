@@ -1477,8 +1477,12 @@
         console.error('Error al crear imagen de producto:', error);
         const mensaje = error.message || 'No se pudo crear la imagen.';
         if (mensaje.toLocaleLowerCase('es').includes('añade ingredientes')) {
-          mostrarAviso(avisoFoto, mensaje, 'error', 5000);
-          avisoFoto.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          mostrarAviso(avisoFoto, 'Añade los ingredientes en Descripción y vuelve a crear la imagen.', 'error', 5000);
+          const descripcion = document.getElementById('prod-descripcion');
+          descripcion.classList.add('border-red-600', 'ring-2', 'ring-red-400');
+          descripcion.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          descripcion.focus({ preventScroll: true });
+          setTimeout(() => descripcion.classList.remove('border-red-600', 'ring-2', 'ring-red-400'), 5000);
         } else {
           mostrarAviso(estado, mensaje, 'error');
         }
@@ -2054,6 +2058,6 @@
     // Inicializar al cargar la página
     inicializarDashboard();
   </script>
-  <script src="/app.menu-import.js?v=pie-borrador-simple-20261123"></script>
+  <script src="/app.menu-import.js?v=aviso-descripcion-foto-20261123"></script>
 </body>
 </html>
