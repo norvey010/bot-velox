@@ -599,7 +599,14 @@ async function enviarMenuConIA(event) {
   event.preventDefault();
   if (leyendoMenu || publicandoMenu || consultandoLecturaMenu) return;
   if (borradorMenu?.lectura_id) {
-    estadoImportacion('Publica o descarta el borrador antes de leer otra carta.', 'info');
+    estadoImportacion('Ya tienes un borrador. Ábrelo para publicarlo o descartarlo antes de leer otra carta.', 'info');
+    const estado = document.getElementById('importacion-menu-status');
+    const irAlBorrador = document.createElement('button');
+    irAlBorrador.type = 'button';
+    irAlBorrador.className = 'mt-2 min-h-11 rounded-lg border border-current px-3 py-2 text-sm font-semibold';
+    irAlBorrador.textContent = 'Abrir borrador';
+    irAlBorrador.addEventListener('click', () => abrirCartaBorrador());
+    estado.appendChild(irAlBorrador);
     return;
   }
   const files=archivosSeleccionadosMenu();
