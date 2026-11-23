@@ -471,7 +471,6 @@ function abrirCartaBorrador(indice = null) {
   const editar = indice !== null;
   marco.hidden = editar;
   document.getElementById('revision-edicion').hidden = !editar;
-  document.getElementById('revision-carta-ayuda').hidden = editar;
   document.getElementById('revision-volver-carta').hidden = !editar;
   document.getElementById('revision-carta-ampliada-titulo').textContent = editar ? 'Editar producto' : 'Revisa tu carta';
   if (!dialogo.open) {
