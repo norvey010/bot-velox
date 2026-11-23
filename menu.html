@@ -447,7 +447,7 @@ function renderizarProductos(listaProds, mensajeVacio = 'Aún no hay productos e
                     : 'w-full bg-red-600 text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm shadow-lg shadow-red-950/30';
                 const clasePulsoEditor = window.VELOX_EDITAR_PERSONALIZACION && selectores.length ? 'velox-editor-pulso' : '';
                 accionHtml = window.VELOX_EDICION_BORRADOR
-                    ? `<span aria-hidden="true" class="${estiloAccion} text-center">Editar producto</span>`
+                    ? `<span aria-hidden="true" class="velox-borrador-editar-accion"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg><span>Editar producto</span></span>`
                     : `
                     <button type="button" data-action="personalizar" data-product-id="${escaparHtml(producto.id)}" ${cerrado ? 'disabled' : ''} class="${estiloAccion} ${clasePulsoEditor} hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 transition">
                         ${cerrado ? 'Pedidos cerrados por ahora' : textoBoton}
