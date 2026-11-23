@@ -707,3 +707,10 @@ body:has(#tab-menu) > header > div:first-child > div:first-child { color: #fff; 
   background-color: var(--velox-primary-hover, #84301C) !important;
   border-color: var(--velox-primary-hover, #84301C) !important;
 }
+
+
+/* Etiquetas de campos con contraste alto en el editor del borrador. */
+#revision-edicion #revision-menu-lista label.text-slate-300 {
+  color: #2B211B !important;
+  font-weight: 600;
+}
