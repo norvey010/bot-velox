@@ -397,25 +397,16 @@ function pendientesRevisionBorrador() {
 }
 
 function actualizarResumenRevision() {
-  const pendientes = pendientesRevisionBorrador();
-  const obligatorios = pendientes.filter(p => p.obligatorio).length;
-  const fotosPendientes = borradorMenu.productos.filter(p => !p.imagen_url && !fotosBorradorMenu.has(p)).length;
-  const precios = borradorMenu.productos.filter(p => !Number.isSafeInteger(Number(p.precio)) || Number(p.precio) <= 0 || Number(p.precio) > 100000000).length;
-  const resumen = document.getElementById('revision-resumen');
-  resumen.hidden = !obligatorios || indiceRevisionActual !== null;
-  resumen.textContent = obligatorios ? `${obligatorios} ${obligatorios === 1 ? 'producto por corregir' : 'productos por corregir'}` : '';
-  const aviso = document.getElementById('revision-bloqueos');
-  aviso.hidden = !obligatorios || indiceRevisionActual !== null;
-  aviso.textContent = precios ? `${precios} ${precios === 1 ? 'precio pendiente' : 'precios pendientes'}` : 'Completa los datos para publicar.';
-  const siguiente = document.getElementById('revision-siguiente');
-  siguiente.hidden = !obligatorios || indiceRevisionActual !== null;
-  siguiente.textContent = 'Revisar correcciones';
+  // La revisión ocurre al tocar “Publicar carta”; el pie queda despejado.
+  document.getElementById('revision-resumen').hidden = true;
+  document.getElementById('revision-resumen').textContent = '';
+  document.getElementById('revision-bloqueos').hidden = true;
+  document.getElementById('revision-bloqueos').textContent = '';
+  document.getElementById('revision-siguiente').hidden = true;
   const fotos = document.getElementById('revision-fotos-opcionales');
-  fotos.hidden = !fotosPendientes || indiceRevisionActual !== null;
-  if (!fotosPendientes) fotos.open = false;
-  document.getElementById('revision-fotos-resumen').textContent = fotosPendientes
-    ? `${fotosPendientes} ${fotosPendientes === 1 ? 'producto sin foto' : 'productos sin foto'} · Añadir fotos (opcional)` : '';
-
+  fotos.hidden = true;
+  fotos.open = false;
+  document.getElementById('revision-fotos-resumen').textContent = '';
 }
 
 let indiceRevisionActual = null;
@@ -918,7 +909,7 @@ function actualizarAccionesBorrador(accion) {
   const publicar = document.getElementById('btn-publicar-menu');
   const descartar = document.getElementById('btn-descartar-menu');
   document.getElementById('btn-completar-fotos').disabled = ocupado || !borradorMenu?.productos.length;
-  publicar.disabled = ocupado || !borradorMenu?.productos.length || borradorMenu.productos.some(productoBloqueaPublicacion);
+  publicar.disabled = ocupado || !borradorMenu?.productos.length;
   descartar.disabled = ocupado || !borradorMenu;
   publicar.textContent = accion === 'publicar' ? 'Publicando…' : 'Publicar carta';
   descartar.textContent = accion === 'descartar' ? 'Descartando…' : 'Descartar';
