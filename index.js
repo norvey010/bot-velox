@@ -1244,7 +1244,7 @@ function mensajeHorarioProximo(restaurante, ahora = new Date()) {
         const fecha = new Date(Date.UTC(2020, 0, 1, Math.floor(total / 60), total % 60));
         return new Intl.DateTimeFormat('es-CO', {
             timeZone: 'UTC', hour: 'numeric', minute: '2-digit', hour12: true
-        }).format(fecha).replace(/\\./g, '').replace(/\\s+/g, ' ').trim();
+        }).format(fecha).replace(/\\s+/g, ' ').trim();
     };
 
     for (let offset = 0; offset <= 7; offset++) {
