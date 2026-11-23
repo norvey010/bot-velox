@@ -234,12 +234,32 @@ function quitarFotoBorradorMenu(i) {
   selector.focus({ preventScroll: true });
 }
 
+function guiarDescripcionFotoBorrador(i, mensaje) {
+  const aviso = document.getElementById(`revision-foto-aviso-${i}`);
+  const descripcion = document.getElementById(`revision-descripcion-${i}`);
+  if (aviso) mostrarAviso(aviso, mensaje, 'error', 5000);
+  if (descripcion) {
+    descripcion.classList.add('border-red-600', 'ring-2', 'ring-red-400');
+    descripcion.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    descripcion.focus({ preventScroll: true });
+    setTimeout(() => descripcion.classList.remove('border-red-600', 'ring-2', 'ring-red-400'), 5000);
+  }
+}
+
 async function generarFotoBorradorMenu(i, boton) {
   const producto = borradorMenu?.productos[i];
   if (!producto || generandoFotoBorradorMenu || completandoFotosMenu || publicandoMenu) return;
   const nombre = producto.nombre.trim();
   if (!nombre) {
-    estadoProductoBorrador('Escribe el nombre del producto para crear su foto.', 'info');
+    guiarDescripcionFotoBorrador(i, 'Escribe el nombre del producto antes de crear la imagen.');
+    document.getElementById(`revision-nombre-${i}`)?.focus();
+    return;
+  }
+  const errorDatosFoto = revisarDatosFotoMenu(producto);
+  if (errorDatosFoto) {
+    guiarDescripcionFotoBorrador(i, errorDatosFoto.toLocaleLowerCase('es').includes('ingredientes')
+      ? 'Añade los ingredientes en Descripción y vuelve a crear la imagen.'
+      : errorDatosFoto);
     return;
   }
   if (!confirm('La IA creará una foto ilustrativa. Cada generación tiene un costo. ¿Continuar?')) return;
@@ -256,7 +276,14 @@ async function generarFotoBorradorMenu(i, boton) {
     seleccionarFotoBorradorMenu(i, new File([imagen], 'foto-ia.webp', { type: 'image/webp' }));
     selector.value = '';
   } catch (error) {
-    estadoProductoBorrador(error.message, 'error');
+    const mensaje = error.message || 'No se pudo crear la foto. Inténtalo de nuevo.';
+    if (mensaje.toLocaleLowerCase('es').includes('añade ingredientes')) {
+      guiarDescripcionFotoBorrador(i, 'Añade los ingredientes en Descripción y vuelve a crear la imagen.');
+    } else {
+      const aviso = document.getElementById(`revision-foto-aviso-${i}`);
+      if (aviso) mostrarAviso(aviso, mensaje, 'error', 5000);
+      else estadoProductoBorrador(mensaje, 'error');
+    }
   } finally {
     generandoFotoBorradorMenu = false;
     actualizarAccionesBorrador();
@@ -704,7 +731,7 @@ function renderizarRevisionMenu(i) {
           </div>
         <div class="mt-3 space-y-2 border-t border-slate-700 pt-3">
           <div class="grid gap-3">${campo('nombre','Nombre del producto',p.nombre,'maxlength="200"')}${campo('precio','Precio en pesos (COP)',formatearPrecioCOP(p.precio),'inputmode="numeric"')}
-            <label class="block text-xs text-slate-300">Descripción e ingredientes<textarea maxlength="5000" oninput="editarDatoBorrador(${i}, 'descripcion', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white" rows="3">${escaparHtmlUI(p.descripcion||'')}</textarea></label>
+            <label class="block text-xs text-slate-300">Descripción e ingredientes<textarea id="revision-descripcion-${i}" maxlength="5000" oninput="editarDatoBorrador(${i}, 'descripcion', this.value)" class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-sm text-white" rows="3">${escaparHtmlUI(p.descripcion||'')}</textarea></label>
             <label class="block text-xs text-slate-300">Categoría<select data-campo-revision="categoria" onchange="cambiarCategoriaBorrador(${i},this.value)" class="mt-1 w-full rounded-lg border border-slate-300 bg-[#FFFBF5] p-2 text-sm text-[#34251E]"><option value="" disabled${p.categoria ? '' : ' selected'}>Elige una categoría</option>${categoriasHtml}<option value="__nueva_categoria__">＋ Crear categoría…</option></select><input data-revision-categoria-nueva="${i}" maxlength="120" value="" placeholder="Nombre de la nueva categoría" oninput="editarDatoBorrador(${i}, 'categoria', this.value)" class="mt-2 w-full rounded-lg border border-slate-300 bg-[#FFFBF5] p-2 text-sm text-[#34251E]" hidden></label>
           </div>
           <div class="velox-foto-producto space-y-2" role="group" aria-labelledby="revision-foto-titulo">
@@ -714,6 +741,7 @@ function renderizarRevisionMenu(i) {
               <button id="revision-foto-subir" type="button" onclick="document.getElementById('revision-foto-archivo').click()" aria-controls="revision-foto-archivo">Subir foto</button>
               <button type="button" onclick="generarFotoBorradorMenu(${i}, this)">Crear con IA</button>
             </div>
+            <p id="revision-foto-aviso-${i}" class="hidden rounded-lg border px-3 py-2 text-xs" role="status" aria-live="polite"></p>
             <div id="revision-foto-controles"${foto ? '' : ' hidden'}>
               <button id="revision-foto-cambiar" type="button" aria-label="Cambiar foto" onclick="document.getElementById('revision-foto-archivo').click()" class="rounded-lg border border-slate-600 p-1">
                 <img id="revision-foto-previa"${foto ? ` src="${escaparHtmlUI(foto)}"` : ''} alt="Vista previa de la foto" width="76" height="76" class="h-[76px] w-[76px] rounded object-contain">
