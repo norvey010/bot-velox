@@ -1220,7 +1220,6 @@ async function obtenerRestaurante(phoneNumberId) {
 }
 
 function evaluarDisponibilidadMenu(restaurante, ahora = new Date()) {
-    if (restaurante?.menu_activo === false) return { disponible: false, motivo: 'Este restaurante pausó temporalmente los pedidos en línea.' };
     const horario = restaurante?.horario_atencion;
     if (!horario || horario.usar_horario !== true) return { disponible: true, motivo: '' };
 
@@ -1260,7 +1259,7 @@ function evaluarDisponibilidadMenu(restaurante, ahora = new Date()) {
     }
     return {
         disponible,
-        motivo: disponible ? '' : 'En este momento estamos fuera del horario de atención. Vuelve durante nuestro horario.'
+        motivo: disponible ? '' : 'Ahora estamos fuera del horario de atención. Puedes explorar la carta y hacer tu pedido cuando volvamos a abrir.'
     };
 }
 
