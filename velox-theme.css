@@ -745,3 +745,29 @@ body:not(.velox-ticket) button {
 #contenedor-menu .menu-product-reveal button.velox-accion-opciones:disabled {
   opacity: .58;
 }
+
+
+/* Botón de editar producto en tarjetas del borrador: mismo contorno y lápiz del editor. */
+#contenedor-menu .tarjeta-borrador-editable .velox-borrador-editar-accion {
+  display: inline-flex;
+  align-self: flex-end;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  max-width: 100%;
+  min-height: 2.5rem;
+  padding: .5rem 1rem;
+  border: 1px solid var(--velox-primary);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--velox-primary);
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+#contenedor-menu .tarjeta-borrador-editable .velox-borrador-editar-accion svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
