@@ -70,7 +70,7 @@ const cachePortadasCarta = new Map();
 async function obtenerMiniaturaCarta(slug) {
     const db = supabaseAdmin || supabase;
     const {data: restaurante, error} = await db.from('restaurantes')
-        .select('id,slug,nombre_restaurante,telefono,menu_activo,horario_atencion').eq('slug',slug).maybeSingle();
+        .select('id,slug,nombre_restaurante,logo_url,telefono,menu_activo,horario_atencion').eq('slug',slug).maybeSingle();
     if (error) throw error;
     if (!restaurante) return null;
     const {data: productos, error: errorProductos} = await db.from('productos')
@@ -1820,7 +1820,7 @@ app.get('/api/menu/:slug', async (req, res) => {
 
         const { data: restaurante, error: errorRestaurante } = await supabaseAdmin
             .from('restaurantes')
-            .select('id, slug, nombre_restaurante, telefono, menu_activo, horario_atencion')
+            .select('id, slug, nombre_restaurante, logo_url, telefono, menu_activo, horario_atencion')
             .eq('slug', slug)
             .maybeSingle();
         if (errorRestaurante) throw errorRestaurante;
