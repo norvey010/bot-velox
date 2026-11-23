@@ -1276,6 +1276,10 @@
       }
     }
 
+    document.getElementById('prod-categoria-opciones').addEventListener('click', event => {
+      const opcion = event.target.closest('[data-categoria-opcion]');
+      if (opcion) seleccionarCategoriaVelox(opcion.dataset.categoriaOpcion);
+    });
     document.getElementById('prod-categoria-sheet').addEventListener('click', event => {
       if (event.target === event.currentTarget) cerrarSelectorCategoria();
     });
