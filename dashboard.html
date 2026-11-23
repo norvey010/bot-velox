@@ -1827,20 +1827,20 @@
         const guardado = diasGuardados[dia.id] || {};
         return `<div class="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-2 py-2">
           <label class="flex min-w-[66px] items-center gap-1.5 text-xs font-semibold text-slate-200"><input type="checkbox" data-horario-dia="${dia.id}" ${guardado.abierto === true ? 'checked' : ''} class="h-4 w-4 accent-red-600"><span>${dia.corto}</span></label>
-          <label class="min-w-0 text-[10px] text-slate-400">Abre<input type="time" data-horario-desde="${dia.id}" value="${/^\d{2}:\d{2}$/.test(guardado.desde || '') ? guardado.desde : '09:00'}" class="mt-1 w-full rounded-md border border-slate-700 bg-[#F6EFE5] px-1.5 py-1 text-xs text-white"></label>
-          <label class="min-w-0 text-[10px] text-slate-400">Cierra<input type="time" data-horario-hasta="${dia.id}" value="${/^\d{2}:\d{2}$/.test(guardado.hasta || '') ? guardado.hasta : '21:00'}" class="mt-1 w-full rounded-md border border-slate-700 bg-[#F6EFE5] px-1.5 py-1 text-xs text-white"></label>
+          <label class="min-w-0 text-[10px] text-slate-400">Abre<input type="time" data-horario-desde="${dia.id}" value="${/^\d{2}:\d{2}$/.test(guardado.desde || '') ? guardado.desde : '09:00'}" class="mt-1 w-full rounded-md border border-slate-700 bg-[#F6EFE5] px-1.5 py-1 text-xs text-[#2B211C]"></label>
+          <label class="min-w-0 text-[10px] text-slate-400">Cierra<input type="time" data-horario-hasta="${dia.id}" value="${/^\d{2}:\d{2}$/.test(guardado.hasta || '') ? guardado.hasta : '21:00'}" class="mt-1 w-full rounded-md border border-slate-700 bg-[#F6EFE5] px-1.5 py-1 text-xs text-[#2B211C]"></label>
         </div>`;
       }).join('');
       actualizarCamposHorarioMenu();
     }
 
     function actualizarCamposHorarioMenu() {
-      const usarHorario = document.getElementById('horario-usar').checked;
       DIAS_HORARIO_MENU.forEach(dia => {
-        const habilitado = usarHorario && document.querySelector(`[data-horario-dia="${dia.id}"]`).checked;
-        document.querySelector(`[data-horario-dia="${dia.id}"]`).disabled = !usarHorario;
-        document.querySelector(`[data-horario-desde="${dia.id}"]`).disabled = !habilitado;
-        document.querySelector(`[data-horario-hasta="${dia.id}"]`).disabled = !habilitado;
+        const selectorDia = '[data-horario-dia="' + dia.id + '"]';
+        const diaAbierto = document.querySelector(selectorDia).checked;
+        document.querySelector(selectorDia).disabled = false;
+        document.querySelector('[data-horario-desde="' + dia.id + '"]').disabled = !diaAbierto;
+        document.querySelector('[data-horario-hasta="' + dia.id + '"]').disabled = !diaAbierto;
       });
     }
 
