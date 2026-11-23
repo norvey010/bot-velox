@@ -724,3 +724,24 @@ body:not(.velox-ticket) :is(h1, h2, h3) {
 body:not(.velox-ticket) button {
   font-family: var(--velox-font);
 }
+
+
+/* Botones de elección de opciones: contorno terracota; agregar conserva prioridad. */
+#contenedor-menu .menu-product-reveal button.velox-accion-opciones {
+  color: var(--velox-primary) !important;
+  background: var(--velox-inset) !important;
+  border: 1px solid var(--velox-primary) !important;
+  box-shadow: none !important;
+}
+#contenedor-menu .menu-product-reveal button.velox-accion-opciones:hover:not(:disabled) {
+  color: var(--velox-primary-hover) !important;
+  background: #F8E9DF !important;
+  border-color: var(--velox-primary-hover) !important;
+}
+#contenedor-menu .menu-product-reveal button.velox-accion-opciones:focus-visible {
+  outline: 2px solid var(--velox-primary) !important;
+  outline-offset: 2px;
+}
+#contenedor-menu .menu-product-reveal button.velox-accion-opciones:disabled {
+  opacity: .58;
+}
