@@ -1121,16 +1121,16 @@
           <div class="flex items-stretch gap-3">
             ${foto ? `<img src="${escaparHtmlUI(foto)}" alt="${escaparHtmlUI(p.nombre)}" loading="lazy" width="220" height="220" class="aspect-square w-[36%] max-w-56 shrink-0 rounded-lg object-cover">` : '<div class="flex aspect-square w-[36%] max-w-56 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-center text-sm text-slate-400">Sin foto</div>'}
             <div class="flex min-w-0 flex-1 flex-col">
-              <div class="flex items-start justify-between gap-2">
-                <h3 class="min-w-0 flex-1 break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre)}</h3>
+              <h3 class="break-words text-base font-bold text-white">${escaparHtmlUI(p.nombre)}</h3>
+              ${descripcion ? `<p class="mt-1 text-sm leading-5 text-slate-400" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${escaparHtmlUI(descripcion)}</p>` : ''}
+              <div class="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-2">
+                <p class="text-base font-bold text-slate-200">$${Number(p.precio).toLocaleString('es-CO')}</p>
                 <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${agotado}, this)" aria-label="Cambiar estado de ${escaparHtmlUI(p.nombre)}. Actualmente ${agotado ? 'agotado' : 'disponible'}" aria-pressed="${!agotado}" class="relative z-10 inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${agotado ? 'border-amber-700 text-amber-800' : 'border-emerald-700 text-emerald-800'}">
                   <span aria-hidden="true" class="h-2 w-2 rounded-full ${agotado ? 'bg-amber-700' : 'bg-emerald-700'}"></span>
                   ${agotado ? 'Agotado' : 'Disponible'}
                   <span aria-hidden="true" class="text-[10px]">⌄</span>
                 </button>
               </div>
-              ${descripcion ? `<p class="mt-1 text-sm leading-5 text-slate-400" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${escaparHtmlUI(descripcion)}</p>` : ''}
-              <p class="mt-auto pt-2 text-base font-bold text-slate-200">$${Number(p.precio).toLocaleString('es-CO')}</p>
               <button type="button" onclick="prepararEdicionProducto(${id})" style="background-color:#A53D24;color:#fff" aria-label="Editar ${escaparHtmlUI(p.nombre)}" aria-haspopup="dialog" class="relative z-10 mt-2 min-h-11 w-full rounded-lg px-2 py-2 text-sm font-semibold hover:brightness-90">Editar producto</button>
             </div>
           </div>
