@@ -194,6 +194,7 @@ function renderizar(data) {
 }
 function renderizarCategorias(categorias) {
   const contenedor = $('gastos-categorias');
+  if (!contenedor) return;
   const filas = Object.entries(categorias);
   if (!filas.length) {
     contenedor.textContent = 'Aún no hay gastos registrados en este período.';
@@ -217,6 +218,7 @@ function renderizarCategorias(categorias) {
 }
 function renderizarMovimientos(movimientos, restaurantes) {
   const tbody = $('movimientos-body');
+  if (!tbody) return;
   const porId = new Map(restaurantes.map(r => [r.restaurante_id, r.restaurante]));
   if (!movimientos.length) return filaVacia(tbody, 6, 'Todavía no hay movimientos en este período.');
   const fragmento = document.createDocumentFragment();
@@ -1087,7 +1089,8 @@ $('tasa-form').addEventListener('submit', async event => {
     $('tasa-guardar').disabled = false;
   }
 });
-$('movimientos-body').addEventListener('click', async event => {
+const movimientosBody = $('movimientos-body');
+if (movimientosBody) movimientosBody.addEventListener('click', async event => {
   const boton = event.target.closest('[data-anular]');
   if (!boton) return;
   if (!window.confirm('¿Anular este movimiento? Se conservará en el historial, pero dejará de afectar los totales.')) return;
