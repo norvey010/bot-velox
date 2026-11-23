@@ -151,10 +151,13 @@
 
     <!-- HEADER -->
     <header class="bg-[#F6EFE5]/95 border-b border-red-950/80 p-4 sticky top-0 z-40 shadow-[0_8px_30px_rgba(0,0,0,.28)] backdrop-blur-xl">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div>
+        <div id="marca-restaurante" class="max-w-7xl mx-auto flex items-center justify-between">
+            <div id="identidad-restaurante" class="min-w-0">
+                <div id="marco-logo-restaurante" class="hidden mb-3 inline-flex max-w-full items-center justify-center rounded-2xl border border-[#D9C7B4] bg-[#FFF8EF]/90 px-4 py-2 shadow-sm">
+                    <img id="logo-restaurante" alt="" class="max-h-16 max-w-[min(180px,70vw)] object-contain" loading="eager" decoding="async">
+                </div>
                 <h1 id="nombre-restaurante" class="text-xl font-bold text-white" aria-live="polite"></h1>
-                <p class="text-xs text-white flex items-center gap-1">
+                <p id="estado-pedidos-directos" class="text-xs text-white flex items-center gap-1">
                     <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     Pedidos directos a cocina
                 </p>
@@ -330,6 +333,34 @@ function mostrarCartaMenu(restData, productos) {
     }
     var elNombre = document.getElementById('nombre-restaurante');
     if (elNombre) elNombre.innerText = restData.nombre_restaurante;
+    const marcoLogo = document.getElementById('marco-logo-restaurante');
+    const imagenLogo = document.getElementById('logo-restaurante');
+    const marcaRestaurante = document.getElementById('marca-restaurante');
+    const identidadRestaurante = document.getElementById('identidad-restaurante');
+    const urlLogo = String(restData.logo_url || '').trim();
+    let logoValido = false;
+    try {
+        const urlValidada = new URL(urlLogo, window.location.origin);
+        logoValido = ['http:', 'https:'].includes(urlValidada.protocol);
+        if (logoValido) imagenLogo.src = urlValidada.href;
+    } catch {}
+    if (logoValido) {
+        imagenLogo.alt = `Logo de ${restData.nombre_restaurante || 'Restaurante'}`;
+        marcoLogo.classList.remove('hidden');
+        marcaRestaurante.classList.remove('justify-between');
+        marcaRestaurante.classList.add('justify-center');
+        identidadRestaurante.classList.add('flex', 'flex-col', 'items-center', 'text-center');
+        document.getElementById('estado-pedidos-directos').classList.add('justify-center');
+        if (avisoServicio) avisoServicio.classList.add('mx-auto');
+    } else {
+        marcoLogo.classList.add('hidden');
+        imagenLogo.removeAttribute('src');
+        marcaRestaurante.classList.add('justify-between');
+        marcaRestaurante.classList.remove('justify-center');
+        identidadRestaurante.classList.remove('flex', 'flex-col', 'items-center', 'text-center');
+        document.getElementById('estado-pedidos-directos').classList.remove('justify-center');
+        if (avisoServicio) avisoServicio.classList.remove('mx-auto');
+    }
     document.title = `Carta digital de ${restData.nombre_restaurante || 'Restaurante'}`;
 
     todosLosProductos = productos.map(producto => ({
