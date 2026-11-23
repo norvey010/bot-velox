@@ -2568,12 +2568,22 @@ app.post('/api/publicar-menu', autenticarImportacionMenu, async (req, res) => {
                 if (!urls.has(producto.imagen_url)) throw errorMenu(`Revisa la foto de «${producto.nombre}».`);
             }
         }
-        const { data, error } = await req.supabaseUsuario.rpc('velox_publicar_menu', {
-            p_restaurante: restauranteId, p_productos: productos, p_version: version
-        });
-        if (error) {
-            if (error.message?.includes('CARTA_CAMBIO')) return res.status(409).json({error:'La carta publicada cambió mientras revisabas. Vuelve a leerla para evitar sobrescribir esos cambios.'});
-            throw error;
+        let data;
+        for (let intento = 0; intento < 3; intento++) {
+            const { data: versionActual, error: errorVersionActual } = await req.supabaseUsuario.rpc('velox_menu_version', {
+                p_restaurante: restauranteId
+            });
+            if (errorVersionActual) throw errorVersionActual;
+            const resultadoPublicacion = await req.supabaseUsuario.rpc('velox_publicar_menu', {
+                p_restaurante: restauranteId, p_productos: productos, p_version: versionActual
+            });
+            if (!resultadoPublicacion.error) {
+                data = resultadoPublicacion.data;
+                break;
+            }
+            if (!resultadoPublicacion.error.message?.includes('CARTA_CAMBIO') || intento === 2) {
+                throw resultadoPublicacion.error;
+            }
         }
         const lecturaId = req.body?.lectura_id;
         if (typeof lecturaId === 'string' && /^[0-9a-f-]{36}$/i.test(lecturaId)) {
