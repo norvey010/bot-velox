@@ -453,8 +453,12 @@
       </div>
       <div id="prod-categoria-panel" class="sm:col-span-2">
         <input type="hidden" id="prod-categoria" value="General">
-        <label for="prod-categoria-selector">Categoría</label>
-        <select id="prod-categoria-selector" onchange="cambiarCategoriaProducto(this.value)" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white"></select>
+        <span id="prod-categoria-label" class="mb-1 block">Categoría</span>
+        <button type="button" id="prod-categoria-trigger" onclick="abrirSelectorCategoria()" aria-haspopup="dialog" aria-controls="prod-categoria-sheet" aria-expanded="false" class="velox-categoria-trigger">
+          <span id="prod-categoria-trigger-valor">General</span>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <select id="prod-categoria-selector" onchange="cambiarCategoriaProducto(this.value)" hidden aria-hidden="true" tabindex="-1"></select>
         <div id="prod-categoria-nueva-panel" hidden>
           <label for="prod-categoria-nueva" class="block mt-2 text-sm">Nueva categoría</label>
           <input id="prod-categoria-nueva" maxlength="120" placeholder="Ej: Postres" oninput="asignarCategoriaProducto(this.value)" class="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white">
@@ -500,6 +504,18 @@
         <button id="btn-guardar-producto" type="submit" class="min-h-11 w-full rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto">Guardar producto</button>
       </div>
     </form>
+    <dialog id="prod-categoria-sheet" class="velox-categoria-dialog" aria-labelledby="prod-categoria-sheet-titulo">
+      <header class="velox-categoria-dialog-header">
+        <h2 id="prod-categoria-sheet-titulo">Elige una categoría</h2>
+        <button type="button" onclick="cerrarSelectorCategoria()" aria-label="Cerrar categorías" class="velox-categoria-cerrar">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <div id="prod-categoria-opciones" class="velox-categoria-opciones" role="radiogroup" aria-labelledby="prod-categoria-sheet-titulo"></div>
+      <footer class="velox-categoria-dialog-footer">
+        <button type="button" onclick="seleccionarCategoriaVelox('__nueva__')" class="velox-categoria-nueva">＋ Nueva categoría</button>
+      </footer>
+    </dialog>
   </dialog>
   <dialog id="carta-ampliada" aria-labelledby="carta-ampliada-titulo">
     <div class="flex items-center justify-between gap-3 border-b border-slate-700 p-3">
@@ -1190,23 +1206,82 @@
       const existente = productosEditor.find(p => String(p.categoria || '').trim().toLocaleLowerCase('es') === categoria.toLocaleLowerCase('es'));
       const elegida = existente ? existente.categoria.trim() : categoria;
       document.getElementById('prod-categoria').value = elegida;
+      const etiqueta = document.getElementById('prod-categoria-trigger-valor');
+      if (etiqueta) etiqueta.textContent = elegida;
+    }
+
+    function actualizarOpcionesCategoriaVelox(actual) {
+      const selector = document.getElementById('prod-categoria-selector');
+      const lista = document.getElementById('prod-categoria-opciones');
+      if (!selector || !lista) return;
+      const categorias = [...selector.options].filter(opcion => opcion.value !== '__nueva__');
+      lista.innerHTML = categorias.map(opcion => `<button type="button" role="radio" aria-checked="${opcion.value === actual}" data-categoria-opcion="${escaparHtmlUI(opcion.value)}" class="velox-categoria-opcion"><span aria-hidden="true" class="velox-categoria-radio"></span><span>${escaparHtmlUI(opcion.textContent)}</span></button>`).join('');
+      const etiqueta = document.getElementById('prod-categoria-trigger-valor');
+      if (etiqueta) etiqueta.textContent = actual || 'General';
+    }
+
+    function abrirSelectorCategoria() {
+      const panel = document.getElementById('prod-categoria-sheet');
+      if (!panel || panel.open) return;
+      const categoria = document.getElementById('prod-categoria').value || 'General';
+      actualizarOpcionesCategoriaVelox(categoria);
+      panel.showModal();
+      document.getElementById('prod-categoria-trigger').setAttribute('aria-expanded', 'true');
+      panel.querySelector('.velox-categoria-cerrar').focus();
+    }
+
+    function cerrarSelectorCategoria() {
+      const panel = document.getElementById('prod-categoria-sheet');
+      if (panel?.open) panel.close();
+      document.getElementById('prod-categoria-trigger')?.setAttribute('aria-expanded', 'false');
+    }
+
+    function seleccionarCategoriaVelox(valor) {
+      const selector = document.getElementById('prod-categoria-selector');
+      if (valor === '__nueva__') {
+        selector.value = valor;
+        cerrarSelectorCategoria();
+        cambiarCategoriaProducto(valor);
+        document.getElementById('prod-categoria-trigger-valor').textContent = 'Nueva categoría';
+        return;
+      }
+      selector.value = valor;
+      cambiarCategoriaProducto(valor);
+      cerrarSelectorCategoria();
+      actualizarOpcionesCategoriaVelox(valor);
     }
 
     function prepararCategoriaProducto(categoria) {
       const actual = String(categoria || '').trim() || 'General';
       asignarCategoriaProducto(actual);
       const categorias = [...new Set([actual, ...productosEditor.map(p => String(p.categoria || '').trim()).filter(Boolean)])];
-      document.getElementById('prod-categoria-selector').innerHTML = categorias.map(c => `<option value="${escaparHtmlUI(c)}"${c === actual ? ' selected' : ''}>${escaparHtmlUI(c)}</option>`).join('') + '<option value="__nueva__">+ Nueva categoría</option>';
+      const selector = document.getElementById('prod-categoria-selector');
+      selector.innerHTML = categorias.map(c => `<option value="${escaparHtmlUI(c)}"${c === actual ? ' selected' : ''}>${escaparHtmlUI(c)}</option>`).join('') + '<option value="__nueva__">+ Nueva categoría</option>';
+      selector.value = actual;
+      actualizarOpcionesCategoriaVelox(actual);
       document.getElementById('prod-categoria-nueva').value = '';
       document.getElementById('prod-categoria-nueva-panel').hidden = true;
+      document.getElementById('prod-categoria-trigger-valor').textContent = actual;
     }
 
     function cambiarCategoriaProducto(valor) {
       const nueva = valor === '__nueva__';
       document.getElementById('prod-categoria-nueva-panel').hidden = !nueva;
-      if (nueva) document.getElementById('prod-categoria-nueva').focus();
-      else asignarCategoriaProducto(valor);
+      if (nueva) {
+        document.getElementById('prod-categoria-trigger-valor').textContent = 'Nueva categoría';
+        document.getElementById('prod-categoria-nueva').focus();
+      } else {
+        asignarCategoriaProducto(valor);
+        actualizarOpcionesCategoriaVelox(valor);
+      }
     }
+
+    document.getElementById('prod-categoria-sheet').addEventListener('click', event => {
+      if (event.target === event.currentTarget) cerrarSelectorCategoria();
+    });
+    document.getElementById('prod-categoria-sheet').addEventListener('close', () => {
+      document.getElementById('prod-categoria-trigger')?.setAttribute('aria-expanded', 'false');
+    });
 
     function actualizarEstadoGuardarProducto() {
       const boton=document.getElementById('btn-guardar-producto');
