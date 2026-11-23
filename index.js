@@ -1219,6 +1219,47 @@ async function obtenerRestaurante(phoneNumberId) {
     return restaurante;
 }
 
+function mensajeHorarioProximo(restaurante, ahora = new Date()) {
+    const horario = restaurante?.horario_atencion;
+    if (!horario || horario.usar_horario !== true) return 'Horario de atención no configurado.';
+
+    const partes = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Bogota', weekday: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(ahora).reduce((resultado, parte) => {
+        if (parte.type !== 'literal') resultado[parte.type] = parte.value;
+        return resultado;
+    }, {});
+    const dias = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const diasEspanol = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const indiceHoy = dias.indexOf(String(partes.weekday || '').toLowerCase());
+    const minutoActual = Number(partes.hour) * 60 + Number(partes.minute);
+    const leerMinutos = valor => {
+        const coincidencia = String(valor || '').match(/^(\\d{2}):(\\d{2})$/);
+        if (!coincidencia) return null;
+        const hora = Number(coincidencia[1]);
+        const minuto = Number(coincidencia[2]);
+        return hora < 24 && minuto < 60 ? hora * 60 + minuto : null;
+    };
+    const mostrarHora = total => {
+        const fecha = new Date(Date.UTC(2020, 0, 1, Math.floor(total / 60), total % 60));
+        return new Intl.DateTimeFormat('es-CO', {
+            timeZone: 'UTC', hour: 'numeric', minute: '2-digit', hour12: true
+        }).format(fecha).replace(/\\./g, '').replace(/\\s+/g, ' ').trim();
+    };
+
+    for (let offset = 0; offset <= 7; offset++) {
+        const indice = (indiceHoy + offset) % 7;
+        const config = horario.dias?.[dias[indice]];
+        if (!config?.abierto) continue;
+        const inicio = leerMinutos(config.desde);
+        const fin = leerMinutos(config.hasta);
+        if (inicio === null || fin === null || inicio === fin) continue;
+        if (offset === 0 && inicio <= minutoActual) continue;
+        return `Horario de atención: ${diasEspanol[indice]}, ${mostrarHora(inicio)} a ${mostrarHora(fin)}.`;
+    }
+    return 'Horario de atención no configurado.';
+}
+
 function evaluarDisponibilidadMenu(restaurante, ahora = new Date()) {
     const horario = restaurante?.horario_atencion;
     if (!horario || horario.usar_horario !== true) return { disponible: true, motivo: '' };
@@ -1259,7 +1300,7 @@ function evaluarDisponibilidadMenu(restaurante, ahora = new Date()) {
     }
     return {
         disponible,
-        motivo: disponible ? '' : 'Ahora estamos fuera del horario de atención. Puedes explorar la carta y hacer tu pedido cuando volvamos a abrir.'
+        motivo: disponible ? '' : mensajeHorarioProximo(restaurante, ahora)
     };
 }
 
