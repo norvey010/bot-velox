@@ -908,3 +908,17 @@ body:not(.velox-ticket) button {
     max-height: 88dvh;
   }
 }
+
+
+/* Icono del lápiz en la acción de edición de opciones. */
+#contenedor-menu .menu-product-reveal .velox-opciones-accion-con-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+}
+#contenedor-menu .menu-product-reveal .velox-opciones-accion-con-icono svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
