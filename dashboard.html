@@ -1122,7 +1122,6 @@
         const id = escaparHtmlUI(JSON.stringify(String(p.id)));
         let foto = '';
         try { const url = new URL(p.imagen_url); if (['https:', 'http:'].includes(url.protocol)) foto = url.href; } catch {}
-        const agotado = p.disponible === false;
         const descripcion = String(p.descripcion || '').trim();
         return `<article class="relative rounded-lg border border-slate-700 bg-slate-900 p-3">
           <div class="flex items-stretch gap-3">
@@ -1133,14 +1132,7 @@
             <div class="flex min-w-0 flex-1 flex-col self-stretch">
               <h3 class="break-words text-base font-bold text-white">${escaparHtmlUI(p.nombre)}</h3>
               ${descripcion ? `<p class="mt-1 text-sm leading-5 text-slate-400" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden">${escaparHtmlUI(descripcion)}</p>` : ''}
-              <div class="mt-auto grid grid-cols-[minmax(0,1fr)_8.5rem] items-center gap-2 pt-2">
-                <p class="text-base font-bold text-slate-200">$${Number(p.precio).toLocaleString('es-CO')}</p>
-                <button type="button" onclick="cambiarDisponibilidadProducto(${id}, ${agotado}, this)" aria-label="Cambiar estado de ${escaparHtmlUI(p.nombre)}. Actualmente ${agotado ? 'agotado' : 'disponible'}" aria-pressed="${!agotado}" class="relative z-10 inline-flex min-h-8 w-[8.5rem] shrink-0 items-center justify-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${agotado ? 'border-amber-700 text-amber-800' : 'border-emerald-700 text-emerald-800'}">
-                  <span aria-hidden="true" class="h-2 w-2 rounded-full ${agotado ? 'bg-amber-700' : 'bg-emerald-700'}"></span>
-                  ${agotado ? 'Agotado' : 'Disponible'}
-                  <span aria-hidden="true" class="text-[10px]">⌄</span>
-                </button>
-              </div>
+              <p class="mt-auto pt-2 text-base font-bold text-slate-200">$${Number(p.precio).toLocaleString('es-CO')}</p>
             </div>
           </div>
           <button type="button" data-editar-tarjeta onclick="prepararEdicionProducto(${id})" aria-label="Editar ${escaparHtmlUI(p.nombre)}" aria-haspopup="dialog"></button>
