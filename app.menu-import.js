@@ -410,8 +410,7 @@ function cargarVistaClientesBorrador(marco) {
 
 function productoBloqueaPublicacion(p) {
   const precio = Number(p.precio);
-  return p.revision_opciones || opcionesBorradorIncompletas(p)
-    || !p.nombre.trim() || !p.categoria.trim()
+  return !p.nombre.trim() || !p.categoria.trim()
     || !Number.isSafeInteger(precio) || precio <= 0 || precio > 100000000;
 }
 
@@ -725,7 +724,6 @@ function renderizarRevisionMenu(i) {
           <div class="min-w-0">
             <strong id="revision-nombre-${i}" class="block break-words text-sm font-bold text-white">${escaparHtmlUI(p.nombre || 'Producto sin nombre')}</strong>
             <span id="revision-precio-${i}" class="block text-sm font-bold text-slate-200">${escaparHtmlUI(precioProductoBorrador(p))}</span>
-            ${p.revision_opciones ? '<span class="block text-xs font-semibold text-amber-300">Revisar opciones</span>' : ''}
             <span id="revision-categoria-${i}" class="block break-words text-xs text-slate-400">${escaparHtmlUI(categoria)}</span>
           </div>
         <div class="mt-3 space-y-2 border-t border-slate-700 pt-3">
@@ -751,9 +749,7 @@ function renderizarRevisionMenu(i) {
           <section class="velox-editor-personalizacion mt-4 rounded-xl border border-[#D7C2AD] bg-[#FFFBF5] p-3 text-[#34251E]" id="revision-opciones-${i}">
             <h3 class="text-base font-bold">Personalizar este producto</h3>
             <p class="mt-1 text-sm text-[#76695F]">Puedes crear variantes para tu producto, como sabores o tamaños.</p>
-            ${p.revision_opciones ? '<p class="mt-3 rounded-lg border border-amber-700 bg-amber-950/40 p-2 text-xs text-amber-200">Revisa que las opciones coincidan con la descripción del producto.</p>' : ''}
             ${gruposParecidosCliente(p.opciones).map(([a,b])=>`<p class="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">¿«${escaparHtmlUI(a)}» y «${escaparHtmlUI(b)}» son el mismo grupo? Revisa sus nombres.</p>`).join('')}
-            ${p.revision_opciones ? `<button type="button" onclick="confirmarOpcionesBorrador(${i})" class="mt-2 min-h-11 px-2 text-xs text-emerald-300">Confirmar revisión</button>` : ''}
             <div id="revision-elecciones-previa-${i}" class="mt-3">${crearVistaProductoCliente({...p, imagen_url:foto},`borrador-${i}`)}</div>
           </section>
           <button type="button" onclick="quitarProductoBorrador(${i})" class="min-h-11 px-2 text-xs text-red-300">Eliminar del borrador</button>
@@ -983,23 +979,17 @@ async function publicarMenuRevisado(event) {
   if (invalido >= 0) {
     const producto = borradorMenu.productos[invalido];
     abrirCartaBorrador(invalido);
-    if (producto.revision_opciones || opcionesBorradorIncompletas(producto)) {
-      document.getElementById(`revision-opciones-${invalido}`).open = true;
-      estadoProductoBorrador(`Revisa las opciones de «${producto.nombre}» antes de publicar.`, 'error');
-    } else {
-      estadoProductoBorrador(`Revisa nombre, categoría y precio del producto ${invalido + 1}.`, 'error');
-    }
+    estadoProductoBorrador(`Revisa nombre, categoría y precio del producto ${invalido + 1}.`, 'error');
     return;
   }
-  const parecidos=borradorMenu.productos.flatMap(p=>gruposParecidosCliente(p.opciones).map(([a,b])=>`«${p.nombre}»: «${a}» y «${b}»`));
-  if(parecidos.length && !confirm('Hay grupos con nombres parecidos:\n'+parecidos.slice(0,10).join('\n')+'\n¿Son grupos distintos? Aceptar: publicar separados. Cancelar: revisar.')) return;
   publicandoMenu=true;
   actualizarAccionesBorrador('publicar');
   document.getElementById('revision-menu').setAttribute('inert','');
   try {
     const token=await sesionImportacion();
     await prepararFotosParaPublicarMenu();
-    const respuesta=await fetch('/api/publicar-menu',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(borradorMenu)});
+    const cartaPublicar = {...borradorMenu, productos: borradorMenu.productos.map(producto => ({...producto, revision_opciones:false, opciones:(producto.opciones||[]).filter(opcion => String(opcion.grupo||'').trim() && String(opcion.nombre||'').trim())}))};
+    const respuesta=await fetch('/api/publicar-menu',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(cartaPublicar)});
     const resultado=await respuesta.json().catch(()=>({}));
     if(!respuesta.ok || !resultado.success)throw new Error(resultado.error || 'No se pudo publicar. Revisa tu carta publicada antes de reintentar.');
     olvidarBorradorMenu();
