@@ -52,6 +52,12 @@
         transform: translate3d(0, 0, 0);
         will-change: transform;
     }
+    #marca-restaurante { position: relative; }
+    .velox-cultural-art { position:absolute; z-index:0; top:.25rem; width:clamp(82px,22vw,160px); height:auto; color:#9A7135; opacity:.78; pointer-events:none; }
+    .velox-cultural-art-left { left:-.45rem; }
+    .velox-cultural-art-right { right:-.45rem; }
+    #identidad-restaurante { position:relative; z-index:1; }
+    @media (max-width:420px) { .velox-cultural-art { width:26vw; opacity:.72; } }
     #nombre-restaurante:empty { display: none; }
     /* Ocultar barra de desplazamiento en la barra de categorías */
     .carta-categorias-marco {
@@ -153,6 +159,32 @@
     <!-- HEADER -->
     <header class="bg-[#F6EFE5]/95 border-b border-red-950/80 p-4 sticky top-0 z-40 shadow-[0_8px_30px_rgba(0,0,0,.28)] backdrop-blur-xl">
         <div id="marca-restaurante" class="max-w-7xl mx-auto flex items-center justify-between">
+            <svg class="velox-cultural-art velox-cultural-art-left" viewBox="0 0 180 90" fill="none" aria-hidden="true">
+              <g stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 58c12-3 26-8 39-8 15 0 25 8 40 8 9 0 17-2 25-6"/>
+                <path d="M20 49c10-13 25-21 40-21 17 0 29 10 37 22"/>
+                <path d="M34 46c5-11 15-17 26-17 12 0 21 6 27 17"/>
+                <path d="M31 45c4 9 15 15 29 15 15 0 26-5 32-14"/>
+                <path d="M41 40h40M39 45h45"/>
+                <path d="M33 44l5 4 5-4 5 4 5-4 5 4 5-4 5 4 5-4 5 4 5-4"/>
+                <path d="M96 45h18v-9h17v-9h31"/>
+                <path d="M100 53h22v9h16v8h24"/>
+                <path d="M111 45h12v-7h13"/><circle cx="166" cy="27" r="2.8"/><circle cx="162" cy="70" r="2.8"/>
+                <rect x="129" y="22" width="13" height="13" rx="2"/><path d="M132 19v3m4-3v3m4-3v3m-11 3h-3m3 4h-3m3 4h-3m16-8h3m-3 4h3m-3 4h3"/>
+              </g>
+            </svg>
+            <svg class="velox-cultural-art velox-cultural-art-right" viewBox="0 0 180 90" fill="none" aria-hidden="true">
+              <g stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 65c25-3 37-16 57-15 17 0 25 9 42 8 23-1 38-18 75-19"/>
+                <path d="M4 72c22-3 37-13 55-12 19 0 29 10 47 9 26-1 42-17 70-18"/>
+                <path d="m42 59 19-19 13 12 19-27 17 21 15-15 24 24"/>
+                <path d="M56 45 61 40l13 12m5-3 14-20 17 21m3 0 15-15 17 16"/>
+                <path d="M94 25v-9h22"/><path d="M122 46v-20h20"/><path d="M62 40V20h-18"/>
+                <circle cx="116" cy="16" r="3"/><circle cx="142" cy="26" r="3"/><circle cx="44" cy="20" r="3"/>
+                <circle cx="95" cy="25" r="2.5"/><circle cx="62" cy="40" r="2.5"/>
+                <path d="M145 55h23v-8h10"/>
+              </g>
+            </svg>
             <div id="identidad-restaurante" class="min-w-0">
                 <div id="marco-logo-restaurante" class="hidden mb-2 flex w-full justify-center" >
                     <img id="logo-restaurante" alt="" class="block max-w-[min(144px,48vw)] object-contain" style="max-height:52px;max-width:min(144px,48vw);width:auto;height:auto;mix-blend-mode:multiply;" loading="eager" decoding="async">
