@@ -10,7 +10,6 @@
     <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/logo-lineal.js?v=20261123-1"></script>
     <style>
     @keyframes velox-editor-pulso {
       0%, 100% { box-shadow: 0 0 0 0 rgba(220, 75, 55, 0), 0 10px 18px rgba(120, 35, 20, .18); transform: scale(1); }
@@ -152,13 +151,10 @@
 
     <!-- HEADER -->
     <header class="bg-[#F6EFE5]/95 border-b border-red-950/80 p-4 sticky top-0 z-40 shadow-[0_8px_30px_rgba(0,0,0,.28)] backdrop-blur-xl">
-        <div id="marca-restaurante" class="max-w-7xl mx-auto flex items-center justify-between">
-            <div id="identidad-restaurante" class="min-w-0">
-                <div id="marco-logo-restaurante" class="hidden mb-2 flex w-full justify-center" >
-                    <img id="logo-restaurante" alt="" class="block max-w-[min(144px,48vw)] object-contain" style="max-height:52px;max-width:min(144px,48vw);width:auto;height:auto;mix-blend-mode:multiply;" loading="eager" decoding="async">
-                </div>
+        <div id="marca-restaurante" class="max-w-7xl mx-auto flex items-center justify-center">
+            <div id="identidad-restaurante" class="min-w-0 flex flex-col items-center text-center">
                 <h1 id="nombre-restaurante" class="text-xl font-bold text-white" aria-live="polite"></h1>
-                <p id="estado-pedidos-directos" class="text-xs text-white flex items-center gap-1">
+                <p id="estado-pedidos-directos" class="text-xs text-white flex items-center justify-center gap-1">
                     <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     Pedidos directos a cocina
                 </p>
@@ -334,47 +330,6 @@ function mostrarCartaMenu(restData, productos) {
     }
     var elNombre = document.getElementById('nombre-restaurante');
     if (elNombre) elNombre.innerText = restData.nombre_restaurante;
-    const marcoLogo = document.getElementById('marco-logo-restaurante');
-    const imagenLogo = document.getElementById('logo-restaurante');
-    const marcaRestaurante = document.getElementById('marca-restaurante');
-    const identidadRestaurante = document.getElementById('identidad-restaurante');
-    const urlLogo = String(restData.logo_url || '').trim();
-    let logoValido = false;
-    try {
-        const urlValidada = new URL(urlLogo, window.location.origin);
-        logoValido = ['http:', 'https:'].includes(urlValidada.protocol);
-        if (logoValido) {
-            imagenLogo.crossOrigin = 'anonymous';
-            imagenLogo.onload = async () => {
-                if (urlLogo.includes('logo_lineal_') || imagenLogo.dataset.lineal === '1') return;
-                try {
-                    const arte = await window.veloxConvertirLogoLineal(imagenLogo);
-                    imagenLogo.dataset.lineal = '1';
-                    imagenLogo.src = arte;
-                } catch (error) {
-                    console.warn('Se conserva el logo original porque no se pudo trazar:', error);
-                }
-            };
-            imagenLogo.src = urlValidada.href;
-        }
-    } catch {}
-    if (logoValido) {
-        imagenLogo.alt = `Logo de ${restData.nombre_restaurante || 'Restaurante'}`;
-        marcoLogo.classList.remove('hidden');
-        marcaRestaurante.classList.remove('justify-between');
-        marcaRestaurante.classList.add('justify-center');
-        identidadRestaurante.classList.add('flex', 'flex-col', 'items-center', 'text-center');
-        document.getElementById('estado-pedidos-directos').classList.add('justify-center');
-        if (avisoServicio) avisoServicio.classList.add('mx-auto');
-    } else {
-        marcoLogo.classList.add('hidden');
-        imagenLogo.removeAttribute('src');
-        marcaRestaurante.classList.add('justify-between');
-        marcaRestaurante.classList.remove('justify-center');
-        identidadRestaurante.classList.remove('flex', 'flex-col', 'items-center', 'text-center');
-        document.getElementById('estado-pedidos-directos').classList.remove('justify-center');
-        if (avisoServicio) avisoServicio.classList.remove('mx-auto');
-    }
     document.title = `Carta digital de ${restData.nombre_restaurante || 'Restaurante'}`;
 
     todosLosProductos = productos.map(producto => ({
