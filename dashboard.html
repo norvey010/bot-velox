@@ -359,7 +359,7 @@
           <p id="ajustes-inicio-status" class="mb-3 hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
           <div class="space-y-2">
             <button type="button" onclick="abrirCategoriaAjustes('negocio')" class="flex min-h-16 w-full items-center gap-3 rounded-lg border border-slate-700 bg-slate-900 p-3 text-left hover:border-red-500">
-              <span class="text-xl" aria-hidden="true">🏪</span><span class="min-w-0 flex-1"><strong class="block text-sm text-white">Datos del negocio</strong><small class="text-xs text-slate-400">Nombre, WhatsApp, horario y logo</small></span><span class="text-lg text-slate-400" aria-hidden="true">›</span>
+              <span class="text-xl" aria-hidden="true">🏪</span><span class="min-w-0 flex-1"><strong class="block text-sm text-white">Datos del negocio</strong><small class="text-xs text-slate-400">Nombre, WhatsApp y horario</small></span><span class="text-lg text-slate-400" aria-hidden="true">›</span>
             </button>
             <button type="button" onclick="abrirCategoriaAjustes('impresion')" class="flex min-h-16 w-full items-center gap-3 rounded-lg border border-slate-700 bg-slate-900 p-3 text-left hover:border-red-500">
               <span class="text-xl" aria-hidden="true">🧾</span><span class="min-w-0 flex-1"><strong class="block text-sm text-white">Pedidos e impresión</strong><small class="text-xs text-slate-400">Tamaño del papel de tus comandas</small></span><span class="text-lg text-slate-400" aria-hidden="true">›</span>
@@ -386,18 +386,7 @@
             <label class="block text-xs text-slate-300" for="conf-phone">Número de WhatsApp<input type="tel" id="conf-phone" required maxlength="30" placeholder="300 123 4567" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2.5 text-sm text-white focus:border-red-500 focus:outline-none"></label>
             <button type="submit" class="w-full rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-700">Guardar número</button>
           </form>
-          <form id="form-ajuste-logo" onsubmit="guardarLogoNegocio(event)" class="hidden space-y-3">
-            <p class="text-sm text-slate-300">Sube el logo una vez y aparecerá centrado en la parte superior de tu carta.</p>
-            <div class="flex min-h-32 items-center justify-center rounded-xl border border-slate-700 bg-[#F6EFE5] p-4">
-              <span id="logo-vista-previa-vacia" class="text-sm text-slate-500">Vista previa del logo</span>
-              <img id="logo-vista-previa" alt="Vista previa del logo del negocio" class="hidden max-h-24 max-w-[min(100%,220px)] rounded-lg object-contain">
-            </div>
-            <label class="block text-xs text-slate-300" for="logo-archivo">Imagen del logo (PNG, JPG o WebP; máximo 5 MB)
-              <input type="file" id="logo-archivo" accept="image/png,image/jpeg,image/webp" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white file:mr-3 file:rounded-md file:border-0 file:bg-[#A83F27] file:px-3 file:py-2 file:font-semibold file:text-white">
-            </label>
-            <button type="submit" id="btn-guardar-logo" class="w-full rounded-lg bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-700">Guardar logo</button>
-            <p id="logo-config-status" class="hidden rounded-lg border px-3 py-2 text-sm" role="status" aria-live="polite"></p>
-          </form>
+
           <form id="form-ajuste-horario" onsubmit="guardarConfiguracionMenu(event)" class="hidden space-y-3">
             <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-200"><input id="horario-usar" type="checkbox" class="h-4 w-4 accent-red-600"> Aplicar horario semanal</label>
             <p class="text-xs text-slate-400">Los pedidos se recibirán automáticamente dentro del horario de cada día. Fuera de horario, la carta seguirá visible y mostrará un aviso.</p>
@@ -715,7 +704,6 @@
         ? [
             ['nombre', 'Nombre del negocio', CONFIGURACION_ACTUAL.nombre_restaurante || 'Sin configurar', '🏪'],
             ['telefono', 'Número para recibir pedidos', CONFIGURACION_ACTUAL.telefono || 'Sin configurar', '📲'],
-            ['logo', 'Logo del negocio', CONFIGURACION_ACTUAL.logo_url ? 'Logo cargado' : 'Sube la imagen de tu negocio', '✳️'],
             ['horario', 'Horario de atención', CONFIGURACION_ACTUAL.horario_atencion?.usar_horario ? 'Horario semanal activo' : 'Sin horario automático', '🕒']
           ]
         : [['impresion', 'Tamaño del papel', `${Number(CONFIGURACION_ACTUAL.printer_paper_width) === 58 ? 58 : 80} mm`, '🧾']];
@@ -1820,7 +1808,7 @@
     async function cargarConfiguracion() {
       if (!RESTAURANTE_ID) return;
       const { data, error } = await supabaseClient.from('restaurantes')
-        .select('nombre_restaurante, telefono, printer_paper_width, horario_atencion, logo_url')
+        .select('nombre_restaurante, telefono, printer_paper_width, horario_atencion')
         .eq('id', RESTAURANTE_ID).single();
       if (error || !data) {
         console.error('No se pudo cargar la configuración:', error);
@@ -1833,112 +1821,6 @@
       document.getElementById('conf-phone').value = data.telefono || '';
       document.getElementById('conf-printer-width').value = Number(data.printer_paper_width) === 58 ? '58' : '80';
       actualizarVistaPreviaImpresora(false);
-    }
-
-    let urlTemporalVistaLogo = null;
-    let archivoLogoLineal = null;
-
-    // Traza los contornos del logo en ocre y hace transparente el fondo conectado a las esquinas.
-    async function crearLogoLineal(archivo) {
-      const bmp = await createImageBitmap(archivo);
-      const escala = Math.min(1, 900 / Math.max(bmp.width, bmp.height));
-      const w = Math.max(1, Math.round(bmp.width * escala)), h = Math.max(1, Math.round(bmp.height * escala));
-      const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      ctx.drawImage(bmp, 0, 0, w, h); bmp.close?.();
-      const im = ctx.getImageData(0, 0, w, h), d = im.data, total = w * h;
-      const corners = [0, (w-1)*4, (h-1)*w*4, (total-1)*4], bg = [0,0,0]; let count=0;
-      for (const p of corners) if (d[p+3]>32) { bg[0]+=d[p]; bg[1]+=d[p+1]; bg[2]+=d[p+2]; count++; }
-      if (count) for (let c=0;c<3;c++) bg[c]/=count;
-      const seen=new Uint8Array(total), queue=new Int32Array(total); let head=0, tail=0;
-      const add=n=>{ if(n<0||n>=total||seen[n])return; const p=n*4;
-        if(d[p+3]<16){seen[n]=1;return;}
-        if(Math.hypot(d[p]-bg[0],d[p+1]-bg[1],d[p+2]-bg[2])>48)return;
-        seen[n]=1;queue[tail++]=n; };
-      for(let x=0;x<w;x++){add(x);add((h-1)*w+x);}
-      for(let y=0;y<h;y++){add(y*w);add(y*w+w-1);}
-      while(head<tail){const n=queue[head++],x=n%w,y=(n/w)|0;d[n*4+3]=0;
-        if(x)add(n-1);if(x+1<w)add(n+1);if(y)add(n-w);if(y+1<h)add(n+w);}
-      const l=new Float32Array(total);
-      for(let i=0;i<total;i++)l[i]=d[i*4]*.2126+d[i*4+1]*.7152+d[i*4+2]*.0722;
-      const out=ctx.createImageData(w,h);
-      for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const n=y*w+x;if(!d[n*4+3])continue;
-        const gx=-l[n-w-1]+l[n-w+1]-2*l[n-1]+2*l[n+1]-l[n+w-1]+l[n+w+1];
-        const gy=-l[n-w-1]-2*l[n-w]-l[n-w+1]+l[n+w-1]+2*l[n+w]+l[n+w+1];
-        const edge=Math.hypot(gx,gy);if(edge<72)continue;const p=n*4;
-        out.data[p]=154;out.data[p+1]=113;out.data[p+2]=53;out.data[p+3]=Math.min(255,Math.round((edge-48)*.72));}
-      ctx.putImageData(out,0,0);
-      return await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('No se pudo procesar el logo.')),'image/png'));
-    }
-
-    function renderizarLogoNegocio() {
-      const imagen = document.getElementById('logo-vista-previa');
-      const vacio = document.getElementById('logo-vista-previa-vacia');
-      const estado = document.getElementById('logo-config-status');
-      const archivo = document.getElementById('logo-archivo');
-      if (archivo) archivo.value = '';
-      if (estado) estado.classList.add('hidden');
-      if (urlTemporalVistaLogo) URL.revokeObjectURL(urlTemporalVistaLogo);
-      urlTemporalVistaLogo = null;
-      const logo = CONFIGURACION_ACTUAL.logo_url;
-      imagen.src = logo || '';
-      imagen.classList.toggle('hidden', !logo);
-      vacio.classList.toggle('hidden', Boolean(logo));
-    }
-
-    document.getElementById('logo-archivo').addEventListener('change', async event => {
-      const original=event.target.files?.[0]; if(!original)return;
-      const estado=document.getElementById('logo-config-status');
-      if(!['image/png','image/jpeg','image/webp'].includes(original.type)||original.size>5*1024*1024){
-        event.target.value='';mostrarAviso(estado,'Elige una imagen PNG, JPG o WebP de máximo 5 MB.','error');return;
-      }
-      try{
-        const blob=await crearLogoLineal(original);
-        archivoLogoLineal=new File([blob],'logo-lineal.png',{type:'image/png'});
-        if(urlTemporalVistaLogo)URL.revokeObjectURL(urlTemporalVistaLogo);
-        urlTemporalVistaLogo=URL.createObjectURL(blob);
-        const vista=document.getElementById('logo-vista-previa');vista.src=urlTemporalVistaLogo;vista.classList.remove('hidden');
-        document.getElementById('logo-vista-previa-vacia').classList.add('hidden');estado.classList.add('hidden');
-      }catch(error){console.error('Error al crear arte lineal del logo:',error);mostrarAviso(estado,'No se pudo preparar el logo. Prueba con otra imagen.','error');}
-    });
-
-    async function guardarLogoNegocio(event) {
-      event.preventDefault();
-      const boton = document.getElementById('btn-guardar-logo');
-      const estado = document.getElementById('logo-config-status');
-      const archivoOriginal = document.getElementById('logo-archivo').files?.[0];
-      const archivo = archivoLogoLineal;
-      if (!archivoOriginal || !archivo) {
-        mostrarAviso(estado, CONFIGURACION_ACTUAL.logo_url ? 'Selecciona una imagen para cambiar el logo.' : 'Selecciona una imagen para subir el logo.', 'error');
-        return;
-      }
-      if (!['image/png', 'image/jpeg', 'image/webp'].includes(archivo.type) || archivo.size > 5 * 1024 * 1024) {
-        mostrarAviso(estado, 'Elige una imagen PNG, JPG o WebP de máximo 5 MB.', 'error');
-        return;
-      }
-      const textoOriginal = boton.textContent;
-      boton.disabled = true;
-      boton.textContent = 'Subiendo…';
-      let rutaSubida = null;
-      try {
-        rutaSubida = 'restaurante_' + RESTAURANTE_ID + '/logo_lineal_' + Date.now() + '.png';
-        const { error: errorSubida } = await supabaseClient.storage.from('productos').upload(rutaSubida, archivo, { contentType: 'image/png', cacheControl: '31536000', upsert: false });
-        if (errorSubida) throw errorSubida;
-        const { data: urlPublica } = supabaseClient.storage.from('productos').getPublicUrl(rutaSubida);
-        const { data, error } = await supabaseClient.from('restaurantes').update({ logo_url: urlPublica.publicUrl }).eq('id', RESTAURANTE_ID).select('logo_url').maybeSingle();
-        if (error) throw error;
-        if (!data) throw new Error('No se confirmó el guardado del logo.');
-        CONFIGURACION_ACTUAL = { ...CONFIGURACION_ACTUAL, logo_url: data.logo_url };
-        renderizarLogoNegocio();
-        mostrarAviso(estado, 'Logo guardado. Ya aparecerá en la parte superior de tu carta.', 'exito', 4500);
-      } catch (error) {
-        if (rutaSubida) await supabaseClient.storage.from('productos').remove([rutaSubida]).catch(() => {});
-        console.error('No se pudo guardar el logo:', error);
-        mostrarAviso(estado, error.message || 'No se pudo guardar el logo.', 'error');
-      } finally {
-        boton.disabled = false;
-        boton.textContent = textoOriginal;
-      }
     }
 
     function renderizarHorarioMenu(horario = {}) {
@@ -2046,7 +1928,7 @@
           .from('restaurantes')
           .update(cambios)
           .eq('id', RESTAURANTE_ID)
-          .select('id, nombre_restaurante, telefono, printer_paper_width, logo_url')
+          .select('id, nombre_restaurante, telefono, printer_paper_width')
           .maybeSingle();
 
         if (error) throw error;
