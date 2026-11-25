@@ -723,7 +723,6 @@
       const editores = {
         nombre: ['Nombre del negocio', 'form-ajuste-nombre'],
         telefono: ['Número para recibir pedidos', 'form-ajuste-telefono'],
-        logo: ['Logo del negocio', 'form-ajuste-logo'],
         horario: ['Horario de atención', 'form-ajuste-horario'],
         impresion: ['Tamaño del papel', 'form-ajuste-impresion']
       };
@@ -736,7 +735,6 @@
       document.getElementById('ajustes-categoria').classList.add('hidden');
       document.getElementById('ajustes-editor').classList.remove('hidden');
       if (campo === 'horario') renderizarHorarioMenu(CONFIGURACION_ACTUAL.horario_atencion || {});
-      if (campo === 'logo') renderizarLogoNegocio();
       if (campo === 'impresion') actualizarVistaPreviaImpresora(false);
     }
 
