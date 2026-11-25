@@ -39,7 +39,7 @@ const slug = (nombreRestaurante
       .from('restaurantes')
       .insert([{
         id_usuario: authData.user?.id,
-        nombre_restaurante: nombreRestaurante,
+        nombre_restaurante: nombreRestaurante.trim(),
         nombre_encargado: nombreEncargado,
         telefono: telefono,
         email: email,
